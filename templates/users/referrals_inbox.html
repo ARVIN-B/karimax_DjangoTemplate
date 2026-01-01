@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}ارجاعات دریافتی{% endblock %}
+{% block breadcrumb_title %}ارجاعات دریافتی{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0">
+                ارجاعات دریافتی 
+                <span class="badge bg-danger fs-5">{{ total_referrals }}</span>
+            </h4>
+            <small class="text-muted">شما به عنوان: <strong>{{ current_role_display }}</strong></small>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>عنوان ارجاع</th>
+                                <th>مشارکت</th>
+                                <th>فرستنده</th>
+                                <th>وضعیت فعلی</th>
+                                <th>مراحل</th>
+                                <th>تاریخ</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in page_obj %}
+                                <tr {% if item.is_current_user_turn %}class="table-warning fw-bold"{% endif %}>
+                                    <td>{{ item.referral.title }}</td>
+                                    <td>
+                                        <a href="{% url 'users:process_participation' item.referral.participation.id %}" class="text-decoration-none">
+                                            {{ item.referral.participation.title|truncatechars:30 }}
+                                        </a>
+                                    </td>
+                                    <td>{{ item.current_step.from_user.get_full_name }}</td>
+                                    <td>
+                                        {% if item.is_my_turn %}
+                                            <span class="badge bg-danger fs-6">نوبت شما</span>
+                                        {% elif item.is_sent_by_me %}
+                                            <span class="badge bg-info text-white">ارسال شده توسط شما</span>
+                                        {% elif item.current_step.is_approved == True %}
+                                            <span class="badge bg-success">تأیید شده</span>
+                                        {% elif item.current_step.is_approved == False %}
+                                            <span class="badge bg-secondary">رد شده</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">در جریان</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ item.current_step.order }} از {{ item.total_steps }}</small>
+                                        <div class="progress mt-1" style="height: 4px;">
+
+                                        </div>
+                                    </td>
+                                    <td>{{ item.current_step.created_at|date:"d/m/Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'users:referral_detail' item.referral.id %}"
+                                           class="btn btn-sm btn-primary">
+                                            {% if item.is_my_turn %}اقدام{% else %}جزئیات{% endif %}
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+
+
+            {% else %}
+                <div class="text-center py-5">
+                    <h5 class="text-muted">هیچ ارجاعی برای شما ارسال نشده است.</h5>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,347 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} افزودن عضو خانواده {% endblock %}
+{% block breadcrumb_title %} افزودن عضو خانواده {% endblock %}
+{% block content %}
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-4">
+                            {% if is_edit %}
+                                ویرایش اطلاعات عضو خانواده
+                            {% else %}
+                                افزودن عضو جدید خانواده
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="wizard">
+                            <form id="dependentForm" method="post" action="{% url 'users:add_dependent' %}">
+                                {% csrf_token %}
+                                {% if is_edit %}
+                                    <input type="hidden" name="edit_id" value="{{ edit_id }}">
+                                {% endif %}
+                                <!-- Step 1: اطلاعات شخصی -->
+                                <div id="step1" class="step active">
+                                    <h2>مرحله 1: اطلاعات شخصی</h2>
+                                    <div class="form-group">
+                                        <label>نام <span class="text-danger">*</span></label>
+                                        <i class="fas fa-user"></i>
+                                        <input type="text" name="first_name" value="{{ first_name|default:'' }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>نام خانوادگی <span class="text-danger">*</span></label>
+                                        <i class="fas fa-user"></i>
+                                        <input type="text" name="last_name" value="{{ last_name|default:'' }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>نام پدر <span class="text-danger">*</span></label>
+                                        <i class="fas fa-user-tie"></i>
+                                        <input type="text" name="father_name" value="{{ father_name|default:'' }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>تاریخ تولد (شمسی) <span class="text-danger">*</span></label>
+                                        <i class="fas fa-calendar-alt"></i>
+                                        <input type="text" name="birth_date" data-jdp class="jalali-datepicker" value="{{ birth_date|default:'' }}" required placeholder="YYYY/MM/DD">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>جنسیت <span class="text-danger">*</span></label>
+                                        <i class="fas fa-venus-mars"></i>
+                                        <select name="gender_code" required>
+                                            <option value="">انتخاب کنید</option>
+                                            {% for gender in genders %}
+                                                <option value="{{ gender.code }}" {% if gender_code == gender.code %}selected{% endif %}>
+                                                    {{ gender.title }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>وضعیت تأهل <span class="text-danger">*</span></label>
+                                        <i class="fas fa-ring"></i>
+                                        <select name="marital_status_code" required>
+                                            <option value="">انتخاب کنید</option>
+                                            {% for status in marital_statuses %}
+                                                <option value="{{ status.code }}" {% if marital_status_code == status.code %}selected{% endif %}>
+                                                    {{ status.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="buttons">
+                                        <button type="button" class="next" onclick="nextStep(2)">بعدی <i class="fas fa-arrow-right"></i></button>
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: اطلاعات تماس و شناسایی -->
+                                <div id="step2" class="step">
+                                    <h2>مرحله 2: اطلاعات تماس و شناسایی</h2>
+                                    <div class="form-group">
+                                        <label>کد ملی <span class="text-danger">*</span></label>
+                                        <i class="fas fa-id-card"></i>
+                                        <input type="text" name="national_id" maxlength="10" value="{{ national_id|default:'' }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>شماره شناسنامه <span class="text-danger">*</span></label>
+                                        <i class="fas fa-book"></i>
+                                        <input type="text" name="birth_certificate_number" value="{{ birth_certificate_number|default:'' }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>شماره تلفن <span class="text-danger">*</span></label>
+                                        <i class="fas fa-phone"></i>
+                                        <input type="tel" name="phone_number" value="{{ phone_number|default:'' }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>نسبت با بیمه‌شده اصلی <span class="text-danger">*</span></label>
+                                        <i class="fas fa-users"></i>
+                                        <select name="relative_type_code" required>
+                                            <option value="">انتخاب کنید</option>
+                                            {% for rel in relative_types %}
+                                                <option value="{{ rel.code }}" {% if relative_type_code == rel.code %}selected{% endif %}>
+                                                    {{ rel.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>وضعیت تکفل <span class="text-danger">*</span></label>
+                                        <i class="fas fa-shield-alt"></i>
+                                        <select name="dependency_status_code" required>
+                                            <option value="">انتخاب کنید</option>
+                                            {% for dep in dependency_statuses %}
+                                                <option value="{{ dep.code }}" {% if dependency_status_code == dep.code %}selected{% endif %}>
+                                                    {{ dep.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="buttons">
+                                        <button type="button" class="prev" onclick="prevStep(1)"><i class="fas fa-arrow-left"></i> قبلی</button>
+                                        <button type="button" class="next" onclick="nextStep(3)"><i class="fas fa-arrow-right"></i>بعدی (حساب بانکی)</button>
+                                    </div>
+                                </div>
+
+                                <!-- Step 3: اطلاعات حساب بانکی -->
+                                <div id="step3" class="step">
+                                    <h2>مرحله ۳: اطلاعات حساب بانکی (اختیاری)</h2>
+                                    <div class="form-group">
+                                        <label>بانک</label>
+                                        <i class="fas fa-university"></i>
+                                        <select name="bank_code">
+                                            <option value="">بدون حساب بانکی</option>
+                                            {% for bank in banks %}
+                                                <option value="{{ bank.code }}" {% if bank_code == bank.code %}selected{% endif %}>
+                                                    {{ bank.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>نوع حساب بانکی</label>
+                                        <i class="fas fa-credit-card"></i>
+                                        <select name="bank_account_type_code">
+                                            <option value="">انتخاب کنید</option>
+                                            {% for type in bank_account_types %}
+                                                <option value="{{ type.code }}" {% if bank_account_type_code == type.code %}selected{% endif %}>
+                                                    {{ type.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>شماره حساب</label>
+                                        <i class="fas fa-hashtag"></i>
+                                        <input type="text" name="account_number" value="{{ account_number|default:'' }}" placeholder="مثلاً: ۱۲۳۴۵۶۷۸۹۰">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>شماره کارت</label>
+                                        <i class="fas fa-hashtag"></i>
+                                        <input type="text" name="card_number" value="{{ card_number|default:'' }}" placeholder="مثلاً: 1111 1111 1111 1111">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>شماره شبا (بدون IR)</label>
+                                        <i class="fas fa-barcode"></i>
+                                        <input type="text" name="sheba_number" maxlength="24" value="{{ sheba_number|default:'' }}" placeholder="فقط اعداد شماره شبا">
+                                    </div>
+                                    <div class="buttons">
+                                        <button type="button" class="prev" onclick="prevStep(2)"><i class="fas fa-arrow-left"></i> قبلی</button>
+                                        <button type="submit" class="submit">ثبت عضو خانواده <i class="fas fa-check"></i></button>
+                                    </div>
+                                </div>
+
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <!-- استفاده از همان کتابخانه جلالی که در manage_self_menu.html کار می‌کند -->
+    <link rel="stylesheet" href="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css">
+    <script type="text/javascript" src="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // فعال‌سازی تقویم جلالی — دقیقاً مثل manage_self_menu.html
+            jalaliDatepicker.startWatch({
+                time: false,
+                persianDigits: true,
+                maxDate: 'today',
+                showTodayBtn: true,
+                showEmptyBtn: true
+            });
+        });
+
+        function nextStep(step) {
+            const currentStep = document.querySelector('.step.active');
+            if (step > 2) {  // مرحله ۳ اختیاریه، اعتبارسنجی نمی‌خواد
+                currentStep.classList.remove('active');
+                document.getElementById('step' + step).classList.add('active');
+                return;
+            }
+            if (!validateStep(currentStep)) return;
+            currentStep.classList.remove('active');
+            document.getElementById('step' + step).classList.add('active');
+        }
+
+        function prevStep(step) {
+            document.querySelector('.step.active').classList.remove('active');
+            document.getElementById('step' + step).classList.add('active');
+        }
+
+        function validateStep(stepElement) {
+            const inputs = stepElement.querySelectorAll('input[required], select[required]');
+            for (let input of inputs) {
+                if (!input.value.trim()) {
+                    alert('لطفاً همه فیلدهای اجباری را پر کنید.');
+                    input.focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // document.getElementById('dependentForm').addEventListener('submit', function(e) {
+        //     e.preventDefault();
+        //     const step2 = document.getElementById('step2');
+        //     if (!validateStep(step2)) return;
+
+        //     const formData = new FormData(this);
+        //     const data = Object.fromEntries(formData);
+        //     console.log('داده‌های ارسال شده:', data);
+        //     alert('عضو خانواده با موفقیت ثبت شد! (در حال حاضر فقط نمایش در کنسول)');
+        // });
+    </script>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .text-danger { color: red; font-size: 0.9em; }
+
+        /* مهم: مخفی کردن مراحل غیرفعال */
+        .wizard .step {
+            display: none;
+        }
+        .wizard .step.active {
+            display: block;
+        }
+
+        .wizard {
+            max-width: 650px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .form-group i {
+            position: absolute;
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 1.2em;
+            z-index: 1;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        input:focus, select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 8px rgba(0,123,255,0.2);
+            outline: none;
+        }
+
+        label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+        }
+
+        button {
+            width: 48%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,123,255,0.3);
+        }
+
+        button.prev {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        button.next, button.submit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        @media (max-width: 600px) {
+            .buttons {
+                flex-direction: column;
+            }
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% load custom_filters %}
+{% for participation in participations %}
+    {% if participation.is_committee %}
+        <tr style="background-color: #f8d7da;">
+    {% else %}
+        <tr>
+    {% endif %}
+        {% if is_management_view %}
+        <td>{{ participation.user.full_name }}</td>
+        {% endif %}
+        <td>{{ participation.title }}</td>
+        <td>{{ participation.get_item_type_display }}</td>
+        <td>{{ participation.created_at|date:"Y-m-d" }}</td>
+        <td>
+            {% if not is_management_view %}
+                {% if participation.status == 'pending' and participation.attachment %}
+                    <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-primary mb-1">عملیات</a>
+                {% endif %}
+                {% if participation.text_content and participation.status == 'user_review' %}
+                    <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-warning mb-1">عملیات</a>
+                {% elif participation.status == 'supervisor_review' or participation.status == 'manager_review' %}
+                    <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-info mb-1">مشاهده درخواست</a>
+                {% elif participation.status == 'rejected' %}
+                    <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-danger mb-1">مشاهده درخواست</a>
+                {% elif participation.status == 'approved' %}
+                    <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-success mb-1">مشاهده درخواست</a>
+                {% endif %}
+            {% else %}
+                {% if role_name == 'supervisor' and participation.status == 'supervisor_review' or role_name == 'department_manager' and participation.status == 'manager_review' %}
+                    <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-info mb-1">بررسی</a>
+                {% endif %}
+                {% if role_name in reviewers and participation.status == 'approved' %}
+                    <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-info mb-1">مشاهده مشارکت</a>
+                {% endif %}
+            {% endif %}
+        </td>
+        <td>{{ participation.get_status_display }}</td>
+    </tr>
+{% endfor %}

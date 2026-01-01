@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} چت‌بات هوشمند {% endblock %}
+{% block breadcrumb_title %} چت‌بات {% endblock %}
+
+{% block content %}
+<style>
+    #chat-box {
+        height: 50vh;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        padding: 15px;
+        background: #f8f9fa;
+        display: flex;
+        /* ✅ اصلاح ۱: حذف 'column-reverse' - نمایش طبیعی (بالا به پایین) */
+        flex-direction: column;
+    }
+    .message {
+        padding: 8px 12px;
+        border-radius: 15px;
+        margin-bottom: 10px;
+        max-width: 80%;
+    }
+    .user-message {
+        background-color: #007bff;
+        color: white;
+        align-self: flex-end;
+        margin-left: auto;
+    }
+    .assistant-message {
+        background-color: #e9ecef;
+        color: #333;
+        align-self: flex-start;
+        margin-right: auto;
+    }
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+    }
+    .is-invalid {
+    border-color: red !important;
+    }
+
+    #message-input {
+        transition: all 0.2s ease;
+        padding: 11px 16px;
+        font-size: 15px;
+    }
+
+    #message-input:focus {
+        outline: none !important;
+        background-color: #fff;
+        box-shadow: 0 0 0 3px rgba(0,123,255,.25);
+    }
+
+    #send-button {
+        transition: all 0.2s ease;
+    }
+
+    #send-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* وقتی textarea بزرگ میشه، دکمه همچنان پایین بمونه */
+    .align-items-end {
+        align-items: flex-end;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">گفتگو با چت‌بات هوشمند</h3>
+                </div>
+                <div class="card-body p-0">
+                    <div id="chat-box">
+                        <div class="chat-container" id="chat-container">
+                            {% for message in chat_history %}
+                                <div class="message {% if message.source == 'User' %}user-message{% else %}assistant-message{% endif %}">
+                                    {{ message.content }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+<!--                <div class="card-footer">-->
+<!--                    <form id="chat-form" class="d-flex">-->
+<!--                        {% csrf_token %}-->
+<!--                        <input type="text" id="message-input" name="message" class="form-control me-2" placeholder="پیام خود را وارد کنید...">-->
+<!--                        <button type="submit" id="send-button" class="btn btn-primary" style="min-width: 95px;">-->
+<!--                            <i class="fas fa-paper-plane"></i> ارسال-->
+<!--                        </button>-->
+<!--                    </form>-->
+<!--                </div>-->
+
+
+
+                <!-- در بخش <div class="card-footer"> این کد رو جایگزین کن -->
+                <div class="card-footer p-3" style="background-color: #fff;">
+                    <form id="chat-form">
+                        {% csrf_token %}
+                        <div class="d-flex align-items-end gap-2">
+                            <!-- کادر پیام (textarea) -->
+                            <textarea
+                                id="message-input"
+                                name="message"
+                                class="form-control border-0 shadow-none flex-grow-1"
+                                placeholder="پیام خود را وارد کنید..."
+                                rows="1"
+                                style="resize: none; overflow-y: hidden; max-height: 100px; line-height: 1.5; min-height: 44px; border-radius: 20px !important; background-color: #f1f3f5;"
+                                autocomplete="off"></textarea>
+
+                            <!-- دکمه ارسال -->
+                            <button type="submit" id="send-button" class="btn btn-primary d-flex align-items-center justify-content-center"
+                                    style="width: 48px; height: 48px; border-radius: 50%; padding: 0; flex-shrink: 0;" disabled>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('chat-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const inputElement = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        const userMessage = inputElement.value.trim();
+        if (!userMessage) return;
+
+        // غیرفعال کردن دکمه و ورودی حین ارسال
+        sendButton.disabled = true;
+        inputElement.disabled = true;
+        sendButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+        // نمایش پیام کاربر در UI
+        appendMessage(userMessage, 'User');
+        inputElement.value = '';
+
+        // ارسال پیام با AJAX
+        fetch("{% url 'users:send_message' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `message=${encodeURIComponent(userMessage)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                appendMessage(`خطا: ${data.error}`, 'Assistant');
+            } else {
+                // نمایش پاسخ چت‌بات در UI
+                appendMessage(data.assistant_response, 'Assistant');
+            }
+        })
+        .catch(error => {
+            console.error('AJAX Error:', error);
+            appendMessage('خطایی در اتصال به سرور رخ داد.', 'Assistant');
+        })
+        .finally(() => {
+            // فعال‌سازی مجدد
+            sendButton.disabled = false;
+            inputElement.disabled = false;
+            sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            inputElement.focus();
+        });
+    });
+
+    function appendMessage(content, source) {
+        const chatContainer = document.getElementById('chat-container');
+        const chatBox = document.getElementById('chat-box');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        messageDiv.textContent = content;
+
+        if (source === 'User') {
+            messageDiv.classList.add('user-message');
+        } else {
+            messageDiv.classList.add('assistant-message');
+        }
+
+        // ✅ اصلاح ۳: استفاده از append برای افزودن به انتهای لیست (پایین)
+        chatContainer.append(messageDiv);
+
+        // اسکرول به پایین برای نمایش آخرین پیام
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // اسکرول به پایین در لود اولیه برای نمایش جدیدترین پیام‌ها
+    window.onload = function() {
+        const chatBox = document.getElementById('chat-box');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    };
+</script>
+<script>
+// خودکار تنظیم ارتفاع textarea تا حداکثر 3 خط
+const textarea = document.getElementById('message-input');
+
+textarea.addEventListener('input', autoResize);
+function autoResize() {
+    textarea.style.height = 'auto'; // اول ریست کن
+    textarea.style.height = Math.min(textarea.scrollHeight, 100); // حداکثر ~3 خط (100px)
+
+    // اگر بیشتر از 100px شد، اسکرول داخلی فعال میشه
+    if (textarea.scrollHeight > 100) {
+        textarea.style.overflowY = 'auto';
+    } else {
+        textarea.style.overflowY = 'hidden';
+    }
+}
+
+// رفتار Shift + Enter = خط جدید، Enter = ارسال
+textarea.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault(); // جلوگیری از خط جدید
+        document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+    }
+    // اگر Shift+Enter زد، اجازه بده خط جدید بزنه (رفتار پیش‌فرض)
+});
+
+// وقتی صفحه لود شد، ارتفاع اولیه رو تنظیم کن
+window.addEventListener('load', autoResize);
+
+// وقتی فوکوس می‌گیره، اسکرول به انتهای چت بره (اختیاری)
+textarea.addEventListener('focus', () => {
+    const chatBox = document.getElementById('chat-box');
+    chatBox.scrollTop = chatBox.scrollHeight;
+});
+
+    // فعال/غیرفعال کردن دکمه ارسال بر اساس وجود متن
+textarea.addEventListener('input', function() {
+    const hasText = textarea.value.trim().length > 0;
+    document.getElementById('send-button').disabled = !hasText;
+});
+
+// در finally بعد از ارسال، دکمه رو دوباره غیرفعال کن
+// (چون textarea خالی شده)
+document.getElementById('send-button').disabled = true;
+</script>
+{% endblock %}

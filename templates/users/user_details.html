@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block title %}جزئیات کاربر - {{ employee.full_name }}{% endblock %}
+{% block breadcrumb_title %}جزئیات کاربر{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3>جزئیات کاربر: {{ employee.full_name }} ({{ employee.national_id }})</h3>
+            </div>
+            <div class="card-body">
+                <!-- فیلتر -->
+                <form method="get" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="id_factory">کارخانه:</label>
+                                {{ form.factory }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="id_department">بخش:</label>
+                                {{ form.department }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="id_role">نقش:</label>
+                                {{ form.role }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="id_search_title">جستجو عنوان:</label>
+                                {{ form.search_title }}
+                            </div>
+                        </div>
+                        <div class="col-md-12 text-center mt-2">
+                            <button type="submit" class="btn btn-primary">فیلتر کن</button>
+                            <a href="{% url 'users:user_management' %}" class="btn btn-secondary">بازگشت به لیست</a>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- جدول فایل‌های ارسالی -->
+                <h4>فایل‌های ارسالی و مشارکت‌ها</h4>
+                {% if participations.exists %}
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>عنوان</th>
+                                <th>نوع</th>
+                                <th>توضیحات</th>
+                                <th>تاریخ</th>
+                                <th>فایل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for participation in participations %}
+                                <tr>
+                                    <td>{{ participation.title }}</td>
+                                    <td>{{ participation.get_item_type_display }}</td>
+                                    <td>{{ participation.description|truncatewords:10 }}</td>
+                                    <td>{{ participation.created_at|date:"Y-m-d" }}</td>
+                                    <td>
+                                        {% if participation.attachment %}
+                                            <a href="{{ participation.attachment.url }}" target="_blank" class="btn btn-sm btn-info">دانلود</a>
+                                        {% else %}
+                                            بدون فایل
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>هیچ مشارکتی برای این کاربر یافت نشد.</p>
+                {% endif %}
+
+                <!-- گزارش مشارکت‌ها -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h4>گزارش مشارکت‌ها</h4>
+                        <ul class="list-group">
+                            {% for item in participation_display %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ item.display }}
+                                    <div class="badge-container">
+                                        <span class="badge bg-primary rounded-pill">{{ item.count }} (کل)</span>
+                                        <span class="badge bg-success rounded-pill">{{ item.audio_count }} (صوتی)</span>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                تعداد فایل‌های صوتی کل
+                                <span class="badge bg-success rounded-pill">{{ audio_count }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                تعداد سایر فایل‌ها
+                                <span class="badge bg-warning rounded-pill">{{ other_count }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>نمودار مشارکت‌ها</h4>
+                        <div class="chart-container" style="position: relative; width: 100%; height: 300px;">
+                            <canvas id="participationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mt-4">
+                        <h4>نمودار نوع فایل‌ها</h4>
+                        <div class="chart-container" style="position: relative; width: 100%; height: 300px;">
+                            <canvas id="fileTypeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script type="text/javascript">
+        const ctx = document.getElementById('participationChart').getContext('2d');
+        const dataValues = JSON.parse('{{ chart_data|safe }}');
+        const fileTypeCtx = document.getElementById('fileTypeChart').getContext('2d');
+        const fileTypeData = JSON.parse('{{ file_type_chart_data|safe }}');
+
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['ارسال فایل عملکرد', 'ارسال تجربیات کاری', 'صورت جلسات', 'پیشنهادات', 'انتقادات'],
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            color: '#fff',
+                            font: { size: 12 },
+                            formatter: (value, ctx) => {
+                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                if (sum > 0) {
+                                    let percentage = ((value / sum) * 100).toFixed(2) + "%";
+                                    return percentage;
+                                }
+                                return "0%";
+                            },
+                            anchor: 'center',
+                            align: 'center',
+                            offset: 5  /* کاهش به 5 پیکسل برای جابه‌جایی دقیق‌تر */
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { size: 12 } }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+        if (fileTypeCtx) {
+            new Chart(fileTypeCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['ارسال فایل عملکرد', 'ارسال تجربیات کاری', 'صورت جلسات', 'پیشنهادات', 'انتقادات'],
+                    datasets: [{
+                        label: 'تعداد',
+                        data: fileTypeData,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        datalabels: {
+                            color: '#fff',
+                            font: { size: 12 },
+                            formatter: (value, ctx) => {
+                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                if (sum > 0) {
+                                    let percentage = ((value / sum) * 100).toFixed(2) + "%";
+                                    return percentage;
+                                }
+                                return "0%";
+                            },
+                            anchor: 'center',
+                            align: 'center',
+                            offset: 5  /* کاهش به 5 پیکسل برای جابه‌جایی دقیق‌تر */
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+    </script>
+{% endblock %}
+{% block extra_css %}
+    <style>
+        .form-group { margin-bottom: 1rem; }
+        .chart-container { position: relative; }
+        .badge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+        .badge {
+            min-width: 70px;
+            text-align: center;
+            white-space: nowrap;
+        }
+    </style>
+{% endblock %}

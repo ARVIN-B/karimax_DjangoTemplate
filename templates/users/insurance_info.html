@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}اطلاعات بیمه‌ای{% endblock %}
+{% block breadcrumb_title %}اطلاعات بیمه‌ای من{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient text-white text-center py-4" 
+                     style="background: linear-gradient(135deg, #1e3c72, #2a5298); border-radius: 12px 12px 0 0;">
+                    <h3 class="mb-0 fw-bold">
+                        <i class="fas fa-shield-alt me-3"></i>
+                        ویرایش اطلاعات بیمه‌ای
+                    </h3>
+                    <p class="mt-2 mb-0 small opacity-90">اطلاعات خود را در مراحل زیر تکمیل یا ویرایش کنید</p>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="wizard">
+                        <form id="insuranceForm" method="post">
+                            {% csrf_token %}
+
+                            <!-- مرحله ۱: اطلاعات شخصی -->
+                            <div id="step1" class="step active">
+                                <h4 class="text-primary text-center mb-4">مرحله ۱: اطلاعات شخصی</h4>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>شماره پرسنلی</label>
+                                            <input type="text" value="{{ current.personnel_code }}" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>کد ملی</label>
+                                            <input type="text" value="{{ current.national_id }}" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>نام</label>
+                                            <input type="text" value="{{ current.first_name }}" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>نام خانوادگی</label>
+                                            <input type="text" value="{{ current.last_name }}" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>نام پدر</label>
+                                            <input type="text" name="father_name" value="{{ current.father_name }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>شماره شناسنامه</label>
+                                            <input type="text" name="birth_certificate_number" value="{{ current.birth_certificate_number }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>تاریخ تولد (شمسی)</label>
+                                            <input type="text" name="birth_date" data-jdp value="{{ current.birth_date_jalali }}" required placeholder="YYYY/MM/DD">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>جنسیت</label>
+                                            <select name="gender_code" required>
+                                                <option value="">انتخاب کنید</option>
+                                                {% for g in genders %}
+                                                    <option value="{{ g.code }}" {% if g.code == current.gender_code %}selected{% endif %}>{{ g.title }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>وضعیت تأهل</label>
+                                            <select name="marital_status_code" required>
+                                                <option value="">انتخاب کنید</option>
+                                                {% for s in marital_statuses %}
+                                                    <option value="{{ s.code }}" {% if s.code == current.marital_status_code %}selected{% endif %}>{{ s.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>کشور</label>
+                                            <select name="country_code">
+                                                <option value="">انتخاب کنید</option>
+                                                {% for c in countries %}
+                                                    <option value="{{ c.code }}" {% if c.code == current.country_code %}selected{% endif %}>{{ c.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+
+
+
+
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>شماره تماس</label>
+                                            <input type="text" name="phone_number" value="{{ current.phone_number }}" pattern="\d{1,11}" maxlength="11" placeholder="09000000000">
+                                        </div>
+                                    </div>
+
+
+
+
+                                </div>
+
+                                <div class="buttons mt-4">
+                                    <button type="button" class="next" onclick="nextStep(2)">بعدی <i class="fas fa-arrow-right"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- مرحله ۲: اطلاعات استخدامی و بیمه -->
+                            <div id="step2" class="step">
+                                <h4 class="text-primary text-center mb-4">مرحله ۲: اطلاعات استخدامی و بیمه</h4>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>گروه شغلی</label>
+                                            <select name="job_group_code">
+                                                <option value="">انتخاب کنید</option>
+                                                {% for j in job_groups %}
+                                                    <option value="{{ j.code }}" {% if j.code == current.job_group_code %}selected{% endif %}>{{ j.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>تاریخ استخدام (شمسی)</label>
+                                            <input type="text" name="employment_date" data-jdp value="{{ current.employment_date_jalali }}" placeholder="YYYY/MM/DD">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>نوع بیمه پایه</label>
+                                            <select name="base_insurance_code">
+                                                <option value="">انتخاب کنید</option>
+                                                {% for b in base_insurances %}
+                                                    <option value="{{ b.code }}" {% if b.code == current.base_insurance_code %}selected{% endif %}>{{ b.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>نوع استخدام</label>
+                                            <select name="employment_type_code">
+                                                <option value="">انتخاب کنید</option>
+                                                {% for e in employment_types %}
+                                                    <option value="{{ e.code }}" {% if e.code == current.employment_type_code %}selected{% endif %}>{{ e.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>بیمه گر قبلی</label>
+                                            <select name="previous_insurer_code">
+                                                <option value="">ندارد</option>
+                                                {% for p in previous_insurers %}
+                                                    <option value="{{ p.code }}" {% if p.code == current.previous_insurer_code %}selected{% endif %}>{{ p.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>مدت پوشش (ماه)</label>
+                                            <input type="number" name="coverage_duration" value="{{ current.coverage_duration }}" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="buttons mt-4">
+                                    <button type="button" class="prev" onclick="prevStep(1)"><i class="fas fa-arrow-left"></i> قبلی</button>
+                                    <button type="button" class="next" onclick="nextStep(3)">بعدی <i class="fas fa-arrow-right"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- مرحله ۳: اطلاعات بانکی -->
+                            <div id="step3" class="step">
+                                <h4 class="text-primary text-center mb-4">مرحله ۳: اطلاعات حساب بانکی (اختیاری)</h4>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>بانک</label>
+                                            <select name="bank_code">
+                                                <option value="">بدون حساب</option>
+                                                {% for b in banks %}
+                                                    <option value="{{ b.code }}" {% if b.code == current.bank_code %}selected{% endif %}>{{ b.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>نوع حساب</label>
+                                            <select name="bank_account_type_code">
+                                                <option value="">انتخاب کنید</option>
+                                                {% for t in bank_account_types %}
+                                                    <option value="{{ t.code }}" {% if t.code == current.bank_account_type_code %}selected{% endif %}>{{ t.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>شماره حساب</label>
+                                            {{ current.account_number }}
+                                            <input type="text" name="account_number" class="only-numeric" value="{{ current.account_number }}" pattern="\d{1,16}" maxlength="16" title="حداکثر ۱۰ رقم عددی">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>شماره کارت</label>
+                                            {{ current.card_number }}
+                                            <input type="text" name="card_number" class="only-numeric" value="{{ current.card_number }}" pattern="\d{16}" maxlength="16" minlength="16" title="دقیقاً ۱۶ رقم عددی">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label>شماره شبا (بدون IR)</label>
+                                            <input type="text" name="sheba_number" class="only-numeric" value="{{ current.sheba_number }}" pattern="\d{1,24}" maxlength="24" title="حداکثر ۲۴ رقم عددی">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="buttons mt-4">
+                                    <button type="button" class="prev" onclick="prevStep(2)"><i class="fas fa-arrow-left"></i> قبلی</button>
+                                    <button type="submit" class="submit">ذخیره اطلاعات <i class="fas fa-check"></i></button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<link rel="stylesheet" href="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css">
+<script src="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    jalaliDatepicker.startWatch({
+        time: false,
+        persianDigits: true,
+        showTodayBtn: true,
+        showEmptyBtn: true
+    });
+
+
+
+    const numericInputs = document.querySelectorAll('.only-numeric');
+
+    numericInputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            // جایگزین کردن هر چیزی که عدد نیست با رشته خالی
+            // این کد هم اعداد انگلیسی و هم اعداد فارسی/عربی را مد نظر قرار می‌دهد
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    });
+});
+
+function nextStep(step) {
+    const current = document.querySelector('.step.active');
+    if (!validateStep(current)) return;
+    current.classList.remove('active');
+    document.getElementById('step' + step).classList.add('active');
+}
+
+function prevStep(step) {
+    document.querySelector('.step.active').classList.remove('active');
+    document.getElementById('step' + step).classList.add('active');
+}
+
+function validateStep(step) {
+    const required = step.querySelectorAll('input[required], select[required]');
+    for (let el of required) {
+        if (!el.value.trim()) {
+            alert('لطفاً همه فیلدهای اجباری را پر کنید.');
+            el.focus();
+            return false;
+        }
+    }
+    return true;
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    .wizard { max-width: 800px; margin: 0 auto; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .form-group { position: relative; margin-bottom: 1.2rem; }
+    .form-group label { font-weight: bold; color: #444; margin-bottom: 6px; display: block; }
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1em;
+    }
+    .form-group input:focus, .form-group select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 8px rgba(0,123,255,0.25);
+        outline: none;
+    }
+    .buttons { display: flex; justify-content: space-between; margin-top: 2rem; }
+    .buttons button {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1em;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .buttons button:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+    .prev { background: #6c757d; color: white; }
+    .next, .submit { background: #007bff; color: white; }
+</style>
+{% endblock %}

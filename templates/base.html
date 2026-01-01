@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="سیستم مدیریت یکپارچه پرسنل و عملکرد">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}PMS - سیستم مدیریت پرسنل{% endblock %}</title>
+
+    <!-- Load static files -->
+    {% load static %}
+
+    <link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Google Fonts - Vazir -->
+    <link href="https://fonts.googleapis.com/css2?family=Vazir:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div id="loading" class="loading-overlay" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">در حال بارگذاری...</span>
+        </div>
+    </div>
+
+    <!-- Top Navigation (only for authenticated users) -->
+    {% if user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'users:dashboard' %}">
+                <i class="fas fa-users me-2"></i>
+                <span>PMS</span>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'users:dashboard' %}">
+                            <i class="fas fa-tachometer-alt me-1"></i>داشبورد
+                        </a>
+                    </li>
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:food_reservation' %}">
+                                <i class="fas fa-utensils me-1"></i> رزرو غذا
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <!-- فقط شرط‌های ساده و بدون loop -->
+                    {% if has_management_access %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:management_dashboard' %}">
+                                <i class="fas fa-tachometer-alt me-2"></i>داشبورد مدیریت
+                            </a>
+                        </li>
+<!--                        <li class="nav-item">-->
+<!--                            <a class="nav-link" href="{% url 'users:user_management' %}">-->
+<!--                                <i class="fas fa-user-cog me-1"></i>مدیریت کاربران-->
+<!--                            </a>-->
+<!--                        </li>-->
+                    {% endif %}
+
+<!--                    {% if can_access_evaluation_panel %}-->
+<!--                        <li class="nav-item">-->
+<!--                            <a class="nav-link" href="{% url 'users:evaluation_panel' %}">-->
+<!--                                <i class="fas fa-chart-line me-1"></i>پنل ارزیابی-->
+<!--                            </a>-->
+<!--                        </li>-->
+<!--                    {% endif %}-->
+
+                    {% if is_super_admin %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin/">
+                                <i class="fas fa-lock me-1"></i>پنل ادمین
+                            </a>
+                        </li>
+                    {% endif %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="socialDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            شبکه‌های اجتماعی
+                        </a>
+
+                        <ul class="dropdown-menu social-dropdown-menu" aria-labelledby="socialDropdown">
+
+                            <li>
+                                <a class="dropdown-item social-icon-item" href="https://www.instagram.com/karsaz" target="_blank" rel="noopener noreferrer">
+                                    <i class="fab fa-instagram fa-lg" style="color: #E4405F;"></i>
+                                    <span class="icon-label">اینستاگرام</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a class="dropdown-item social-icon-item" href="https://whatsapp.com/channel/0029Vb6jmWcL2ATvKmtDBU36" target="_blank" rel="noopener noreferrer">
+                                    <i class="fab fa-whatsapp fa-lg" style="color: #25D366;"></i>
+                                    <span class="icon-label">واتساپ</span>
+                                </a>
+                            </li>
+
+                            <li>
+                                <a class="dropdown-item social-icon-item" href="https://t.me/+FHV4gMG0uwIwNmQ8" target="_blank" rel="noopener noreferrer">
+                                    <i class="fab fa-telegram-plane fa-lg" style="color: #0088CC;"></i>
+                                    <span class="icon-label">تلگرام</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+<!--                    # todo : notifications-->
+                    <li class="nav-item me-3">
+                        <a class="nav-link position-relative" href="{% url 'users:notifications' %}">
+                            <i class="fas fa-bell fa-lg"></i>
+                            {% if unread_notifications_count > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.7rem;">
+                                    {{ unread_notifications_count }}
+                                    <span class="visually-hidden">اعلان‌های خوانده نشده</span>
+                                </span>
+                            {% endif %}
+                        </a>
+                    </li>
+
+
+                </ul>
+
+                <!-- User Dropdown -->
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+
+
+                            <img src="{% static 'images/user-avatar.png' %}" class="rounded-circle me-2" width="32" height="32" alt="Avatar">
+                            {% if role_name == 'super_admin' %}مدیر سیستم : {{ user.full_name }}{% endif %}
+                            {% if role_name == 'holding_manager' %}مدیر هلدینگ : {{ user.full_name }}{% endif %}
+                            {% if role_name == 'factory_manager' %}مدیر کارخانه : {{ user.full_name }}{% endif %}
+                            {% if role_name == 'department_manager' %}مدیر بخش : {{ user.full_name }}{% endif %}
+                            {% if role_name == 'supervisor' %}سرپرست بخش : {{ user.full_name }}{% endif %}
+                            {% if role_name == 'employee' %}کارمند : {{ user.full_name }}{% endif %}
+<!--                            <span class="badge badge-{% if role_name == 'super_admin' %}danger-->
+<!--                                {% elif role_name == 'department_manager' %}warning-->
+<!--                                {% elif role_name == 'supervisor' %}info-->
+<!--                                {% else %}secondary-->
+<!--                                {% endif %} ms-2">-->
+<!--                            </span>-->
+                        </a>
+<!--                        <ul class="dropdown-menu dropdown-menu-end">-->
+<!--                            <li><hr class="dropdown-divider"></li>-->
+<!--                            <li>-->
+<!--                                <form action="{% url 'users:logout' %}" method="post" style="display:inline;">-->
+<!--                                    {% csrf_token %}-->
+<!--                                    <button type="submit" class="dropdown-item">-->
+<!--                                        <i class="fas fa-sign-out-alt me-2"></i>خروج-->
+<!--                                    </button>-->
+<!--                                </form>-->
+<!--                            </li>-->
+<!--                        </ul>-->
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{% url 'users:change_password' %}">تغییر رمز عبور</a></li>
+
+                            <!-- بخش سوییچ نقش بدون تغییر -->
+                            <li><hr class="dropdown-divider"></li>
+                            <li class="dropdown-header">نقش‌های شما:</li>
+
+                            {% for system in management_tree %}
+                                <li class="dropdown-item-text">سامانه</li>
+                                {% if system.role != 'None' %}
+                                    <li>
+                                        <a class="dropdown-item text-primary" href="{% url 'users:switch_role' %}?role={{ system.role }}&holding_id=None&factory_id=None&department_id=None&subdepartment_id=None">
+                                            مدیر سیستم
+                                        </a>
+                                    </li>
+                                {% endif %}
+
+
+
+                                {% for holding in system.holdings %}
+                                    <li class="dropdown-item-text">{{ holding.name }}</li>
+                                    {% if holding.role %}
+                                        <li>
+                                            <a class="dropdown-item text-primary" href="{% url 'users:switch_role' %}?role={{ holding.role }}&holding_id={{ holding.id }}&factory_id=None&department_id=None&subdepartment_id=None">
+                                                مدیر هلدینگ
+                                            </a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for factory in holding.factories %}
+                                        <li class="dropdown-item-text ms-3">{{ factory.name }}</li>
+                                        {% if factory.role %}
+                                            <li class="ms-3">
+                                                <a class="dropdown-item text-primary" href="{% url 'users:switch_role' %}?role={{ factory.role }}&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id=None&subdepartment_id=None">
+                                                    مدیر کارخانه
+                                                </a>
+                                            </li>
+                                        {% endif %}
+
+                                        {% for department in factory.departments %}
+                                            <li class="dropdown-item-text ms-5">{{ department.name }}</li>
+                                            {% if department.roles %}
+                                                {% for dept_role in department.roles %}
+                                                    {% if dept_role == 'department_manager' %}
+                                                        <li class="ms-5">
+                                                            <a class="dropdown-item text-primary" href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=1">
+                                                                مدیر بخش (اصلی)
+                                                            </a>
+                                                        </li>
+                                                    {% elif dept_role == 'department_manager_2' %}
+                                                        <li class="ms-5">
+                                                            <a class="dropdown-item text-primary" href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager_2&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=2">
+                                                                مدیر بخش (کمیته 2)
+                                                            </a>
+                                                        </li>
+                                                    {% elif dept_role == 'department_manager_3' %}
+                                                        <li class="ms-5">
+                                                            <a class="dropdown-item text-primary" href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager_3&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=3">
+                                                                مدیر بخش (کمیته 3)
+                                                            </a>
+                                                        </li>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endif %}
+                                            {% for subdepartment in department.subdepartments %}
+                                                <li class="dropdown-item-text ms-5">{{ subdepartment.name }}</li>
+                                                {% if subdepartment.roles %}
+                                                    <li class="ms-5">
+                                                        <a class="dropdown-item text-primary" href="{% url 'users:switch_role' %}?role=supervisor&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id={{ subdepartment.id }}">
+                                                            {% if 'supervisor' in subdepartment.roles%}
+                                                                سرپرست
+                                                            {% endif %}
+                                                        </a>
+                                                        <a class="dropdown-item text-primary" href="{% url 'users:switch_role' %}?role=employee&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id={{ subdepartment.id }}">
+                                                            {% if 'employee' in subdepartment.roles%}
+                                                                کارمند
+                                                            {% endif %}
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% endfor %}
+                            {% endfor %}
+
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{% url 'users:logout' %}" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item" style="width: 100%; text-align: right;">
+                                        خروج
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-5 pt-3">
+        <!-- Breadcrumb (only for authenticated users) -->
+        {% if user.is_authenticated and request.resolver_match %}
+        <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'users:dashboard' %}">داشبورد</a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    {% block breadcrumb_title %}{% endblock %}
+                </li>
+            </ol>
+        </nav>
+        {% endif %}
+
+        <!-- Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle
+                        {% elif message.tags == 'error' %}exclamation-triangle
+                        {% elif message.tags == 'warning' %}exclamation
+                        {% else %}info-circle
+                        {% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light text-center text-lg-start mt-5 py-3">
+        <div class="text-center">
+            <p class="text-muted mb-0">
+                &copy; {{ "now"|date:"Y" }} سیستم مدیریت پرسنل - تمامی حقوق محفوظ است
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'js/custom.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

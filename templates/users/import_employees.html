@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ورود دسته‌جمعی پرسنل{% endblock %}
+{% block breadcrumb_title %}ورود پرسنل از اکسل{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">بارگذاری فایل پرسنل</h3>
+                </div>
+                <a href="{% static 'excel_templates/employee_import_template.xlsx' %}"
+                   class="btn btn-warning btn-sm"
+                   download="employee_import_template.xlsx"
+                   title="دانلود قالب اکسل">
+                   <i class="fas fa-download me-1"></i>دانلود قالب
+                </a>
+                <div class="card-body">
+                    <p class="text-muted">
+                        لطفاً فایل اکسل (.xlsx) را بارگذاری کنید. مطمئن شوید که ستون‌های زیر در سطر اول فایل وجود دارند: 
+                        <br>
+                        'national_id', 'first_name', 'last_name', 'phone_number', 'subdepartments_list', 'roles_list', 'password'
+                    </p>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <div class="form-text text-muted">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        
+                        <button type="submit" class="btn btn-primary w-100 mt-3">
+                            <i class="fas fa-upload me-2"></i> شروع عملیات ورود اطلاعات
+                        </button>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{% url 'users:management_dashboard' %}" class="btn btn-sm btn-outline-secondary">بازگشت به داشبورد مدیریت</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

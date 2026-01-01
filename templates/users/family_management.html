@@ -1,0 +1,87 @@
+<!-- فایل جدید: templates/users/family_management.html (تمپلیت صفحه مدیریت خانواده) -->
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} مدیریت اطلاعات بیمه‌ای خانواده {% endblock %}
+{% block breadcrumb_title %} مدیریت اطلاعات بیمه‌ای خانواده {% endblock %}
+{% block content %}
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">مدیریت اطلاعات بیمه‌ای خانواده</h3>
+                    </div>
+                    <div class="card-body">
+                        <h4 class="mt-4">لیست اعضای خانواده</h4>
+                        {% if dependents %}
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>نام</th>
+                                            <th>نام خانوادگی</th>
+                                            <th>نسبت</th>
+                                            <th>کد ملی</th>
+                                            <th>تاریخ تولد</th>
+                                            <th>جنسیت</th>
+                                            <th>عملیات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for dependent in dependents %}
+                                            <tr>
+                                                <td>{{ dependent.first_name }}</td>
+                                                <td>{{ dependent.last_name }}</td>
+                                                <td>{{ dependent.relative_type.name }}</td>
+                                                <td>{{ dependent.national_id }}</td>
+                                                <td>{{ dependent.birth_date|date:"Y-m-d" }}</td>
+                                                <td>{{ dependent.gender.title }}</td>
+                                                <td>
+                                                    <a href="{% url 'users:add_dependent' %}?edit={{ dependent.id }}" class="btn btn-sm btn-warning mr-1">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <form method="post" style="display:inline;" onsubmit="return confirm('آیا از حذف این عضو خانواده اطمینان دارید؟');">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="dependent_id" value="{{ dependent.id }}">
+                                                        <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p>هیچ عضوی از خانواده ثبت نشده است.</p>
+                        {% endif %}
+                        <div class="text-center mt-4">
+                            <a href="{% url 'users:add_dependent' %}" class="btn btn-primary">افزودن عضو جدید</a> <!-- فعلاً کار نمی‌کند -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block extra_js %}
+
+
+
+{% endblock %}
+{% block extra_css %}
+    <style>
+        /* استایل‌های مشابه dashboard.html برای همخوانی */
+        .form-group { margin-bottom: 1rem; }
+        .table { font-size: 0.9rem; }
+        .table th, .table td { padding: 0.5rem; vertical-align: middle; }
+        .btn { margin-bottom: 0.5rem; }
+        @media (max-width: 576px) {
+            .card-header h3 { font-size: 1.25rem; }
+            .card-body h4 { font-size: 1.1rem; }
+            .btn { width: 100%; }
+            .table { font-size: 0.85rem; }
+        }
+    </style>
+{% endblock %}

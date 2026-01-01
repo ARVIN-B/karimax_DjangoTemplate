@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}تحویل غذا{% endblock %}
+{% block breadcrumb_title %}تحویل غذا{% endblock %}
+
+{% block content %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-hamburger me-2"></i> صفحه تحویل غذا — {{ today }}</h4>
+        </div>
+        <div class="card-body">
+
+            <div class="row mb-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="input-group border rounded-pill shadow-sm">
+                        <span class="input-group-text bg-white border-0"><i class="fas fa-search text-primary"></i></span>
+                        <input type="text" id="employeeSearch" class="form-control border-0" placeholder="جستجوی نام کارمند..." onkeyup="filterNames()">
+                    </div>
+                </div>
+            </div>
+
+            {% if role == 2 %}
+                <div class="alert alert-info">شما <strong>تحویل‌گیرنده هلدینگ</strong> هستید و همه کارخانه‌های هلدینگ را می‌بینید.</div>
+            {% else %}
+                <div class="alert alert-info">شما <strong>تحویل‌گیرنده کارخانه</strong> هستید و فقط سفارش‌های کارخانهٔ خود را می‌بینید.</div>
+            {% endif %}
+
+            {% for factory, rest_map in factories_map.items %}
+                <div class="card mb-4" id="factory-{{ factory.id }}">                    
+                    <div class="card-header bg-warning d-flex justify-content-between align-items-center">
+                        <strong><i class="fas fa-industry me-2"></i> {{ factory.name }}</strong>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="printFactory({{ factory.id }})">
+                            <i class="fas fa-print me-1"></i> پرینت این کارخانه
+                        </button>
+                    </div>
+
+                    <div class="card-body">
+
+                        {% if rest_map %}
+                            {% for restaurant, foods in rest_map.items %}
+                                <div class="border rounded mb-3 p-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div>
+                                            <i class="fas fa-utensils me-2"></i>
+                                            <strong>رستوران:</strong> {{ restaurant.name }}
+                                            <small class="text-muted"> ({{ restaurant.department.name }} - {{ restaurant.department.factory.name }})</small>
+                                        </div>
+                                        <div>
+                                            <!-- دکمه تحویل همه غذاهای این رستوران -->
+                                            <form method="post" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="deliver_food" value="{{ factory.id }}:{{ restaurant.id }}:ALL">
+                                                <!-- اما ما می‌خواهیم برای هر غذا دکمه جداگانه باشه؛ مقدار ALL را حذف می‌کنیم (در زیر) -->
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped text-center align-middle">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>نام غذا</th>
+                                                    <th>سهمیه</th>
+                                                    <th>آزاد</th>
+                                                    <th>مهمان</th>
+                                                    <th>مجموع</th>
+                                                    <th>اقلام (رزروها)</th>
+                                                    <!-- <th>عملیات</th> -->
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for food_id, info in foods.items %}
+                                                    <tr class="border-bottom border-dark">
+                                                        <td class="text-start fw-bold">{{ info.food.name }}</td>
+                                                        <td class="text-success">{{ info.quota }}</td>
+                                                        <td class="text-success">{{ info.extra }}</td>
+                                                        <td class="text-success">{{ info.guest }}</td>
+                                                        <td class="fw-bold">{{ info.total }}</td>
+                                                        <td class="text-start">
+                                                            {% for r in info.reservations %}
+                                                                <div class="reservation-row small mb-2 pb-2 border-bottom"> <div class="d-flex justify-content-between align-items-center">
+                                                                        <div>
+                                                                            <strong class="emp-name">{{ r.employee.get_full_name|default:r.employee.username }}</strong>
+                                                                            <span class="text-muted">
+                                                                                — تعداد: {{ r.factory_quantity|add:r.free_quantity|add:r.guest_quantity }}
+                                                                                (سهمیه: {{ r.factory_quantity|default:0 }} | آزاد: {{ r.free_quantity|default:0 }} | مهمان: {{ r.guest_quantity|default:0 }})
+                                                                            </span>
+                                                                        </div>
+
+                                                                        <div>
+                                                                            {% if can_serve_foods %}
+                                                                                {% if r.is_delivered %}
+                                                                                    <span class="text-muted small">تحویل شده</span>
+                                                                                {% else %}
+                                                                                    <form onsubmit="return deliverReservation(this, '{{ r.id }}')">
+                                                                                        {% csrf_token %}
+                                                                                        <input type="hidden" name="deliver_reservation" value="{{ r.id }}">
+                                                                                        <button type="submit" class="btn btn-sm btn-success py-0">تحویل</button>
+                                                                                    </form>
+                                                                                {% endif %}
+                                                                            {% endif %}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            {% endfor %}
+                                                        </td>
+                                                        <!-- <td> -->
+                                                            <!-- # todo : food delivered to user -->
+                                                        <!-- </td> -->
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="alert alert-secondary">هیچ رزروی برای این کارخانه ثبت نشده است.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        function printFactory(factoryId) {
+            // اول همه کلاس‌ها را پاک کن
+            document.querySelectorAll('[id^="factory-"]').forEach(function(el) {
+                el.classList.remove('print-factory');
+            });
+
+            // اضافه کردن کلاس به کارخانه مورد نظر
+            const factoryEl = document.getElementById('factory-' + factoryId);
+            if (factoryEl) {
+                factoryEl.classList.add('print-factory');
+                window.print();
+                
+                // اختیاری: بعد از پرینت کلاس را بردار (وقتی کاربر Cancel یا Print زد)
+                window.onafterprint = function() {
+                    factoryEl.classList.remove('print-factory');
+                };
+            } else {
+                alert('کارخانه یافت نشد!');
+            }
+        }
+    </script>
+
+    <script>
+        function deliverReservation(form, reservationId) {
+            if (!confirm('آیا از تحویل این سفارش مطمئن هستید؟')) {
+                return false;
+            }
+
+            fetch('', {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // اصلاح اصلی اینجاست: 
+                    // به جای کل ردیف، فقط محفظه دکمه را پیدا می‌کنیم
+                    const buttonContainer = form.parentElement; 
+                    buttonContainer.innerHTML = '<span class="text-muted small">تحویل شده</span>';
+                    
+                    // اگر دوست دارید نشان "تحویل شده" (بج) کنار اسم هم اضافه شود (اختیاری):
+                    const nameContainer = buttonContainer.previousElementSibling;
+                    if (nameContainer) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-secondary ms-2';
+                        badge.innerText = 'تحویل‌شده';
+                        nameContainer.appendChild(badge);
+                    }
+                } else {
+                    alert('خطا در تحویل: ' + (data.message || 'نامشخص'));
+                }
+            })
+            .catch(err => {
+                alert('خطای ارتباط با سرور');
+                console.error(err);
+            });
+
+            return false;
+        }
+    </script>
+    <script>
+        function filterNames() {
+            const filter = document.getElementById('employeeSearch').value.trim().toLowerCase();
+
+            let hasAnyVisible = false; // برای چک کردن اینکه آیا چیزی پیدا شد یا نه
+
+            // تمام ردیف‌های جدول غذا (tr داخل tbody) را بررسی کن
+            document.querySelectorAll('table tbody tr').forEach(tr => {
+                const reservationRows = tr.querySelectorAll('.reservation-row');
+                let rowHasMatch = false;
+
+                // اگر فیلتر خالی باشه، همه رو نشون بده
+                if (filter === '') {
+                    reservationRows.forEach(row => {
+                        row.style.display = '';
+                    });
+                    tr.style.display = '';
+                    hasAnyVisible = true;
+                    return;
+                }
+
+                // بررسی رزروها داخل این ردیف
+                reservationRows.forEach(row => {
+                    const nameElement = row.querySelector('.emp-name');
+                    if (nameElement) {
+                        const fullName = nameElement.textContent.trim().toLowerCase();
+                        if (fullName.includes(filter)) {
+                            row.style.display = ''; // رزرو مطابق رو نشون بده
+                            rowHasMatch = true;
+                            hasAnyVisible = true;
+                        } else {
+                            row.style.display = 'none'; // رزرو نامطابق رو مخفی کن
+                        }
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                // اگر هیچ رزرو مطابق در این ردیف نبود → کل ردیف جدول رو مخفی کن
+                if (rowHasMatch) {
+                    tr.style.display = '';
+                } else {
+                    tr.style.display = 'none';
+                }
+            });
+
+            // نمایش پیام "یافت نشد" اگر هیچ نتیجه‌ای نبود
+            let noResultMsg = document.getElementById('no-result-message');
+            if (!noResultMsg) {
+                noResultMsg = document.createElement('div');
+                noResultMsg.id = 'no-result-message';
+                noResultMsg.className = 'alert alert-warning text-center mt-4';
+                noResultMsg.innerHTML = '<strong>هیچ کارمندی با این نام یافت نشد.</strong>';
+                // اضافه کردن پیام بعد از باکس جستجو
+                const searchRow = document.querySelector('.row.mb-4');
+                searchRow.parentNode.insertBefore(noResultMsg, searchRow.nextSibling);
+            }
+
+            noResultMsg.style.display = hasAnyVisible || filter === '' ? 'none' : 'block';
+        }
+
+        // رویداد جستجو در لحظه تایپ
+        document.getElementById('employeeSearch').addEventListener('input', filterNames);
+    </script>
+{% endblock %}
+{% block extra_css %}
+<style>
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 15mm;
+        }
+
+        /* مخفی کردن همه چیز در ابتدا */
+        body * {
+            visibility: hidden;
+        }
+
+        /* نمایش فقط کارخانه‌ای که کلاس print-factory دارد */
+        .print-factory,
+        .print-factory * {
+            visibility: visible !important;
+        }
+
+        .print-factory {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: white;
+        }
+
+        /* مخفی کردن عناصر اضافی در پرینت */
+        .btn,
+        .alert-info,
+        .card-header .btn,
+        nav,
+        header,
+        footer,
+        .card.shadow-sm > .card-header,  /* هدر اصلی صفحه (تحویل غذا) */
+        .card.shadow-sm > .card-body > .alert-info {
+            display: none !important;
+        }
+
+        /* حذف سایه و بوردر کارت‌ها در پرینت */
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* هدر کارخانه رو قشنگ‌تر کن */
+        .card-header {
+            background: #ffc107 !important;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+            padding: 15px !important;
+            margin-bottom: 20px !important;
+            page-break-inside: avoid;
+        }
+
+        .card-header strong {
+            font-size: 24px !important;
+            font-weight: bold;
+        }
+
+        /* جدول‌ها رو خواناتر کن */
+        .table {
+            font-size: 11pt;
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .table th,
+        .table td {
+            border: 1px solid #000 !important;
+            padding: 8px !important;
+            text-align: center;
+        }
+
+        .table th {
+            background-color: #343a40 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact;
+        }
+
+        /* متن رزروها رو خواناتر کن */
+        .small {
+            font-size: 10pt;
+        }
+
+        /* تست دیباگ: aaaaa رو مخفی کن */
+        .print-factory::before {
+            content: "دیباگ: پرینت کارخانه فعال شد";
+            display: block;
+            font-size: 10px;
+            color: red;
+            margin-bottom: 10px;
+        }
+    }
+</style>
+{% endblock %}

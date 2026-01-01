@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}داشبورد آشپزخانه{% endblock %}
+{% block breadcrumb_title %}داشبورد مدیریت رستوران{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-utensils me-2"></i>
+                    پنل مدیریت رستوران: {{ restaurant_name }}
+                </h4>
+                <div>
+                    <a href="?export=excel" class="btn btn-success btn-sm ms-2">
+                        <i class="fas fa-file-excel me-1"></i> دانلود اکسل
+                    </a>
+
+<!--                    <span class="badge bg-light text-dark ms-2">{{ latest_menu_info }}</span>-->
+                </div>
+                <span class="badge bg-light text-dark">{{ latest_menu_info }}</span>
+            </div>
+        </div>
+
+        <div class="card-body">
+            {% if not weekly_data %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-lg mb-2"></i><br>
+                    هنوز منوی هفتگی فعالی برای این رستوران تعریف نشده است.
+                </div>
+            {% else %}
+
+                <div class="accordion" id="kitchenReportAccordion">
+                    {% for day in weekly_data %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading-{{ forloop.counter }}">
+                            <button class="accordion-button {% if not day.is_today %}collapsed{% endif %}"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-{{ forloop.counter }}"
+                                    aria-expanded="{% if day.is_today %}true{% else %}false{% endif %}"
+                                    aria-controls="collapse-{{ forloop.counter }}">
+
+                                <div class="d-flex w-100 justify-content-between align-items-center pe-3">
+                                    <!-- سمت چپ: عنوان روز + بج امروز -->
+                                    <div class="d-flex align-items-center">
+                                        <span class="fw-bold">{{ day.jdate_str }}</span>
+                                        {% if day.is_today %}
+                                            <span class="badge bg-success ms-2">امروز</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- سمت راست: تعداد غذا + دکمه اکسل -->
+                                    <div class="d-flex align-items-center gap-3">
+                                        {% if day.foods %}
+                                            <span class="text-muted small">
+                                                {{ day.foods|length }} نوع غذا
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted small">تعطیل / بدون غذا</span>
+                                        {% endif %}
+
+                                        <a href="?export_date={{ day.jdate_only }}"
+                                           class="btn btn-success btn-sm px-3 py-1 shadow-sm"
+                                           title="دانلود اکسل فقط {{ day.jdate_str }}"
+                                           onclick="event.stopPropagation(); event.preventDefault(); window.location=this.href;">
+                                           <i class="fas fa-file-excel me-1"></i> اکسل
+                                        </a>
+
+                                    </div>
+                                </div>
+                            </button>
+                        </h2>
+<!--                        <a href="?export_date={{ day.jdate_only }}" class="btn btn-outline-success btn-sm">-->
+<!--                            اکسل این روز-->
+<!--                        </a>-->
+                        <div id="collapse-{{ forloop.counter }}"
+                             class="accordion-collapse collapse {% if day.is_today %}show{% endif %}"
+                             aria-labelledby="heading-{{ forloop.counter }}"
+                             data-bs-parent="#kitchenReportAccordion">
+                            <div class="accordion-body">
+
+                                {% if day.foods %}
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped text-center align-middle">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th style="width: 40%;">نام غذا</th>
+                                                    <th style="width: 20%;">سهمیه (پرسنلی)</th>
+                                                    <th style="width: 20%;">آزاد (اضافه)</th>
+                                                    <th style="width: 20%;" class="bg-success text-white">مجموع کل</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for food in day.foods %}
+                                                <tr>
+                                                    <td class="fw-bold text-start">{{ food.food_name }}</td>
+                                                    <td>{{ food.quota_count }}</td>
+                                                    <td>{{ food.extra_count }}</td>
+                                                    <td class="fw-bold fs-5 text-success">{{ food.total_count }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="text-center text-muted py-3">
+                                        <i class="fas fa-coffee mb-2"></i><br>
+                                        هیچ غذایی برای این روز در منو ثبت نشده است.
+                                    </div>
+                                {% endif %}
+
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

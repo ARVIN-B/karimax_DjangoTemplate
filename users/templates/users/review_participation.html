@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="container">
+        <h2>بررسی مشارکت: {{ participation.title }}</h2>
+        <p>کارمند: {{ participation.user.full_name }}</p>
+        <p>وضعیت: {{ participation.get_status_display }}</p>
+        {% if participation.is_committee %}
+
+            {% if participation.supervisor_status %}
+                <p class="text-danger">نظر سرپرست کمیته: {{ participation.supervisor_status }}</p>
+            {% endif %}
+            {% if participation.supervisor_feedback %}
+                <p class="text-danger">فیدبک سرپرست کمیته: {{ participation.supervisor_feedback }}</p>
+            {% endif %}
+
+            {% if participation.manager_status %}
+                <p class="text-danger">نظر مدیر اول کمیته: {{ participation.manager_status }}</p>
+            {% endif %}
+            {% if participation.manager_feedback %}
+                <p class="text-danger">فیدبک مدیر اول کمیته: {{ participation.manager_feedback }}</p>
+            {% endif %}
+            {% if participation.manager_2_status %}
+                <p class="text-danger">نظر مدیر دوم کمیته: {{ participation.manager_2_status }}</p>
+            {% endif %}
+            {% if participation.manager_2_feedback %}
+                <p class="text-danger">فیدبک مدیر دوم کمیته: {{ participation.manager_2_feedback }}</p>
+            {% endif %}
+            {% if participation.manager_2_status %}
+                <p class="text-danger">نظر مدیر سوم کمیته: {{ participation.manager_3_status }}</p>
+            {% endif %}
+            {% if participation.manager_3_feedback %}
+                <p class="text-danger">فیدبک مدیر سوم کمیته: {{ participation.manager_3_feedback }}</p>
+            {% endif %}
+
+        {% else %}
+            {% if participation.feedback and participation.feedback != "" %}
+                <p class="text-danger">فیدبک قبلی: {{ participation.feedback }}</p>
+            {% endif %}
+        {% endif %}
+        {% if participation.text_content %}
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">توضیحات:</h5>
+                    <p class="card-text">{{ participation.text_content }}</p>
+                </div>
+            </div>
+        {% endif %}
+        {% if participation.attachment %}
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">متن استخراج‌شده:</h5>
+                    <p class="card-text">{{ participation.description }}</p>
+                </div>
+            </div>
+        {% endif %}
+        {% if has_review_access %}
+            <form method="POST" class="mt-3" id="review-form">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <button type="submit" name="action" value="approve" class="btn btn-success">تأیید</button>
+                    {% if role_name != 'department_manager' and not participation.is_committee %}
+<!--                        <button type="submit" name="action" value="return_to_user" class="btn btn-warning" disabled>برگرداندن به کاربر</button>-->
+                        <button type="submit" name="action" value="return_to_user" class="btn btn-warning"
+                                {% if participation.return_count >= 3 %} disabled>بیشتر از 3 مرتبه امکان برگرداندن به کاربر نیست
+                                {% else %}>برگرداندن به کاربر
+                                {% endif %}
+                        </button>
+                    {% endif %}
+                    <button type="submit" name="action" value="reject" class="btn btn-danger">رد کردن</button>
+                </div>
+                <div class="mb-3">
+                    <textarea name="feedback" placeholder="دلیل رد شدن (در صورت رد)" class="form-control" rows="3"></textarea>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+{% endblock %}
+{% block extra_js %}
+    <script type="text/javascript">
+        document.getElementById('review-form').addEventListener('submit', function(event) {
+            const actionButtons = document.querySelectorAll('button[name="action"]');
+            let selectedAction = null;
+            actionButtons.forEach(button => {
+                if (button === document.activeElement) {
+                    selectedAction = button.value;
+                }
+            });
+
+            const feedback = document.querySelector('textarea[name="feedback"]').value.trim();
+
+            if ((selectedAction === 'reject' || selectedAction === 'return_to_user') && feedback === '') {
+                event.preventDefault();
+                alert('لطفاً دلیل را وارد کنید.');
+            }
+        });
+    </script>
+{% endblock %}
+

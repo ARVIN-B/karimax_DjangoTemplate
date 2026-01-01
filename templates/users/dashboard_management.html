@@ -1,0 +1,737 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block title %} داشبورد مدیریت {% endblock %}
+{% block breadcrumb_title %} داشبورد مدیریت {% endblock %}
+{% block content %}
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">خوش آمدید، {{ user.full_name }}!</h3>
+                    </div>
+                    <div class="card-body">
+
+
+
+                        <!-- فیلتر -->
+                        <form method="get" class="mb-4">
+                            <div class="row g-3">
+
+                                <!-- هلدینگ -->
+                                {% if can_choose_holding %}
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label">هلدینگ</label>
+                                        <select name="holding" class="form-select" id="id_holding">
+                                            <option value="">همه هلدینگ‌ها</option>
+                                            {% for holding in holdings %}
+                                                <option value="{{ holding.id }}" {% if selected_holding_id == holding.id|stringformat:"s" %}selected{% endif %}>
+                                                    {{ holding.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                {% endif %}
+
+                                <!-- کارخانه — فقط اگر اجازه انتخاب کارخانه داشته باشه -->
+                                {% if can_choose_factory %}
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label">کارخانه</label>
+                                        <select name="factory" class="form-select" id="id_factory">
+                                            <option value="">همه کارخانه‌ها</option>
+                                            <!-- پر میشه با JS -->
+                                        </select>
+                                    </div>
+                                {% endif %}
+
+                                <!-- بخش — فقط اگر اجازه انتخاب بخش داشته باشه -->
+                                {% if can_choose_department %}
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label">بخش</label>
+                                        <select name="department" class="form-select" id="id_department">
+                                            <option value="">همه بخش‌ها</option>
+                                        </select>
+                                    </div>
+                                {% endif %}
+
+                                <!-- زیربخش — فقط اگر اجازه انتخاب زیربخش داشته باشه -->
+                                {% if can_choose_subdepartment %}
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label">زیربخش</label>
+                                        <select name="subdepartment" class="form-select" id="id_subdepartment">
+                                            <option value="">همه زیربخش‌ها</option>
+                                        </select>
+                                    </div>
+                                {% endif %}
+
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label">وضعیت مشارکت</label>
+                                    <select name="status" class="form-select">
+                                        <option value="">همه وضعیت‌ها</option>
+                                        {% for value, label in participation_status_choices %}
+                                            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+
+
+
+                                <div class="col-12 col-md-6">
+                                    <div class="bg-light border rounded p-3" style="background-color: #ced4da !important;">
+                                        <div class="row g-3">
+
+                                            <!-- نوع مشارکت -->
+                                            <div class="col-12 col-sm-6">
+                                                <label class="form-label fw-bold text-muted small">نوع مشارکت</label>
+                                                <select name="item_type" class="form-select form-select-sm">
+                                                    <option value="">همه انواع</option>
+                                                    {% for value, label in participation_item_type_choices %}
+                                                        <option value="{{ value }}" {% if selected_item_type == value %}selected{% endif %}>
+                                                            {{ label }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <!-- زیرگروه مشارکت (کمیته / غیرکمیته) -->
+                                            <div class="col-12 col-sm-6">
+                                                <label class="form-label fw-bold text-muted small">زیرگروه مشارکت</label>
+                                                <select name="is_committee" class="form-select form-select-sm">
+                                                    <option value="">همه</option>
+                                                    <option value="True" {% if request.GET.is_committee == "True" %}selected{% endif %}>
+                                                        کمیته‌ها
+                                                    </option>
+                                                    <option value="False" {% if request.GET.is_committee == "False" %}selected{% endif %}>
+                                                        غیر کمیته‌ها
+                                                    </option>
+                                                </select>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+
+
+
+                                <div class="col-12 text-center mt-3">
+                                    <button type="submit" class="btn btn-primary">اعمال فیلتر</button>
+                                    <a href="{% url 'users:management_dashboard' %}" class="btn btn-secondary">حذف فیلتر</a>
+                                </div>
+                            </div>
+                        </form>
+
+
+                        <div class="col-12 text-center mt-2">
+                            <a href="{% url 'users:notification_create' %}" class="btn btn-warning mb-3 w-100 w-md-auto">
+                                <i class="bi bi-megaphone-fill"></i> ایجاد اعلان
+                            </a>
+
+                            {% if can_manage_bimeh %}
+                                <a href="{% url 'users:manage_bimeh' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای کارمندان</a>
+                            {% endif %}
+
+                            {% if can_import_excel %}
+                                <a href="{% url 'users:import_employees' %}" class="btn btn-primary w-100 w-md-auto">
+                                    <i class="fas fa-file-excel me-2"></i> ورود دسته‌جمعی پرسنل (اکسل)
+                                </a>
+                            {% endif %}
+
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="export_excel">
+                                <button type="submit" class="btn btn-success w-100 w-md-auto">
+                                    <i class="fas fa-download me-2"></i> دانلود گزارش اکسل (با فیلترهای فعلی)
+                                </button>
+                            </form>
+                        </div>
+
+
+
+                        <!-- دکمه مدیریت منوی سلف - فقط برای مدیر سلف -->
+                        {% if user_is_self_manager %}
+                            <div class="col-12 text-center mt-3">
+                                <a href="{% url 'users:manage_self_menu' %}" class="btn btn-warning w-100 w-md-auto">
+                                    <i class="fas fa-utensils me-2"></i> مدیریت منوی هفتگی سلف (رستوران)
+                                </a>
+                            </div>
+                        {% endif %}
+
+                        {% if user_is_restaurant %}
+                            <div class="col-12 text-center mt-3">
+                                <a href="{% url 'users:restaurant_management_dashboard' %}" class="btn btn-warning w-100 w-md-auto">
+                                    <i class="fas fa-utensils me-2"></i> مدیریت رستوران
+                                </a>
+                            </div>
+                        {% endif %}
+
+
+
+                        <!-- گزارش مشارکت‌ها -->
+                        <div class="row mt-4">
+                            <div class="col-12 col-md-6 mb-4 mb-md-0">
+                                <h4>گزارش مشارکت‌ها</h4>
+                                <ul class="list-group">
+                                    {% for item in participation_display %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            {{ item.display }}
+                                            <div class="badge-container">
+                                                <span class="badge bg-primary rounded-pill">{{ item.count }} (کل)</span>
+                                                <span class="badge bg-success rounded-pill">{{ item.audio_count }} (صوتی/ویدیویی)</span>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        تعداد فایل‌های صوتی کل
+                                        <span class="badge bg-success rounded-pill">{{ audio_count }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        تعداد سایر فایل‌ها
+                                        <span class="badge bg-warning rounded-pill">{{ other_count }}</span>
+                                    </li>
+
+                                    <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap bg-light">
+                                        <span class="fw-bold">هزینه پایه برای هر مشارکت (ریال)</span>
+                                        <span class="badge bg-secondary rounded-pill">{{ base_cost }} ريال</span>
+                                    </li>
+
+                                    <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                                        <span class="fw-bold">تعداد کلی مشارکت ها</span>
+                                        <span class="badge bg-primary rounded-pill">{{ total_count }}</span>
+                                    </li>
+
+                                    <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                                        <span class="fw-bold">میزان اضافه کاری کل (ریال)</span>
+                                        <span class="badge bg-primary rounded-pill">{{ total_overtime_cost }} ريال</span>
+                                    </li>
+
+                                    <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap bg-light">
+                                        <span class="fw-bold">تعداد مشارکت‌های امروز</span>
+                                        <span class="badge bg-info rounded-pill">{{ today_count }}</span>
+                                    </li>
+
+                                    <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                                        <span class="fw-bold">میزان اضافه کاری امروز (ریال)</span>
+                                        <span class="badge bg-success rounded-pill">{{ today_overtime_cost }} ريال</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <h4>نمودار مشارکت‌ها</h4>
+                                <div class="chart-container" style="position: relative; width: 100%; height: 300px;">
+                                    <canvas id="participationChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 mt-4">
+                                <h4>نمودار نوع فایل‌ها</h4>
+                                <div class="chart-container" style="position: relative; width: 100%; height: 300px;">
+                                    <canvas id="fileTypeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- جدول مشارکت‌ها -->
+                        <h4 class="mt-4">فایل‌های ارسالی و مشارکت‌ها</h4>
+                        {% if participations %}
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>کارمند</th>
+                                            <th>عنوان</th>
+                                            <th>نوع</th>
+                                            <th>تاریخ</th>
+                                            <th>عملیات</th>
+                                            <th>وضعیت</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="participation-table-body-management">
+                                        {% for participation in participations %}
+                                            {% if participation.is_committee %}
+                                                <tr style="background-color: #f8d7da;">
+                                            {% else %}
+                                                <tr>
+                                            {% endif %}
+                                                <td>{{ participation.user.full_name }}</td>
+                                                <td>{{ participation.title }}</td>
+                                                <td>{{ participation.get_item_type_display }}</td>
+                                                <td>{{ participation.created_at|date:"Y-m-d" }}</td>
+                                                <td>
+<!--                                                    {% if participation.status == 'pending' and participation.attachment %}-->
+<!--                                                        <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-primary mb-1">عملیات</a>-->
+<!--                                                    {% endif %}-->
+<!--                                                    {% if participation.text_content %}-->
+<!--                                                        <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-success mb-1">عملیات</a>-->
+<!--                                                    {% endif %}-->
+                                                    {% if role_name == 'supervisor' and participation.status == 'supervisor_review' or role_name == 'department_manager' and participation.status == 'manager_review' %}
+                                                        <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-info mb-1">بررسی</a>
+                                                    {% endif %}
+                                                    {% if role_name in reviewers and participation.status == 'approved' %}
+                                                        <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-info mb-1">مشاهده مشارکت</a>
+                                                    {% endif %}
+                                                    {% if participation.status == 'factory_manager_review' %}
+                                                        <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-info mb-1">مشاهده مشارکت</a>
+                                                    {% endif %}
+
+<!--                                                    {% if participation.feedback and participation.status == 'rejected' and participation.user == user %}-->
+<!--                                                        <span class="badge bg-danger">رد شده - {{ participation.feedback }}</span>-->
+<!--                                                    {% endif %}-->
+                                                </td>
+                                                <td>{{ participation.get_status_display }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <div id="loading-spinner-management" style="display: none;" class="text-center my-3">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">در حال بارگذاری...</p>
+                                </div>
+                                <div id="no-more-data-management" style="display: {% if has_more %}none{% else %}block{% endif %};" class="text-center my-3 text-muted">
+                                    <p>تمامی مشارکت‌ها بارگذاری شدند.</p>
+                                </div>
+                            </div>
+                        {% else %}
+                            <p>هیچ مشارکتی یافت نشد.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script type="text/javascript">
+        const ctx = document.getElementById('participationChart').getContext('2d');
+        const dataValues = JSON.parse('{{ chart_data|safe }}');
+        const fileTypeCtx = document.getElementById('fileTypeChart').getContext('2d');
+        const fileTypeData = JSON.parse('{{ chart_data|safe }}');
+
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['ارسال فایل عملکرد', 'ارسال تجربیات کاری', 'صورت جلسات', 'پیشنهادات', 'انتقادات'],
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                        borderColor: ['#fff'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            color: '#fff',
+                            font: {
+                                size: window.innerWidth < 576 ? 10 : 12
+                            },
+                            formatter: (value, ctx) => {
+                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                if (sum > 0) {
+                                    let percentage = ((value / sum) * 100).toFixed(2) + "%";
+                                    return percentage;
+                                }
+                                return "0%";
+                            },
+                            anchor: 'center',
+                            align: 'center',
+                            offset: 5
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: window.innerWidth < 576 ? 10 : 12
+                                },
+                                padding: 10
+                            }
+                        },
+                        tooltip: {
+                            bodyFont: {
+                                size: window.innerWidth < 576 ? 10 : 12
+                            },
+                            titleFont: {
+                                size: window.innerWidth < 576 ? 12 : 14
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+        if (fileTypeCtx) {
+            new Chart(fileTypeCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['ارسال فایل عملکرد', 'ارسال تجربیات کاری', 'صورت جلسات', 'پیشنهادات', 'انتقادات'],
+                    datasets: [{
+                        label: 'تعداد',
+                        data: fileTypeData,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        datalabels: {
+                            color: '#fff',
+                            font: {
+                                size: window.innerWidth < 576 ? 10 : 12
+                            },
+                            formatter: (value, ctx) => {
+                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                if (sum > 0) {
+                                    let percentage = ((value / sum) * 100).toFixed(2) + "%";
+                                    return percentage;
+                                }
+                                return "0%";
+                            },
+                            anchor: 'center',
+                            align: 'center',
+                            offset: 5
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: window.innerWidth < 576 ? 10 : 12
+                                },
+                                padding: 10
+                            }
+                        },
+                        tooltip: {
+                            bodyFont: {
+                                size: window.innerWidth < 576 ? 10 : 12
+                            },
+                            titleFont: {
+                                size: window.innerWidth < 576 ? 12 : 14
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+
+
+
+
+        // =======================================================
+        // Infinite Scrolling
+        // =======================================================
+        let offset = {{ participations|length }}; // تعداد مشارکت‌های بارگذاری شده اولیه
+<!--        let hasMore = {{ has_more|lower }}; // بررسی وجود داده‌های بیشتر-->
+        let hasMore = {% if has_more %}true{% else %}false{% endif %};
+        let isLoading = false;
+        const loadingSpinner = document.getElementById('loading-spinner-management');
+        const noMoreData = document.getElementById('no-more-data-management');
+        const tableBody = document.getElementById('participation-table-body-management');
+
+        // تابع برای جمع‌آوری داده‌های فیلتر از فرم
+        function getFilterParams() {
+            const params = new URLSearchParams(window.location.search);
+            // اضافه کردن پارامترهای فرم به URLSearchParams برای درخواست AJAX
+            params.set('management', 'true');
+            return params.toString();
+        }
+
+        // تابع بارگذاری مشارکت‌های بیشتر
+        function loadMoreParticipations() {
+            if (isLoading || !hasMore) {
+                return;
+            }
+
+            isLoading = true;
+            loadingSpinner.style.display = 'block';
+
+            const filterParams = getFilterParams();
+            const url = "{% url 'users:load_more_participations' %}?offset=" + offset + "&" + filterParams;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // اضافه کردن ردیف‌های جدید به جدول
+                    tableBody.insertAdjacentHTML('beforeend', data.html);
+
+                    // به‌روزرسانی متغیرها
+                    offset = data.new_offset;
+                    hasMore = data.has_more;
+
+                    if (!hasMore) {
+                        noMoreData.style.display = 'block';
+                    }
+                })
+                .catch(error => console.error('Error loading participations:', error))
+                .finally(() => {
+                    isLoading = false;
+                    loadingSpinner.style.display = 'none';
+                });
+        }
+
+        // کنترل اسکرول
+        window.addEventListener('scroll', () => {
+            const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrolledToBottom = window.scrollY >= scrollableHeight - 200; // 200px قبل از انتها
+
+            if (scrolledToBottom) {
+                loadMoreParticipations();
+            }
+        });
+
+        // اگر در لود اولیه تعداد کمی داریم و ارتفاع صفحه کم است، بلافاصله لود را انجام دهیم
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.documentElement.scrollHeight <= window.innerHeight && hasMore) {
+                loadMoreParticipations();
+            }
+        });
+
+
+
+
+    </script>
+    <script>
+        const hierarchyData = {
+            holdings: {{ holdings_json|safe }},
+            factories: {{ factories_json|safe }},
+            departments: {{ departments_json|safe }},
+            subdepartments: {{ subdepartments_json|safe }}
+        };
+
+        const SESSION = {
+            holding_id: "{{ session_holding_id }}",
+            factory_id: "{{ session_factory_id }}",
+            department_id: "{{ session_department_id }}",
+            subdepartment_id: "{{ session_subdepartment_id }}"
+        };
+
+        const SELECTED = {
+            holding_id: "{{ selected_holding_id }}",
+            factory_id: "{{ selected_factory_id }}",
+            department_id: "{{ selected_department_id }}",
+            subdepartment_id: "{{ selected_subdepartment_id }}"
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const holdingSelect = document.getElementById('id_holding');
+            const factorySelect = document.getElementById('id_factory');
+            const departmentSelect = document.getElementById('id_department');
+            const subdepartmentSelect = document.getElementById('id_subdepartment');
+
+            function getEffectiveId(userValue, sessionValue) {
+                return userValue || sessionValue || "";
+            }
+
+            const effectiveHoldingId = getEffectiveId(SELECTED.holding_id, SESSION.holding_id);
+            const effectiveFactoryId = getEffectiveId(SELECTED.factory_id, SESSION.factory_id);
+            const effectiveDepartmentId = getEffectiveId(SELECTED.department_id, SESSION.department_id);
+
+            // تابع کمکی برای ریست کامل یک سلکت
+            function resetSelect(select, defaultText, disabled = true) {
+                if (!select) return;
+                select.innerHTML = `<option value="">${defaultText}</option>`;
+                select.value = "";
+                select.disabled = disabled;
+            }
+
+            // به‌روزرسانی کارخانه‌ها
+            function updateFactories() {
+                if (!factorySelect) return;
+
+                const selectedHoldingId = holdingSelect ? holdingSelect.value : effectiveHoldingId;
+
+                // اگر هلدینگ "همه" باشد → کارخانه، بخش و زیربخش همه غیرفعال و ریست
+                if (!selectedHoldingId) {
+                    resetSelect(factorySelect, "همه کارخانه‌ها", true);
+                    resetSelect(departmentSelect, "همه بخش‌ها", true);
+                    resetSelect(subdepartmentSelect, "همه زیربخش‌ها", true);
+                    return;
+                }
+
+                // هلدینگ انتخاب شده → کارخانه فعال شود
+                factorySelect.disabled = false;
+                factorySelect.innerHTML = '<option value="">همه کارخانه‌ها</option>';
+
+                const factories = hierarchyData.factories.filter(f => f.holding_id == selectedHoldingId);
+                let hasSelectedFactory = false;
+
+                factories.forEach(f => {
+                    const opt = new Option(f.name, f.id);
+                    if (f.id == effectiveFactoryId && selectedHoldingId == effectiveHoldingId) {
+                        opt.selected = true;
+                        hasSelectedFactory = true;
+                    }
+                    factorySelect.add(opt);
+                });
+
+                // اگر کارخانه‌ای از قبل انتخاب شده بود و هنوز معتبره → نگه دار، وگرنه "همه"
+                if (!hasSelectedFactory && effectiveFactoryId) {
+                    factorySelect.value = "";
+                }
+
+                updateDepartments(); // زنجیره ادامه پیدا کنه
+            }
+
+            // به‌روزرسانی بخش‌ها
+            function updateDepartments() {
+                if (!departmentSelect) return;
+
+                const selectedFactoryId = factorySelect && !factorySelect.disabled ? factorySelect.value : "";
+
+                if (!selectedFactoryId) {
+                    resetSelect(departmentSelect, "همه بخش‌ها", true);
+                    resetSelect(subdepartmentSelect, "همه زیربخش‌ها", true);
+                    return;
+                }
+
+                departmentSelect.disabled = false;
+                departmentSelect.innerHTML = '<option value="">همه بخش‌ها</option>';
+
+                const departments = hierarchyData.departments.filter(d => d.factory_id == selectedFactoryId);
+                let hasSelectedDept = false;
+
+                departments.forEach(d => {
+                    const opt = new Option(d.name, d.id);
+                    if (d.id == effectiveDepartmentId && selectedFactoryId == effectiveFactoryId) {
+                        opt.selected = true;
+                        hasSelectedDept = true;
+                    }
+                    departmentSelect.add(opt);
+                });
+
+                if (!hasSelectedDept && effectiveDepartmentId) {
+                    departmentSelect.value = "";
+                }
+
+                updateSubdepartments();
+            }
+
+            // به‌روزرسانی زیربخش‌ها
+            function updateSubdepartments() {
+                if (!subdepartmentSelect) return;
+
+                const selectedDepartmentId = departmentSelect && !departmentSelect.disabled ? departmentSelect.value : "";
+
+                if (!selectedDepartmentId) {
+                    resetSelect(subdepartmentSelect, "همه زیربخش‌ها", true);
+                    return;
+                }
+
+                subdepartmentSelect.disabled = false;
+                subdepartmentSelect.innerHTML = '<option value="">همه زیربخش‌ها</option>';
+
+                const subs = hierarchyData.subdepartments.filter(s => s.department_id == selectedDepartmentId);
+                subs.forEach(s => {
+                    const opt = new Option(s.name, s.id);
+                    if (s.id == SELECTED.subdepartment_id) {
+                        opt.selected = true;
+                    }
+                    subdepartmentSelect.add(opt);
+                });
+            }
+
+            // رویدادهای تغییر
+            if (holdingSelect) holdingSelect.addEventListener('change', updateFactories);
+            if (factorySelect) factorySelect.addEventListener('change', updateDepartments);
+            if (departmentSelect) departmentSelect.addEventListener('change', updateSubdepartments);
+
+            // اجرای اولیه
+            updateFactories();
+        });
+    </script>
+{% endblock %}
+{% block extra_css %}
+    <style>
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            min-height: 250px;
+        }
+        .badge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+        .badge {
+            min-width: 70px;
+            text-align: center;
+            white-space: nowrap;
+            font-size: 0.85rem;
+        }
+        .text-danger {
+            color: red;
+        }
+        .text-muted {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .text-info {
+            color: #17a2b8;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .table {
+            font-size: 0.9rem;
+        }
+        .table th, .table td {
+            padding: 0.5rem;
+            vertical-align: middle;
+        }
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.85rem;
+        }
+        @media (max-width: 576px) {
+            .card-header h3 {
+                font-size: 1.25rem;
+            }
+            .card-body h4 {
+                font-size: 1.1rem;
+            }
+            .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            .badge {
+                font-size: 0.75rem;
+                min-width: 60px;
+            }
+            .list-group-item {
+                font-size: 0.85rem;
+            }
+            .form-group label {
+                font-size: 0.85rem;
+            }
+            .form-group select, .form-group input {
+                font-size: 0.85rem;
+            }
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 250px;
+            }
+        }
+        .bg-light.border {
+            border: 1px solid #ced4da !important;
+        }
+    </style>
+{% endblock %}

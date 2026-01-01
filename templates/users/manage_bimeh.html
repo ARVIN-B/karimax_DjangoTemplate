@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}خروجی گزارش بیمه{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow-lg border-0 h-100">
+        <!-- هدر کارت با گرادیانت مشابه نمونه -->
+        <div class="card-header bg-gradient text-white text-center py-5" 
+             style="background: linear-gradient(135deg, #1e3c72, #2a5298); border-radius: 12px 12px 0 0;">
+            <h3 class="mb-0 fw-bold">
+                <i class="fas fa-file-excel me-3 fa-2x"></i>
+                گزارش‌گیری بیمه
+            </h3>
+            <p class="mt-3 mb-0 opacity-90">
+                با کلیک روی دکمه زیر، فایل اکسل کامل بیمه همه پرسنل دانلود خواهد شد
+            </p>
+        </div>
+
+        <div class="card-body p-5">
+            <!-- نمایش پیام‌ها -->
+            {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- بخش دانلود -->
+            <div class="text-center mb-5">
+                <a href="?export=full" 
+                   class="btn btn-success btn-lg px-5 py-4 shadow-lg btn-hover-scale"
+                   style="font-size: 1.3rem; min-width: 300px;">
+                    <i class="fas fa-download me-3 fa-lg"></i>
+                    دانلود اکسل بیمه همه پرسنل
+                </a>
+                <div class="mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        گزارش شامل تمام اطلاعات بیمه ای پرسنل می‌باشد.
+                    </small>
+                </div>
+            </div>
+
+            <!-- بخش آپلود فایل اکسل -->
+            <div class="text-center">
+                <h4 class="mb-4 fw-bold">
+                    <i class="fas fa-upload me-2"></i>
+                    آپلود فایل اکسل بیمه
+                </h4>
+
+                <div class="mb-4">
+                    <a href="{% static 'excel_templates/import_bimeh_sample1.xlsx' %}" 
+                    class="btn btn-outline-info btn-sm px-4 py-2" 
+                    title="دانلود قالب اکسل">
+                        <i class="fas fa-file-download me-2"></i>
+                        دانلود فایل نمونه برای آپلود (قالب اکسل)
+                    </a>
+                </div>
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="input-group mb-3 justify-content-center">
+                        <input type="file" name="excel_file" class="form-control" style="max-width: 400px;" accept=".xlsx, .xls" required>
+                    </div>
+                    <button type="submit" name="upload" class="btn btn-primary btn-lg px-5 py-3 shadow-lg btn-hover-scale">
+                        <i class="fas fa-upload me-2"></i>
+                        آپلود و ایمپورت
+                    </button>
+                </form>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        لطفاً ابتدا فایل نمونه را دانلود کرده و طبق ساختار آن اطلاعات را تکمیل کنید.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- استایل کوچک برای افکت hover دکمه -->
+<style>
+    .btn-hover-scale {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .btn-hover-scale:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 10px 25px rgba(0, 123, 255, 0.4) !important; /* برای دکمه آبی */
+    }
+    .alert-success { background-color: #d4edda; color: #155724; }
+    .alert-warning { background-color: #fff3cd; color: #856404; }
+    .alert-danger { background-color: #f8d7da; color: #721c24; }
+</style>
+{% endblock %}

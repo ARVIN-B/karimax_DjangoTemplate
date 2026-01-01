@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ایجاد ارجاع جدید{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient text-white text-center py-4" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <h3 class="mb-0 fw-bold">
+                        ایجاد ارجاع جدید
+                    </h3>
+                </div>
+
+                <div class="card-body p-5">
+
+                    <!-- نمایش اطلاعات مشارکت -->
+                    <div class="alert-info text-center mb-4">
+                        <h5>مشارکت ارجاع‌شونده</h5>
+                        <p class="mb-1"><strong>شناسه مشارکت:</strong> #{{ participation.id }}</p>
+                        <p class="mb-1"><strong>عنوان مشارکت:</strong> {{ participation.title }}</p>
+                        <p class="mb-0"><strong>کارمند ثبت کننده مشارکت:</strong> {{ participation.user.full_name }}</p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- عنوان ارجاع -->
+                        <div class="mb-4">
+                            <label for="referral_title" class="form-label fw-bold text-primary">
+                                عنوان ارجاع <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="title" id="referral_title" class="form-control form-control-lg"
+                                   placeholder="مثلاً: بررسی پیشنهاد بهبود فرآیند تولید" required>
+                        </div>
+
+                        <!-- توضیحات -->
+                        <div class="mb-4">
+                            <label for="referral_comment" class="form-label fw-bold text-primary">
+                                توضیحات و دلیل ارجاع <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="comment" id="referral_comment" rows="5" class="form-control"
+                                      placeholder="لطفاً دلیل ارجاع و اقدامات مورد انتظار را توضیح دهید..." required></textarea>
+                        </div>
+
+                        <!-- سرچ واحد سازمانی -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-primary">
+                                واحد مقصد (نقش) <span class="text-danger">*</span>
+                            </label>
+                            <select id="target-unit-search" name="target_unit" class="form-select form-select-lg" required>
+                                <option value="">-- جستجو کنید: هلدینگ، کارخانه، بخش، زیربخش... --</option>
+                            </select>
+                            <small class="text-muted">
+                                پس از انتخاب واحد، نقش و مسئول آن نمایش داده می‌شود.
+                            </small>
+                        </div>
+
+                        <!-- نمایش نقش و مسئول -->
+                        <div id="selected-unit-info" class="alert alert-light border-start border-primary border-5 d-none mb-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>واحد انتخاب‌شده:</strong> <span id="unit-name">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>نقش:</strong> <span id="unit-role" class="badge bg-primary fs-6">-</span>
+                                </div>
+                            </div>
+                            <hr>
+                            <div>
+                                <strong>مسئول فعلی:</strong>
+                                <span id="unit-manager" class="text-success fw-bold">-</span>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-5">
+                            <button type="submit" class="btn btn-success btn-lg px-5 shadow">
+                                ارسال ارجاع
+                            </button>
+                            <a href="{% url 'users:process_participation' participation.id %}"
+                               class="btn btn-outline-secondary btn-lg px-4 ms-3">
+                                انصراف
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .select2-container--bootstrap-5 .select2-selection--single {
+        height: 50px;
+        padding: 10px 20px;
+        font-size: 1.1rem;
+    }
+    .select2-container {
+        width: 100% !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#target-unit-search').select2({
+        theme: 'bootstrap-5',
+        placeholder: "جستجوی واحد سازمانی (هلدینگ، کارخانه، بخش، زیربخش)...",
+        allowClear: true,
+        ajax: {
+            url: "{% url 'users:search_org_units' %}",
+            dataType: 'json',
+            delay: 400,
+            data: function(params) {
+                return { q: params.term || '' };
+            },
+            processResults: function(data) {
+                return { results: data };
+            },
+            cache: true
+        },
+        minimumInputLength: 2,
+        escapeMarkup: function(markup) {
+            return markup;  // اجازه بده HTML اجرا بشه (خیلی مهم!)
+        },
+        templateResult: function(item) {
+            if (item.loading) return item.text;
+
+            let roleText = '';
+            if (item.role === 'super_admin') roleText = 'مدیر کل';
+            else if (item.role === 'holding_manager') roleText = 'مدیر هلدینگ';
+            else if (item.role === 'factory_manager') roleText = 'مدیر کارخانه';
+            else if (item.role === 'department_manager') roleText = 'مدیر بخش';
+            else if (item.role === 'supervisor') roleText = 'سرپرست';
+            else if (item.role === 'employee') roleText = 'کارمند';
+
+            const path = [];
+            if (item.is_system) {
+                // فقط برای مدیر کل
+                return `
+                    <div class="text-center py-2 bg-light border rounded">
+                        <strong class="text-danger">${item.text}</strong><br>
+                        <span class="badge bg-danger fs-6">${roleText}</span>
+                    </div>
+                `;
+            }
+
+            if (item.factory) path.push(item.factory);
+            if (item.department) path.push(item.department);
+            if (item.subdepartment) path.push(item.subdepartment);
+
+            const managerText = item.manager_name && item.manager_name !== 'تعیین نشده'
+                ? `<small class="text-success d-block"><strong>مسئول:</strong> ${item.manager_name}</small>`
+                : '<small class="text-muted">مسئول تعیین نشده</small>';
+
+            return `
+                <div>
+                    <strong>${item.text}</strong>
+                    ${path.length > 0 ? '<small class="text-muted d-block">' + path.join(' → ') + '</small>' : ''}
+                    ${managerText}
+                    <span class="badge bg-primary ms-2">${roleText}</span>
+                </div>
+            `;
+        },
+        templateSelection: function(item) {
+            if (!item.text) return 'انتخاب کنید...';
+            if (item.role === 'super_admin') {
+                return `مدیر کل: ${item.manager_name || item.text}`;
+            }
+            const manager = item.manager_name && item.manager_name !== 'تعیین نشده' ? ` (${item.manager_name})` : '';
+            return item.text + manager;
+        }
+    });
+
+    // وقتی واحدی انتخاب شد
+    $('#target-unit-search').on('select2:select', function(e) {
+        const data = e.params.data;
+
+        $('#unit-name').text(data.text);
+
+        let roleDisplay = 'نامشخص';
+        if (data.role === 'holding_manager') roleDisplay = 'مدیر هلدینگ';
+        else if (data.role === 'factory_manager') roleDisplay = 'مدیر کارخانه';
+        else if (data.role === 'department_manager') roleDisplay = 'مدیر بخش';
+        else if (data.role === 'supervisor') roleDisplay = 'سرپرست';
+        else if (data.role === 'super_admin') roleDisplay = 'مدیر کل';
+        else if (data.role === 'employee') roleDisplay = 'کارمند';
+
+        $('#unit-role').text(roleDisplay);
+        $('#unit-manager').text(data.manager_name || 'تعیین نشده');
+
+        $('#selected-unit-info').removeClass('d-none');
+
+        // ذخیره اطلاعات برای ارسال فرم
+        $('form').append(`<input type="hidden" name="target_object_id" value="${data.id}">`);
+        $('form').append(`<input type="hidden" name="target_content_type" value="${data.content_type}">`);
+    });
+
+    $('#target-unit-search').on('select2:clear', function() {
+        $('#selected-unit-info').addClass('d-none');
+        $('input[name="target_object_id"], input[name="target_content_type"]').remove();
+    });
+});
+</script>
+{% endblock %}

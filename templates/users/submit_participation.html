@@ -1,0 +1,445 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block title %} مشارکت هدفمند {% endblock %}
+{% block breadcrumb_title %} مشارکت هدفمند {% endblock %}
+{% block content %}
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>ارسال مشارکت</h3>
+                </div>
+                <div class="card-body">
+
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data" id="participationForm">
+                        {% csrf_token %}
+
+                        <!-- item_type -->
+                        <div class="mb-3">
+                            {{ form.item_type.label_tag }}
+                            {{ form.item_type }}
+                            {{ form.item_type.errors }}
+                        </div>
+
+                        <!-- title -->
+                        <div class="mb-3 position-relative">
+                            {{ form.title.label_tag }}
+                            <div class="position-relative">
+                                {{ form.title|add_class:"form-control"|attr:"placeholder:عنوان مشارکت را وارد کنید یا بگویید..." }}
+                                <button type="button" class="btn mic-btn" data-target="id_title">
+                                    <i class="bi bi-mic-fill"></i>
+                                </button>
+                            </div>
+                            {{ form.title.errors }}
+                        </div>
+
+                        <!-- description -->
+                        <div class="mb-3 position-relative">
+                            {{ form.description.label_tag }}
+                            <div class="position-relative">
+                                {{ form.description|add_class:"form-control"|attr:"rows:5"|attr:"placeholder:توضیحات کامل را بنویسید یا با صدا ضبط کنید..." }}
+                                <button type="button" class="btn mic-btn" data-target="id_description">
+                                    <i class="bi bi-mic-fill"></i>
+                                </button>
+                            </div>
+                            {{ form.description.errors }}
+                        </div>
+
+                        <!-- attachment -->
+                        <div class="mb-3">
+                            {{ form.attachment.label_tag }}
+
+                            <div class="input-group">
+                                <!-- این همون input اصلی فایل هست که جنگو می‌سازه -->
+                                {{ form.attachment|add_class:"form-control"|attr:"style:display:none;" }}
+
+                                <!-- یه input نمایشی می‌ذاریم که کاربر ببینه چی آپلود شده -->
+                                <input type="text" id="fakeFileInput" class="form-control" placeholder="فایل انتخاب نشده" readonly>
+
+                                <button type="button" class="btn btn-outline-secondary" id="chooseFileBtn">انتخاب فایل</button>
+                                <button type="button" class="btn btn-outline-danger" id="recordAudioBtn">
+                                    Record
+                                </button>
+                            </div>
+
+                            <!-- کنترلر ضبط صدا -->
+                            <div id="audioRecorder" class="mt-3" style="display:none;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="flex-grow-1">
+                                        <audio controls id="audioPlayback" class="w-100"></audio>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-success btn-sm" id="confirmAudioBtn">تأیید و آپلود</button>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="cancelAudioBtn">لغو</button>
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-2">در حال ضبط... (دوباره کلیک کنید برای توقف)</small>
+                            </div>
+
+                            {{ form.attachment.errors }}
+                        </div>
+
+
+                        <!-- is_committee -->
+                        <div class="mb-3 form-check">
+                            {{ form.is_committee }}
+                            <label class="form-check-label" for="{{ form.is_committee.id_for_label }}">
+                                آیا این مشارکت مربوط به کمیته است؟
+                            </label>
+                            {{ form.is_committee.errors }}
+                        </div>
+
+                        <!-- subdepartment - شرطی -->
+                        <div class="mb-3" id="subdepartment_container" style="display: none;">
+                            {{ form.subdepartment.label_tag }}
+
+                            {{ form.subdepartment }}
+                            {{ form.subdepartment.errors }}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">ارسال مشارکت</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleCommitteeField() {
+            const checkbox = document.getElementById('id_is_committee');
+            const container = document.getElementById('subdepartment_container');
+            const select = document.getElementById('id_subdepartment');
+            const label = document.querySelector('label[for="id_subdepartment"]');
+
+            if (checkbox.checked) {
+                container.style.display = 'block';
+                select.required = true;
+                if (label) label.innerHTML = 'کمیته مربوطه <span class="text-danger">*</span>';
+            } else {
+                container.style.display = 'none';
+                select.required = false;
+                select.value = '';
+                if (label) label.textContent = 'زیربخش (اختیاری)';
+            }
+        }
+
+        // اجرای اولیه
+        document.addEventListener('DOMContentLoaded', () => {
+            toggleCommitteeField();
+            document.getElementById('id_is_committee')?.addEventListener('change', toggleCommitteeField);
+        });
+
+
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+        if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+            alert('مرورگر شما از تشخیص صدا پشتیبانی نمی‌کند. از Chrome یا Edge استفاده کنید.');
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+
+        recognition.lang = 'fa-IR';
+        recognition.interimResults = true;
+        recognition.continuous = true;           // ← مهم: حالا مداوم گوش می‌ده
+        recognition.maxAlternatives = 1;
+
+        // تنظیمات خیلی مهم برای جلوگیری از قطع سریع
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        let finalTranscript = '';
+        let currentInput = null;
+        let isRecording = false;
+
+        document.querySelectorAll('.mic-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const targetId = this.dataset.target;
+                currentInput = document.getElementById(targetId);
+
+                if (isRecording) {
+                    // توقف ضبط
+                    recognition.stop();
+                    this.classList.remove('recording');
+                    isRecording = false;
+                    return;
+                }
+
+                // شروع ضبط
+                isRecording = true;
+                this.classList.add('recording');
+
+                // فقط این دکمه قرمز بشه
+                document.querySelectorAll('.mic-btn').forEach(b => {
+                    if (b !== this) b.classList.remove('recording');
+                });
+
+                // متن قبلی رو بخون و یه فاصله در انتها بذار (حل مشکل چسبیدن کلمات)
+                finalTranscript = (currentInput.value || '').trim();
+                if (finalTranscript && !finalTranscript.endsWith(' ')) {
+                    finalTranscript += ' ';
+                }
+
+                recognition.start();
+
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript + ' ';  // همیشه یه فاصله بعد از جمله نهایی
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+
+                    // نمایش: متن نهایی + متن موقت
+                    currentInput.value = finalTranscript + interimTranscript;
+
+                    // کرسر رو ببر آخر متن
+                    currentInput.focus();
+                    currentInput.setSelectionRange(currentInput.value.length, currentInput.value.length);
+                };
+
+                recognition.onerror = (e) => {
+                    console.error('خطا در تشخیص صدا:', e.error);
+                    if (e.error !== 'aborted') {
+                        alert('خطا در میکروفون: ' + e.error);
+                    }
+                    stopRecording();
+                };
+
+                recognition.onend = () => {
+                    // فقط اگه کاربر دستی قطع نکرده باشه، دوباره شروع کن!
+                    if (isRecording) {
+                        // دوباره شروع کن تا قطع نشه (مثل گوگل!)
+                        try {
+                            recognition.start();
+                        } catch (e) {
+                            // گاهی خطا می‌ده، ولی دفعه بعد درست می‌شه
+                        }
+                    }
+                };
+
+                function stopRecording() {
+                    isRecording = false;
+                    document.querySelectorAll('.mic-btn').forEach(b => b.classList.remove('recording'));
+                }
+            });
+        });
+
+        // اگه کاربر دوباره کلیک کرد، متوقف بشه
+        recognition.addEventListener('end', () => {
+            if (!isRecording) return;
+            // فقط وقتی کاربر دستی قطع کرده باشه، کامل متوقف بشه
+        });
+    });
+
+    </script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const realFileInput = document.querySelector('input[name="attachment"]');
+        const fakeFileInput = document.getElementById('fakeFileInput');
+        const chooseFileBtn = document.getElementById('chooseFileBtn');
+        const recordBtn = document.getElementById('recordAudioBtn');
+        const audioRecorder = document.getElementById('audioRecorder');
+        const audioPlayback = document.getElementById('audioPlayback');
+        const confirmBtn = document.getElementById('confirmAudioBtn');
+        const cancelBtn = document.getElementById('cancelAudioBtn');
+
+        let recorder = null;
+        let audioChunks = [];
+
+        // باز کردن فایل منیجر
+        chooseFileBtn.addEventListener('click', () => realFileInput.click());
+
+        // نمایش نام فایل انتخاب شده
+        realFileInput.addEventListener('change', () => {
+            if (realFileInput.files.length > 0) {
+                fakeFileInput.value = realFileInput.files[0].name;
+                audioRecorder.style.display = 'none';
+            }
+        });
+
+        // شروع/توقف ضبط
+        recordBtn.addEventListener('click', async () => {
+            if (recorder && recorder.state === 'recording') {
+                recorder.stop();
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                recorder.ondataavailable = e => audioChunks.push(e.data);
+                recorder.onstop = async () => {
+                    const webmBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioPlayback.src = URL.createObjectURL(webmBlob);
+
+                    // تبدیل به MP3
+                    recordBtn.disabled = true;
+                    recordBtn.innerHTML = 'در حال تبدیل به MP3...';
+
+                    try {
+                        const mp3Blob = await webmToMp3(webmBlob);
+                        const fileName = `ضبط_صدا_${new Date().toLocaleString('fa-IR').replace(/[/,]/g, '-').replace(/:/g, '')}.mp3`;
+                        const mp3File = new File([mp3Blob], fileName, { type: 'audio/mpeg' });
+
+                        const dt = new DataTransfer();
+                        dt.items.add(mp3File);
+                        realFileInput.files = dt.files;
+
+                        fakeFileInput.value = fileName;
+                        audioRecorder.style.display = 'block';
+
+                        stream.getTracks().forEach(t => t.stop());
+                    } catch (err) {
+                        alert('خطا در تبدیل به MP3. فایل webm آپلود می‌شود.');
+                        const dt = new DataTransfer();
+                        dt.items.add(new File([webmBlob], 'ضبط_صدا.webm', { type: 'audio/webm' }));
+                        realFileInput.files = dt.files;
+                        fakeFileInput.value = 'ضبط_صدا.webm';
+                    }
+
+                    recordBtn.disabled = false;
+                    recordBtn.innerHTML = 'Record';
+                    recordBtn.classList.remove('recording');
+                };
+
+                recorder.start();
+                recordBtn.classList.add('recording');
+                recordBtn.innerHTML = 'در حال ضبط...';
+                audioRecorder.style.display = 'block';
+                fakeFileInput.value = 'در حال ضبط صدا...';
+
+            } catch (err) {
+                alert('لطفاً اجازه دسترسی به میکروفون را بدهید.');
+                recordBtn.classList.remove('recording');
+            }
+        });
+
+        // تأیید و بستن پنجره ضبط
+        confirmBtn.addEventListener('click', () => {
+            audioRecorder.style.display = 'none';
+        });
+
+        // لغو ضبط
+        cancelBtn.addEventListener('click', () => {
+            realFileInput.value = '';
+            fakeFileInput.value = 'فایل انتخاب نشده';
+            audioRecorder.style.display = 'none';
+            recordBtn.classList.remove('recording');
+            recordBtn.innerHTML = 'Record';
+        });
+
+        // تابع تبدیل WebM → MP3 (با lamejs)
+        async function webmToMp3(webmBlob) {
+            const arrayBuffer = await webmBlob.arrayBuffer();
+            const audioContext = new AudioContext();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+            const left = audioBuffer.getChannelData(0);
+            const samples = new Int16Array(left.length);
+            for (let i = 0; i < left.length; i++) {
+                samples[i] = Math.max(-1, Math.min(1, left[i])) * 0x7FFF;
+            }
+
+            const mp3encoder = new lamejs.Mp3Encoder(1, audioBuffer.sampleRate, 128);
+            const mp3Data = [];
+            const blockSize = 1152;
+
+            for (let i = 0; i < samples.length; i += blockSize) {
+                const chunk = samples.subarray(i, i + blockSize);
+                const mp3buf = mp3encoder.encodeBuffer(chunk);
+                if (mp3buf.length > 0) mp3Data.push(mp3buf);
+            }
+
+            const mp3buf = mp3encoder.flush();
+            if (mp3buf.length > 0) mp3Data.push(mp3buf);
+
+
+            return new Blob(mp3Data, { type: 'audio/mpeg' });
+        }
+    });
+</script>
+
+<style>
+    #recordAudioBtn.recording {
+        background: #dc3545 !important;
+        color: white !important;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+</style>
+
+
+
+    <style>
+        #id_subdepartment {
+            white-space: normal !important;
+            word-wrap: break-word;
+            max-width: 100%;
+            padding-right: 2.5rem; /* برای فلش Bootstrap */
+        }
+        #id_subdepartment option {
+            white-space: normal !important;
+            word-wrap: break-word;
+            padding: 0.375rem 0.75rem;
+        }
+        .mic-btn {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            font-size: 1.4rem;
+            color: #666;
+            z-index: 10;
+            transition: all 0.3s ease;
+            padding: 8px;
+            border-radius: 50%;
+        }
+        .mic-btn:hover { color: #007bff; }
+        .mic-btn.recording {
+            color: #dc3545 !important;
+            animation: pulse 1.5s infinite;
+            background: rgba(220, 53, 69, 0.1);
+        }
+        .mic-btn.recording i {
+            animation: bounce 1.5s infinite;
+        }
+        textarea ~ .mic-btn { top: 20px; transform: none; }
+        .form-control[readonly] { background-color: #f8f9fa; }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+    </style>
+{% endblock %}

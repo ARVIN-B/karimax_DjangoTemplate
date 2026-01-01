@@ -1,0 +1,6024 @@
+import jdatetime
+import mimetypes
+import sys
+import pandas as pd
+
+from django.db import transaction
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.contenttypes.models import ContentType
+from django import forms
+from django.conf import settings
+
+from modules.import_users import import_employees_from_excel
+from modules.security import clean_user_text
+from modules import security
+from modules.excel_export import export_to_excel
+
+from django.contrib import messages
+from django.http import HttpResponse, JsonResponse, FileResponse, Http404
+from django.db.models import Max, Q, Sum, Avg, Count
+from django.core.exceptions import (
+    PermissionDenied,
+    SuspiciousOperation,
+    ValidationError,
+    ObjectDoesNotExist,
+)
+from django.core.paginator import Paginator
+import json
+
+from .models import (
+    Employee,
+    Participation,
+    Factory,
+    Department,
+    Role,
+    Evaluation,
+    Holding,
+    Subdepartment,
+    WeeklyMenu,
+    MenuItem,
+    FoodItem,
+    FoodReservation,
+    participation_upload_path,
+    close_food_res_time_H,
+    close_food_res_time_M,
+    start_today_food_comment_time_H,
+    start_today_food_comment_time_M,
+    OrgUnit,
+    Referral,
+    ReferralStep,
+    Notification,
+    NotificationRead,
+    Dependent,
+    Gender,
+    RelativeType,
+    DependencyStatus,
+    MaritalStatus,
+    EmploymentType,
+    JobGroup,
+    Country,
+    Banks,
+    BankAccountType,
+    BankAccount,
+    ContactInfo,
+    PreviousInsurer,
+    Employee_Bimeh,
+    BaseInsurance,
+)
+
+from .forms import (
+    ParticipationForm,
+    ManagementFilterForm,
+    UserDetailsFilterForm,
+    EvaluationFilterForm,
+    CustomPasswordChangeForm,
+    EmployeeImportForm,
+)
+from datetime import datetime, timedelta, time, date
+import speech_recognition as sr
+import os
+from STT_full_file.speech_recognition_full_file import STT_full_file_wave, STT_full_file
+from text_summarizer.text_summarizer import summarizer
+from save_to_word_pdf.save_w_p import save_as_word, save_as_pdf
+from chat_bot.chat_bot import chat_with_bot
+
+from django.utils import timezone
+
+from django.core.serializers.json import DjangoJSONEncoder
+import json
+from autogen_agentchat.messages import TextMessage
+
+
+if sys.platform == "win32":
+    os.system("chcp 65001 >nul")  # تغییر کدپیج کنسول به UTF-8
+
+    # تنظیم مجدد خروجی پایتون
+    if sys.stdout.encoding != "utf-8":
+        sys.stdout.reconfigure(encoding="utf-8")
+
+
+PARTICIPATIONS_PER_LOAD = 1000
+BASE_COST_PER_PARTICIPATION = 500000
+
+
+def login_view(request):
+    if request.method == "POST":
+        national_id = request.POST.get("national_id")
+        password = request.POST.get("password")
+        user = authenticate(request, username=national_id, password=password)
+        if user is not None:
+            login(request, user)
+
+            # جدید: تنظیم نقش اولیه اگر session نداشته باشد
+            management_tree = build_management_tree(user)
+            request.session["management_tree"] = management_tree
+
+            if "current_role" not in request.session and user.roles.exists():
+                ROLE_PRIORITY = [
+                    "super_admin",
+                    "holding_manager",
+                    "factory_manager",
+                    "department_manager",
+                    "supervisor",
+                    "employee",
+                ]
+
+                # پیدا کردن بالاترین نقش کاربر بر اساس اولویت
+                user_role_names = set(user.roles.values_list("name", flat=True))
+                selected_role_name = None
+
+                for role in ROLE_PRIORITY:
+                    if role in user_role_names:
+                        selected_role_name = role
+                        break
+
+                # # اگر هیچ نقش مدیریتی نداشت، حتماً employee است (یا نقش‌های دیگر، اما فرض ما employee)
+                # if not selected_role_name:
+                #     selected_role_name = 'employee'
+
+                if not selected_role_name:
+                    request.session["current_role"] = None
+                    request.session["current_holding_id"] = None
+                    request.session["current_factory_id"] = None
+                    request.session["current_department_id"] = None
+                    request.session["current_subdepartment_id"] = None
+                    return redirect("users:dashboard")
+
+                request.session["current_role"] = selected_role_name
+
+                # تنظیم مقادیر مکان‌ها بر اساس نقش انتخاب شده
+                holding_id = None
+                factory_id = None
+                department_id = None
+                subdepartment_id = None
+                is_committee = False
+                real_role = None
+                if selected_role_name == "super_admin":
+                    pass  # همه None
+
+                elif selected_role_name == "holding_manager":
+                    holding = Holding.objects.filter(manager=user).first()
+                    if holding:
+                        holding_id = holding.id
+
+                elif selected_role_name == "factory_manager":
+                    factory = Factory.objects.filter(manager=user).first()
+                    if factory:
+                        factory_id = factory.id
+                        holding_id = factory.holding.id if factory.holding else None
+                        is_committee = factory.is_committee
+
+                elif selected_role_name == "department_manager":
+                    department = Department.objects.filter(manager=user).first()
+
+                    department = Department.objects.filter(
+                        Q(manager=user) | Q(manager_2=user) | Q(manager_3=user)
+                    ).first()
+                    if department:
+
+                        department_id = department.id
+                        factory_id = department.factory.id
+                        holding_id = (
+                            department.factory.holding.id
+                            if department.factory.holding
+                            else None
+                        )
+                        is_committee = department.is_committee
+
+                        if department.manager == user:
+                            real_role = "department_manager"
+                        elif department.manager_2 == user:
+                            real_role = "department_manager_2"
+                        elif department.manager_3 == user:
+                            real_role = "department_manager_3"
+
+                elif selected_role_name == "supervisor":
+                    subdepartment = Subdepartment.objects.filter(
+                        supervisor=user
+                    ).first()
+                    if subdepartment:
+                        subdepartment_id = subdepartment.id
+                        department_id = subdepartment.department.id
+                        factory_id = subdepartment.department.factory.id
+                        holding_id = (
+                            subdepartment.department.factory.holding.id
+                            if subdepartment.department.factory.holding
+                            else None
+                        )
+                        is_committee = subdepartment.is_committee
+
+                elif selected_role_name == "employee":
+                    # برای کارگر ساده، از فیلدهای خودش استفاده کن
+                    subdepartment = user.assigned_subdepartments.first()
+                    if subdepartment:
+                        subdepartment_id = subdepartment.id
+                        department_id = subdepartment.department.id
+                        factory_id = subdepartment.department.factory.id
+                        holding_id = (
+                            subdepartment.department.factory.holding.id
+                            if subdepartment.department.factory.holding
+                            else None
+                        )
+
+                request.session["current_role"] = selected_role_name
+                request.session["current_holding_id"] = holding_id
+                request.session["current_factory_id"] = factory_id
+                request.session["current_department_id"] = department_id
+                request.session["current_subdepartment_id"] = subdepartment_id
+                request.session["current_is_committee"] = (
+                    is_committee if is_committee else False
+                )
+                request.session["current_real_role"] = real_role if real_role else None
+
+            #
+            # out is something like this : [{'id': None, 'name': 'مدیر کل سیستم', 'role': 'super_admin', 'factories': []}, {'id': 1, 'name': 'هلدینگ اصفهان مقدم', 'role': None, 'factories': [{'id': 1, 'name': 'اصفهان مقدم', 'role': None, 'departments': [{'id': 4, 'name': 'MODIRIAT', 'role': 'department_manager', 'subdepartments': []}, {'id': 2, 'name': 'منابع انسانی', 'role': 'department_manager', 'subdepartments': []}, {'id': 1, 'name': 'هوش مصنوعی', 'role': 'department_manager', 'subdepartments': []}]}]}]
+
+            return redirect("users:dashboard")
+        else:
+            messages.error(request, "کد ملی یا رمز عبور اشتباه است.")
+    return render(request, "users/login.html")
+
+
+# 🌟 جدید: تابع کمکی برای ساخت درخت نقش‌های مدیریتی
+def build_management_tree(user):
+    """
+    درخت نقش‌های مدیریتی کاربر را با جزئیات هلدینگ، کارخانه، بخش و زیربخش می‌سازد.
+    فقط سطوحی که کاربر در آن‌ها نقش مدیریتی دارد (manager/supervisor) را شامل می‌شود.
+    ساختار: لیست هلدینگ‌ها، هر کدام با factories, departments, subdepartments.
+    هر سطح دارای 'role' اگر کاربر مدیر/سرپرست آن سطح باشد.
+    """
+
+    # پیدا کردن تمام هلدینگ‌های مرتبط (جایی که کاربر در آن یا زیرمجموعه نقش دارد)
+    related_holdings = (
+        Holding.objects.filter(
+            Q(manager=user)
+            | Q(factories__manager=user)
+            | Q(factories__departments__manager=user)
+            | Q(
+                factories__departments__manager_2=user
+            )  # 🌟 جدید: اضافه کردن manager_2 و manager_3 برای department
+            | Q(factories__departments__manager_3=user)
+            | Q(factories__departments__subdepartments__supervisor=user)
+            | Q(factories__departments__subdepartments__assigned_employees=user)
+        )
+        .distinct()
+        .order_by("name")
+    )
+
+    management_tree_1 = []
+
+    for holding in related_holdings:
+        holding_dict = {
+            "id": holding.id,
+            "name": holding.name,
+            "role": "holding_manager" if holding.manager == user else None,
+            "factories": [],
+        }
+
+        # کارخانه‌های مرتبط در این هلدینگ
+        related_factories = (
+            Factory.objects.filter(holding=holding)
+            .filter(
+                Q(manager=user)
+                | Q(departments__manager=user)
+                | Q(
+                    departments__manager_2=user
+                )  # 🌟 جدید: اضافه کردن manager_2 و manager_3
+                | Q(departments__manager_3=user)
+                | Q(departments__subdepartments__supervisor=user)
+                | Q(departments__subdepartments__assigned_employees=user)
+            )
+            .distinct()
+            .order_by("name")
+        )
+
+        for factory in related_factories:
+            factory_dict = {
+                "id": factory.id,
+                "name": factory.name,
+                "role": "factory_manager" if factory.manager == user else None,
+                "departments": [],
+            }
+
+            # بخش‌های مرتبط در این کارخانه
+            related_departments = (
+                Department.objects.filter(factory=factory)
+                .filter(
+                    Q(manager=user)
+                    | Q(
+                        manager_2=user
+                    )  # 🌟 جدید: اضافه کردن manager_2 و manager_3 به فیلتر
+                    | Q(manager_3=user)
+                    | Q(subdepartments__supervisor=user)
+                    | Q(subdepartments__assigned_employees=user)
+                )
+                .distinct()
+                .order_by("name")
+            )
+
+            for department in related_departments:
+                department_dict = {
+                    "id": department.id,
+                    "name": department.name,
+                    "role": (
+                        "department_manager"
+                        if department.manager == user
+                        or department.manager_2 == user
+                        or department.manager_3 == user
+                        else None
+                    ),
+                    "roles": [],
+                    "subdepartments": [],
+                }
+                roles = []
+                if department.manager == user:
+                    roles.append("department_manager")
+                if department.is_committee:
+                    if department.manager_2 == user:
+                        roles.append("department_manager_2")
+                    if department.manager_3 == user:
+                        roles.append("department_manager_3")
+                department_dict["roles"] = roles if roles else None
+
+                # زیربخش‌های مرتبط در این بخش
+                related_subdepartments = (
+                    Subdepartment.objects.filter(department=department)
+                    .filter(Q(supervisor=user) | Q(assigned_employees=user))
+                    .distinct()
+                    .order_by("name")
+                )
+
+                for subdepartment in related_subdepartments:
+                    roles = []
+                    if subdepartment.supervisor == user:
+                        roles.append("supervisor")
+                    if user in subdepartment.assigned_employees.all():
+                        roles.append("employee")
+
+                    subdepartment_dict = {
+                        "id": subdepartment.id,
+                        "name": subdepartment.name,
+                        "roles": roles,
+                    }
+                    department_dict["subdepartments"].append(subdepartment_dict)
+
+                factory_dict["departments"].append(department_dict)
+
+            holding_dict["factories"].append(factory_dict)
+
+        management_tree_1.append(holding_dict)
+
+    is_super_admin = user.roles.filter(name="super_admin").exists()
+
+    if is_super_admin:
+        management_tree = {
+            "id": None,
+            "name": "مدیر کل سیستم",
+            "role": "super_admin",
+            "holdings": management_tree_1,
+        }
+    else:
+        management_tree = {
+            "id": None,
+            "name": "مدیر کل سیستم",
+            "role": "None",
+            "holdings": management_tree_1,
+        }
+    return [management_tree]
+
+    # return management_tree
+
+
+# 🌟 جدید: view برای سوییچ نقش با جزئیات context (هلدینگ، کارخانه، بخش، زیربخش)
+def switch_role(request):
+    role_name = request.GET.get("role")
+    holding_id = request.GET.get("holding_id")
+    factory_id = request.GET.get("factory_id")
+    department_id = request.GET.get("department_id")
+    subdepartment_id = request.GET.get("subdepartment_id")
+    real_role = request.GET.get("real_role")
+
+    # تبدیل به None اگر 'None' بود
+    holding_id = None if holding_id == "None" else holding_id
+    factory_id = None if factory_id == "None" else factory_id
+    department_id = None if department_id == "None" else department_id
+    subdepartment_id = None if subdepartment_id == "None" else subdepartment_id
+    is_committee = False
+
+    user = request.user
+
+    # اعتبار سنجی نقش
+    if role_name not in [r.name for r in user.roles.all()]:
+        messages.error(request, "شما این نقش را ندارید.")
+        return redirect("users:dashboard")
+
+    # اعتبار سنجی مکان‌ها بر اساس نقش
+    if role_name == "super_admin":
+        if holding_id or factory_id or department_id or subdepartment_id:
+            messages.error(request, "برای super_admin هیچ مکانی نباید مشخص شود.")
+            return redirect("users:dashboard")
+    elif role_name == "holding_manager":
+        if not holding_id:
+            messages.error(request, "holding_id الزامی است.")
+            return redirect("users:dashboard")
+        holding = get_object_or_404(Holding, id=holding_id, manager=user)
+        if factory_id or department_id or subdepartment_id:
+            messages.error(request, "برای holding_manager فقط holding_id معتبر است.")
+            return redirect("users:dashboard")
+    elif role_name == "factory_manager":
+        if not factory_id:
+            messages.error(request, "factory_id الزامی است.")
+            return redirect("users:dashboard")
+        factory = get_object_or_404(Factory, id=factory_id, manager=user)
+        holding_id = factory.holding.id if factory.holding else None
+        is_committee = factory.is_committee if factory.is_committee else False
+        if department_id or subdepartment_id:
+            messages.error(
+                request,
+                "برای factory_manager فقط factory_id (و holding_id اختیاری) معتبر است.",
+            )
+            return redirect("users:dashboard")
+    elif role_name == "department_manager":
+
+        if not department_id:
+            messages.error(request, "department_id الزامی است.")
+            return redirect("users:dashboard")
+
+        if real_role == "department_manager":
+            department = get_object_or_404(Department, id=department_id, manager=user)
+        elif real_role == "department_manager_2":
+            department = get_object_or_404(Department, id=department_id, manager_2=user)
+        elif real_role == "department_manager_3":
+            department = get_object_or_404(Department, id=department_id, manager_3=user)
+        # department = get_object_or_404(Department, id=department_id, manager=user)
+        factory_id = department.factory.id
+        holding_id = (
+            department.factory.holding.id if department.factory.holding else None
+        )
+        is_committee = department.is_committee if department.is_committee else False
+        if subdepartment_id:
+            messages.error(
+                request,
+                "برای department_manager فقط department_id (و بالادستی‌ها) معتبر است.",
+            )
+            return redirect("users:dashboard")
+    elif role_name == "supervisor":
+        if not subdepartment_id:
+            messages.error(request, "subdepartment_id الزامی است.")
+            return redirect("users:dashboard")
+        subdepartment = get_object_or_404(
+            Subdepartment, id=subdepartment_id, supervisor=user
+        )
+        department_id = subdepartment.department.id
+        factory_id = subdepartment.department.factory.id
+        holding_id = (
+            subdepartment.department.factory.holding.id
+            if subdepartment.department.factory.holding
+            else None
+        )
+        is_committee = (
+            subdepartment.is_committee if subdepartment.is_committee else False
+        )
+    elif role_name == "employee":
+        if not subdepartment_id:
+            messages.error(request, "subdepartment_id الزامی است.")
+            return redirect("users:dashboard")
+        # اعتبار سنجی که کاربر به این subdepartment تخصیص یافته باشد
+        if not user.assigned_subdepartments.filter(id=subdepartment_id).exists():
+            messages.error(request, "شما به این زیربخش تخصیص نیافته‌اید.")
+            return redirect("users:dashboard")
+        subdepartment = get_object_or_404(Subdepartment, id=subdepartment_id)
+        department_id = subdepartment.department.id
+        factory_id = subdepartment.department.factory.id
+        holding_id = (
+            subdepartment.department.factory.holding.id
+            if subdepartment.department.factory.holding
+            else None
+        )
+
+    # ذخیره در سشن
+    request.session["current_role"] = role_name
+    request.session["current_holding_id"] = holding_id
+    request.session["current_factory_id"] = factory_id
+    request.session["current_department_id"] = department_id
+    request.session["current_subdepartment_id"] = subdepartment_id
+    request.session["current_is_committee"] = is_committee if is_committee else False
+    request.session["current_real_role"] = real_role if real_role else None
+
+    messages.success(request, f"نقش به {role_name} تغییر یافت.")
+    return redirect("users:dashboard")
+
+
+@login_required
+def dashboard(request):
+
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    user = request.user
+    management_tree = request.session.get("management_tree", [])
+    is_committee = request.session["current_is_committee"]
+    real_role_name = request.GET.get("current_real_role")
+
+    current_role = None
+    current_role_name = request.session.get("current_role")
+
+    if current_role_name:
+        current_role = request.user.roles.filter(name=current_role_name).first()
+
+    # کاربر فعلی که از نوع Employee هست
+
+    # all_participations = Participation.objects.filter(user=user).order_by('-created_at')
+    # all_participations = Participation.objects.filter(user=request.user).order_by('-created_at')
+    all_participations = Participation.objects.filter(
+        user=request.user,
+        role_name=role_name,
+        holding_id=holding_id,
+        factory_id=factory_id,
+        department_id=department_id,
+        subdepartment_id=subdepartment_id,
+    ).order_by("-created_at")
+
+    participations = all_participations
+
+    selected_status = request.GET.get("status", "").strip() or None
+    selected_item_type = request.GET.get("item_type", "").strip() or None
+    selected_is_committee = request.GET.get("is_committee", "").strip() or None
+
+    if selected_status:
+        participations = participations.filter(status=selected_status)
+    if selected_item_type:
+        participations = participations.filter(item_type=selected_item_type)
+    if selected_is_committee:
+        participations = participations.filter(is_committee=selected_is_committee)
+
+    all_participations = participations
+
+    total_count = all_participations.count()  # شمارش کل QuerySet اصلی
+
+    # 🌟 جدید: محاسبات مشارکت امروز و هزینه‌ها
+    tehran_aware_datetime = timezone.localtime(timezone.now())
+    today = tehran_aware_datetime.date()
+    start_of_day = timezone.make_aware(datetime.combine(today, time.min))
+    end_of_day = timezone.make_aware(datetime.combine(today, time.max))
+    # تعداد مشارکت های امروز
+
+    today_participations = all_participations.filter(
+        created_at__gte=start_of_day, created_at__lte=end_of_day
+    )
+
+    today_count = today_participations.count()
+    # ۱. میزان اضافه کاری مشارکت کل
+    total_overtime_cost = total_count * BASE_COST_PER_PARTICIPATION
+    # ۳. میزان اضافه کاری مشارکت امروز
+    today_overtime_cost = today_count * BASE_COST_PER_PARTICIPATION
+
+    participation_counts = {
+        item_type[0]: all_participations.filter(item_type=item_type[0]).count()
+        for item_type in Participation.ITEM_TYPES
+    }
+
+    # اینجا خطاهای قبلی رفع شده‌اند:
+    audio_count = all_participations.filter(is_audio=True).count()
+    other_count = all_participations.filter(is_audio=False).count()
+
+    participation_display = [
+        {
+            "display": label,
+            "count": participation_counts.get(key, 0),
+            "audio_count": all_participations.filter(
+                item_type=key, is_audio=True
+            ).count(),
+        }
+        for key, label in Participation.ITEM_TYPES
+    ]
+
+    if request.method == "POST" and request.POST.get("action") == "export_excel":
+        data_columns = [
+            ("عنوان مشارکت", [p.title or "" for p in all_participations]),
+            ("نوع مشارکت", [p.get_item_type_display() for p in all_participations]),
+            (
+                "تاریخ ثبت",
+                [p.created_at for p in all_participations],
+            ),  # خود تاریخ → تابع تبدیل می‌کنه
+            ("وضعیت", [p.get_status_display() for p in all_participations]),
+        ]
+
+        return export_to_excel(
+            columns=data_columns,
+            filename=f"گزارش_مشارکت‌ها_{jdatetime.datetime.now().strftime('%Y%m%d')}",
+            report_title="گزارش جامع مشارکت‌های سیستم",
+        )
+
+    participations = all_participations[
+        :PARTICIPATIONS_PER_LOAD
+    ]  # این یک لیست است (فقط 50 تای اول)
+    remaining_count = total_count - len(participations)
+
+    # if not all_participations.exists():
+    #     messages.info(request, "شما هنوز هیچ مشارکتی ثبت نکرده‌اید.")
+
+    chart_data = (
+        json.dumps(list(participation_counts.values()))
+        if participation_counts
+        else json.dumps([0, 0, 0, 0, 0])
+    )
+
+    management_roles = [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]
+    has_management_access = role_name in management_roles
+
+    can_access_evaluation_panel = role_name in ["super_admin", "department_manager"]
+
+    food_receiver_role = user.food_receiver_role
+
+    return render(
+        request,
+        "users/dashboard.html",
+        {
+            "participations": participations,
+            "remaining_count": remaining_count,
+            "has_more": remaining_count > 0,
+            "user": user,
+            "participation_display": participation_display,
+            "audio_count": audio_count,
+            "other_count": other_count,
+            "chart_data": chart_data,
+            "current_role": current_role,
+            "current_role_name": current_role_name,
+            "can_access_evaluation_panel": can_access_evaluation_panel,
+            # 🌟 جدید: اضافه کردن متغیرهای مالی به Context
+            "base_cost": BASE_COST_PER_PARTICIPATION,
+            "total_overtime_cost": total_overtime_cost,
+            "today_count": today_count,  # ۲. تعداد مشارکت های امروز
+            "today_overtime_cost": today_overtime_cost,
+            "total_count": total_count,
+            "participation_status_choices": Participation.STATUS_CHOICES,
+            "participation_item_type_choices": Participation.ITEM_TYPES,
+            "selected_status": selected_status,
+            "selected_item_type": selected_item_type,
+            "food_receiver_role": food_receiver_role,
+        },
+    )
+
+
+@login_required
+def notification_create(request):
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    user = request.user
+
+    # فقط کاربران مدیریتی اجازه دارند اعلان بسازند
+    management_roles = [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]
+    current_role = request.session.get("current_role")
+
+    if current_role not in management_roles:
+        messages.error(request, "شما اجازه ایجاد اعلان ندارید.")
+        return redirect("users:dashboard")
+
+    if request.method == "POST":
+
+        title = request.POST.get("title")
+        description = request.POST.get("description")
+        expires_at_str = request.POST.get("expires_at")
+        target_holdings_ids = request.POST.getlist("target_holdings")
+        target_factories_ids = request.POST.getlist("target_factories")
+        target_departments_ids = request.POST.getlist("target_departments")
+        target_subdepartments_ids = request.POST.getlist("target_subdepartments")
+        employee_subdepartments_ids = request.POST.getlist("employee_subdepartments")
+
+        expires_at = None
+        if expires_at_str:
+            try:
+                # فرمت ورودی: 1404/09/25
+                jy, jm, jd = map(int, expires_at_str.split("/"))
+                gregorian_date = jdatetime.date(jy, jm, jd).togregorian()
+                expires_at = datetime.combine(
+                    gregorian_date, datetime.min.time()
+                )  # ساعت 00:00
+                expires_at = timezone.make_aware(
+                    expires_at
+                )  # اگر تنظیمات USE_TZ=True داری
+            except Exception as e:
+                messages.error(request, "فرمت تاریخ انقضا نامعتبر است.")
+                return redirect("users:notification_create")
+
+        notification = Notification.objects.create(
+            title=title,
+            description=description,
+            created_by=request.user,  # مهم: کاربر فعلی که اعلان را می‌سازد
+            expires_at=expires_at,
+            is_active=True,  # می‌تونی دستی هم تنظیم کنی
+        )
+
+        if target_holdings_ids:
+            notification.target_holdings.set(target_holdings_ids)
+        if target_factories_ids:
+            notification.target_factories.set(target_factories_ids)
+        if target_departments_ids:
+            notification.target_departments.set(target_departments_ids)
+        if target_subdepartments_ids:
+            notification.target_subdepartments.set(target_subdepartments_ids)
+        if employee_subdepartments_ids:
+            notification.employee_subdepartments.set(employee_subdepartments_ids)
+
+        try:
+            notification.full_clean()  # این clean را با چک‌های ManyToMany اجرا می‌کنه
+        except ValidationError as e:
+            # اگر ارور داد، رکورد را delete کن و پیام خطا بده
+            notification.delete()
+            messages.error(request, f"خطا در اعتبارسنجی: {e}")
+            return redirect("notification_create")
+
+        notification.save()
+
+        messages.success(request, "اعلان با موفقیت ایجاد شد.")
+        return redirect("users:dashboard")
+
+    else:
+        can_choose_holdings = True
+        can_choose_factories = True
+        can_choose_departments = True
+        can_choose_subdepartments = True
+        can_choose_employee = True
+        holdings = None
+        factories = None
+        departments = None
+        subdepartments = None
+
+        if role_name in [
+            "holding_manager",
+            "factory_manager",
+            "department_manager",
+            "supervisor",
+        ]:
+            can_choose_holdings = False
+            holdings = Holding.objects.filter(id=holding_id).first()
+            if role_name in ["factory_manager", "department_manager", "supervisor"]:
+                can_choose_factories = False
+                factories = Factory.objects.filter(id=factory_id).first()
+                if role_name in ["department_manager", "supervisor"]:
+                    can_choose_departments = False
+                    departments = Department.objects.filter(id=department_id).first()
+                    if role_name in ["supervisor"]:
+                        can_choose_subdepartments = False
+                        subdepartments = Subdepartment.objects.filter(
+                            id=subdepartment_id
+                        ).first()
+                    else:
+                        subdepartments = Subdepartment.objects.filter(
+                            department=departments
+                        )
+                else:
+                    subdepartments = Subdepartment.objects.filter(
+                        department__factory=factories
+                    )
+                    departments = Department.objects.filter(factory=factories)
+            else:
+                subdepartments = Subdepartment.objects.filter(
+                    department__factory__holding=holdings
+                )
+                departments = Department.objects.filter(factory__holding=holdings)
+                factories = Factory.objects.filter(holding=holdings)
+        else:
+            subdepartments = Subdepartment.objects.all()
+            departments = Department.objects.all()
+            factories = Factory.objects.all()
+            holdings = Holding.objects.all()
+
+        # GET: نمایش فرم خالی
+        context = {
+            "roles": Role.objects.all(),
+            # 'holdings': [],
+            "current_role": current_role,
+            "can_choose_holdings": can_choose_holdings,
+            "can_choose_factories": can_choose_factories,
+            "can_choose_departments": can_choose_departments,
+            "can_choose_subdepartments": can_choose_subdepartments,
+            "can_choose_employee": can_choose_employee,
+            "holdings": holdings,
+            "factories": factories,
+            "departments": departments,
+            "subdepartments": subdepartments,
+        }
+
+        return render(request, "users/notification_create.html", context)
+
+
+@login_required
+def notifications_view(request):
+
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    user = request.user
+
+    notification_ids = []
+
+    if role_name in [
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+        "employee",
+    ]:
+
+        if role_name in [
+            "factory_manager",
+            "department_manager",
+            "supervisor",
+            "employee",
+        ]:
+
+            if role_name in ["department_manager", "supervisor", "employee"]:
+
+                if role_name in ["supervisor", "employee"]:
+
+                    if role_name in ["employee"]:
+                        notifications = Notification.objects.filter(
+                            Q(employee_subdepartments__id=subdepartment_id)
+                        ).distinct()
+                    else:
+                        notifications = Notification.objects.filter(
+                            Q(target_subdepartments__id=subdepartment_id)
+                        ).distinct()
+                else:
+                    notifications = Notification.objects.filter(
+                        Q(target_departments__id=subdepartment_id)
+                    ).distinct()
+            else:
+                notifications = Notification.objects.filter(
+                    Q(target_factories__id=subdepartment_id)
+                ).distinct()
+        else:
+            notifications = Notification.objects.filter(
+                Q(target_holdings__id=subdepartment_id)
+            ).distinct()
+    else:
+        # todo : super_admin
+        pass
+
+    print(notifications)
+
+    context = {
+        # # اعلانات نمونه برای تب "موجود"
+        # 'active_notifications': [
+        #     {
+        #         'id': 1,
+        #         'title': 'یادآوری ارزیابی عملکرد',
+        #         'message': 'مهلت ارزیابی ماهانه تا ۳ روز دیگر به پایان می‌رسد.',
+        #         'date': '۱۴۰۴/۰۹/۲۵',
+        #         'is_read': False,
+        #     },
+        #     {
+        #         'id': 2,
+        #         'title': 'رزرو غذا تأیید شد',
+        #         'message': 'رزرو غذای شما برای فردا با موفقیت ثبت شد.',
+        #         'date': '۱۴۰۴/۰۹/۲۴',
+        #         'is_read': True,
+        #     },
+        # ],
+        # # اعلانات نمونه برای تب "منقضی شده"
+        # 'expired_notifications': [
+        #     {
+        #         'id': 3,
+        #         'title': 'مهلت ارزیابی گذشته است',
+        #         'message': 'ارزیابی عملکرد ماه آبان به پایان رسیده و قابل ثبت نیست.',
+        #         'date': '۱۴۰۴/۰۹/۱۰',
+        #     },
+        #     {
+        #         'id': 4,
+        #         'title': 'تغییر شیفت (منقضی)',
+        #         'message': 'درخواست تغییر شیفت شما بررسی و رد شد.',
+        #         'date': '۱۴۰۴/۰۸/۱۵',
+        #     },
+        # ],
+        # # برای بج تعداد اعلان خوانده نشده (فعلاً ثابت)
+        # 'unread_notifications_count': 1,
+    }
+
+    return render(request, "users/notifications.html", context)
+
+
+@login_required
+def food_delivery_page(request):
+    user = request.user
+    today = date.today()
+
+    # دسترسی
+    if user.food_receiver_role == 0:
+        messages.error(request, "شما دسترسی دریافت غذا ندارید.")
+        return redirect("users:dashboard")
+
+    # لیست کارخانه‌ها بر اساس نقش
+    if user.food_receiver_role == 2:  # تحویل‌گیرنده هلدینگ
+        if not user.food_receiver_holding:
+            messages.error(request, "شما به هلدینگ خاصی وصل نیستید.")
+            return redirect("users:dashboard")
+        factories = Factory.objects.filter(holding=user.food_receiver_holding)
+    else:  # role == 1 -> تحویل گیرنده کارخانه
+        if not user.food_receiver_factory:
+            messages.error(request, "شما به کارخانه‌ای وصل نیستید.")
+            return redirect("users:dashboard")
+        factories = Factory.objects.filter(id=user.food_receiver_factory.id)
+
+    # گرفتن رزروهای امروز برای این کارخانه‌ها (که کنسل نشده و تحویل نشده)
+    reservations = (
+        FoodReservation.objects.filter(
+            reservation_date=today,
+            is_canceled=False,
+            # is_delivered=False,
+            related_factory__in=factories,
+        )
+        .select_related(
+            "employee",
+            "menu_item__food",
+            "menu_item__weekly_menu__restaurant__department__factory",
+            "related_factory",
+        )
+        .order_by(
+            "related_factory__id",
+            "menu_item__weekly_menu__restaurant__id",
+            "menu_item__food__name",
+        )
+    )
+
+    # ساختار داده: factories_map[factory] = { restaurant1: { food_id: {...} , ... }, restaurant2: {...} }
+    factories_map = {}
+    for fac in factories:
+        factories_map[fac] = {}
+
+    for r in reservations:
+        fac = r.related_factory
+        # استخراج رستوران واقعی از menu_item -> weekly_menu -> restaurant (Subdepartment)
+        rest = r.menu_item.weekly_menu.restaurant  # Subdepartment
+        food = r.menu_item.food
+        food_key = food.id
+
+        fac_entry = factories_map.setdefault(fac, {})
+        rest_entry = fac_entry.setdefault(rest, {})
+
+        # اگر غذای مشابه در همان رستوران وجود داشته باشه جمع می‌کنیم
+        if food_key not in rest_entry:
+            rest_entry[food_key] = {
+                "food": food,
+                "total": 0,
+                "quota": 0,
+                "extra": 0,
+                "guest": 0,
+                "reservations": [],
+            }
+
+        item = rest_entry[food_key]
+        item["total"] += (
+            (r.factory_quantity if r.factory_quantity != None else 0)
+            + (r.free_quantity if r.free_quantity != None else 0)
+            + (r.guest_quantity if r.guest_quantity != None else 0)
+        )
+        if r.factory_quantity and r.factory_quantity != 0:
+            item["quota"] += r.factory_quantity
+        if r.free_quantity and r.free_quantity != 0:
+            item["extra"] += r.free_quantity
+        if r.guest_quantity and r.guest_quantity != 0:
+            item["guest"] += r.guest_quantity
+
+        item["reservations"].append(r)
+
+    # --- پردازش POST برای تأیید تحویل ---
+    if request.method == "POST":
+
+        reservation_id = request.POST.get("deliver_reservation")
+        print(reservation_id)
+
+        reserved_food = FoodReservation.objects.filter(id=reservation_id).first()
+
+        if reserved_food:
+            # تغییر وضعیت به تحویل شده
+            reserved_food.is_delivered = True
+
+            print(reserved_food)
+            # ذخیره تغییرات در دیتابیس
+            reserved_food.save()
+
+            return JsonResponse({"success": True, "message": "تحویل با موفقیت ثبت شد"})
+
+        # حالت 1: تحویل تکی توسط res_id
+        # res_id = request.POST.get("res_id")
+        # if res_id:
+        #     try:
+        #         res = FoodReservation.objects.get(
+        #             pk=res_id, reservation_date=today, is_delivered=False
+        #         )
+        #         res.is_delivered = True
+        #         res.save(update_fields=["is_delivered"])
+        #         messages.success(
+        #             request, "رزرو با موفقیت به عنوان تحویل‌شده علامت‌گذاری شد."
+        #         )
+        #     except FoodReservation.DoesNotExist:
+        #         messages.error(request, "رزروی معتبر یافت نشد یا قبلاً تحویل شده است.")
+        #     return redirect("users:food_delivery_page")
+
+        # # حالت 2: تحویل همه رزروهای یک غذا در یک رستوران (deliver_food_in_restaurant)
+        # deliver_food = request.POST.get(
+        #     "deliver_food"
+        # )  # مقدار: "{factory_id}:{restaurant_id}:{food_id}"
+        # if deliver_food:
+        #     try:
+        #         fac_id, rest_id, food_id = deliver_food.split(":")
+        #         qs = FoodReservation.objects.filter(
+        #             reservation_date=today,
+        #             is_canceled=False,
+        #             is_delivered=False,
+        #             related_factory_id=int(fac_id),
+        #             menu_item__weekly_menu__restaurant_id=int(rest_id),
+        #             menu_item__food_id=int(food_id),
+        #         )
+        #         updated = qs.update(is_delivered=True)
+        #         if updated:
+        #             messages.success(
+        #                 request, f"{updated} رزرو برای این غذا در این رستوران تحویل شد."
+        #             )
+        #         else:
+        #             messages.warning(request, "هیچ رزروی برای تحویل یافت نشد.")
+        #     except Exception as e:
+        #         messages.error(request, f"خطا در پردازش درخواست: {e}")
+        #     return redirect("users:food_delivery_page")
+
+    can_serve_foods = user.can_serve_foods
+    context = {
+        "factories_map": factories_map,
+        "today": today,
+        "role": user.food_receiver_role,
+        "can_serve_foods": can_serve_foods,
+    }
+    return render(request, "users/food_delivery_page.html", context)
+
+
+@login_required
+def user_profile(request, user_id):
+    user = get_object_or_404(Employee, pk=user_id)
+    if request.user.role.name != "super_admin" and request.user != user:
+        raise PermissionDenied("شما اجازه مشاهده این پروفایل را ندارید.")
+    participations = Participation.objects.filter(user=user).order_by("-created_at")
+    return render(
+        request,
+        "users/user_profile.html",
+        {"user": user, "participations": participations},
+    )
+
+
+@login_required
+def register_user(request):
+    if request.user.role.name != "super_admin":
+        raise PermissionDenied("شما اجازه ثبت کاربر جدید را ندارید.")
+    if request.method == "POST":
+        form = ParticipationForm(request.POST, request.FILES)
+        if form.is_valid():
+            participation = form.save(commit=False)
+            participation.user = request.user
+            participation.save()
+            messages.success(request, "مشارکت با موفقیت ثبت شد.")
+            return redirect("users:dashboard")
+    else:
+        form = ParticipationForm()
+    return render(request, "users/register_user.html", {"form": form})
+
+
+@login_required
+def management_dashboard(request):
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    management_tree = request.session.get("management_tree", [])
+    management_roles = [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]
+    is_committee = request.session["current_is_committee"]
+    real_role = request.session["current_real_role"]
+
+    user = request.user
+
+    has_management_access = role_name in management_roles
+    can_access_evaluation_panel = role_name in ["super_admin", "department_manager"]
+
+    # print(role_name, holding_id, factory_id, department_id, subdepartment_id, is_committee)
+
+    if role_name not in [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]:
+        raise PermissionDenied("شما مجاز به دسترسی به این بخش نیستید.")
+
+    form = ManagementFilterForm(request.GET or None)
+
+    # فیلتر اولیه بر اساس نقش فعلی (از سشن)
+    all_participations = Participation.objects.none()
+    all_employees = Employee.objects.none()
+
+    if role_name == "super_admin":
+        all_participations = Participation.objects.filter().order_by("-created_at")
+        all_employees = Employee.objects.all()
+    elif role_name == "holding_manager":
+        all_participations = Participation.objects.filter(
+            holding_id=holding_id
+        ).order_by("-created_at")
+        all_employees = Employee.objects.filter(
+            assigned_subdepartments__department__factory__holding_id=holding_id
+        ).distinct()
+    elif role_name == "factory_manager":
+        if is_committee:
+            all_participations = Participation.objects.filter(
+                Q(factory_committee_id=factory_id, is_committee=is_committee)
+                | Q(factory_committee_id=factory_id, is_committee=is_committee)
+            ).order_by("-created_at")
+        else:
+            all_participations = Participation.objects.filter(
+                factory_id=factory_id, is_committee=is_committee
+            ).order_by("-created_at")
+            all_employees = Employee.objects.filter(
+                assigned_subdepartments__department__factory_id=factory_id
+            ).distinct()
+    elif role_name == "department_manager":
+        if is_committee:
+            all_participations = Participation.objects.filter(
+                department_committee_id=department_id, is_committee=is_committee
+            ).order_by("-created_at")
+        else:
+            all_participations = Participation.objects.filter(
+                department_id=department_id, is_committee=is_committee
+            ).order_by("-created_at")
+            all_employees = Employee.objects.filter(
+                assigned_subdepartments__department_id=department_id
+            ).distinct()
+    elif role_name == "supervisor":
+        if is_committee:
+            all_participations = Participation.objects.filter(
+                subdepartment_committee_id=subdepartment_id, is_committee=is_committee
+            ).order_by("-created_at")
+        else:
+            all_participations = Participation.objects.filter(
+                subdepartment_id=subdepartment_id, is_committee=is_committee
+            ).order_by("-created_at")
+            all_employees = Employee.objects.filter(
+                assigned_subdepartments__id=subdepartment_id
+            ).distinct()
+
+    can_choose_subdepartment = False
+    can_choose_department = False
+    can_choose_factory = False
+    can_choose_holding = False
+
+    if role_name in [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+    ]:
+        can_choose_subdepartment = True
+        if role_name in ["super_admin", "holding_manager", "factory_manager"]:
+            can_choose_department = True
+            if role_name in ["super_admin", "holding_manager"]:
+                can_choose_factory = True
+                if role_name in ["super_admin"]:
+                    can_choose_holding = True
+
+    selected_holding_id = request.GET.get("holding", "").strip() or None
+    selected_factory_id = request.GET.get("factory", "").strip() or None
+    selected_department_id = request.GET.get("department", "").strip() or None
+    selected_subdepartment_id = request.GET.get("subdepartment", "").strip() or None
+    selected_status = request.GET.get("status", "").strip() or None
+    selected_item_type = request.GET.get("item_type", "").strip() or None
+    selected_is_committee = request.GET.get("is_committee", "").strip() or None
+
+    # منطق تعیین مقدار selected بر اساس دسترسی
+    # اعمال خودکار مقادیر سشن وقتی کاربر اجازه انتخاب نداره
+    if not can_choose_holding and holding_id:
+        selected_holding_id = holding_id
+
+    if not can_choose_factory and factory_id:
+        selected_factory_id = factory_id
+
+    if not can_choose_department and department_id:
+        selected_department_id = department_id
+
+    if not can_choose_subdepartment and subdepartment_id:
+        selected_subdepartment_id = subdepartment_id
+
+    # حالا اگر کاربر "همه" انتخاب کرد (یعنی خالی ارسال کرد)، None در نظر بگیر
+    if selected_holding_id == "":
+        selected_holding_id = None
+    if selected_factory_id == "":
+        selected_factory_id = None
+    if selected_department_id == "":
+        selected_department_id = None
+    if selected_subdepartment_id == "":
+        selected_subdepartment_id = None
+
+    # حالا کوئری مشارکت‌ها بر اساس این فیلترها
+    # participations = Participation.objects.all().order_by('-created_at')
+    participations = all_participations
+
+    if selected_holding_id:
+        participations = participations.filter(holding_id=selected_holding_id)
+    if selected_factory_id:
+        participations = participations.filter(factory_id=selected_factory_id)
+    if selected_department_id:
+        participations = participations.filter(department_id=selected_department_id)
+    if selected_subdepartment_id:
+        participations = participations.filter(
+            subdepartment_id=selected_subdepartment_id
+        )
+
+    if selected_status:
+        participations = participations.filter(status=selected_status)
+    if selected_item_type:
+        participations = participations.filter(item_type=selected_item_type)
+    if selected_is_committee:
+        participations = participations.filter(is_committee=selected_is_committee)
+
+    # participations = participations[:PARTICIPATIONS_PER_LOAD]
+
+    holdings = Holding.objects.values("id", "name")
+    factories = Factory.objects.values("id", "name", "holding_id")
+    departments = Department.objects.values("id", "name", "factory_id")
+    subdepartments = Subdepartment.objects.values("id", "name", "department_id")
+
+    total_count = participations.count()  # شمارش کل QuerySet اصلی
+
+    # فقط 50 تای اول را برای بارگذاری اولیه انتخاب می کنیم
+
+    remaining_count = total_count - len(participations)
+
+    participation_counts = {
+        item_type[0]: participations.filter(item_type=item_type[0]).count()
+        for item_type in Participation.ITEM_TYPES
+    }
+    # participation_display = [
+    #     {'display': label, 'count': participation_counts.get(key, 0), 'audio_count': 0}
+    #     for key, label in Participation.ITEM_TYPES
+    # ]
+
+    audio_count = all_participations.filter(is_audio=True).count()
+    other_count = all_participations.filter(is_audio=False).count()
+
+    participation_display = [
+        {
+            "display": label,
+            "count": participation_counts.get(key, 0),
+            "audio_count": all_participations.filter(
+                item_type=key, is_audio=True
+            ).count(),
+        }
+        for key, label in Participation.ITEM_TYPES
+    ]
+
+    # 🌟 جدید: محاسبات مشارکت امروز و هزینه‌ها
+
+    tehran_aware_datetime = timezone.localtime(timezone.now())
+    today = tehran_aware_datetime.date()
+    start_of_day = timezone.make_aware(datetime.combine(today, time.min))
+    end_of_day = timezone.make_aware(datetime.combine(today, time.max))
+
+    today_participations = participations.filter(
+        created_at__gte=start_of_day, created_at__lte=end_of_day
+    )
+
+    # today_participations = all_participations.filter(created_at__date=today)
+    today_count = today_participations.count()
+    # ۱. میزان اضافه کاری مشارکت کل
+    total_overtime_cost = total_count * BASE_COST_PER_PARTICIPATION
+    # ۳. میزان اضافه کاری مشارکت امروز
+    today_overtime_cost = today_count * BASE_COST_PER_PARTICIPATION
+
+    participation_counts = {
+        item_type[0]: participations.filter(item_type=item_type[0]).count()
+        for item_type in Participation.ITEM_TYPES
+    }
+    # audio_count = participations.filter(item_type='performance_file').count()
+    # other_count = participations.exclude(item_type='performance_file').count()
+
+    chart_data = (
+        json.dumps(list(participation_counts.values()))
+        if participation_counts
+        else json.dumps([0, 0, 0, 0, 0])
+    )
+
+    total_users = all_employees.count()
+    total_evaluations = Evaluation.objects.filter(user__in=all_employees).count()
+
+    # داده‌های نمودار
+    labels = [label for _, label in Participation.ITEM_TYPES]
+    data = list(participation_counts.values())
+
+    has_more = remaining_count > 0
+    reviewers = [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]
+
+    if request.method == "POST" and request.POST.get("action") == "export_excel":
+        data_columns = [
+            (
+                "کارمند",
+                [p.user.full_name if p.user else "نامشخص" for p in participations],
+            ),
+            ("عنوان مشارکت", [p.title or "" for p in participations]),
+            ("نوع مشارکت", [p.get_item_type_display() for p in participations]),
+            (
+                "تاریخ ثبت",
+                [p.created_at for p in participations],
+            ),  # خود تاریخ → تابع تبدیل می‌کنه
+            ("وضعیت", [p.get_status_display() for p in participations]),
+        ]
+
+        return export_to_excel(
+            columns=data_columns,
+            filename=f"گزارش_مشارکت‌ها_{jdatetime.datetime.now().strftime('%Y%m%d')}",
+            report_title="گزارش جامع مشارکت‌های سیستم",
+        )
+
+    participations = participations[:PARTICIPATIONS_PER_LOAD]
+
+    # user_is_self_manager = Department.objects.filter(
+    #     manager=request.user,
+    #     is_self=True
+    # ).exists()
+
+    user_is_self_manager = False
+    if (
+        Department.objects.filter(id=department_id, is_self=True, manager=request.user)
+        and role_name == "department_manager"
+    ):
+        user_is_self_manager = True
+
+    user_is_restaurant = False
+    if (
+        Subdepartment.objects.filter(
+            id=subdepartment_id, is_restaurant=True, supervisor=request.user
+        )
+        and role_name == "supervisor"
+    ):
+        user_is_restaurant = True
+
+    can_import_excel = role_name == "super_admin"
+
+    can_manage_bimeh = role_name in [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "departmant_manager",
+    ]
+
+    return render(
+        request,
+        "users/dashboard_management.html",
+        {
+            "form": form,
+            "participations": participations,  # فقط 50 تای اول
+            "remaining_count": remaining_count,  # تعداد باقی مانده
+            "has_more": has_more,  # آیا موارد بیشتری برای بارگذاری وجود دارد؟
+            "employees": all_employees,  # فهرست کارمندان نیازی به بارگذاری تنبل ندارد
+            "user": user,
+            "participation_display": participation_display,
+            "audio_count": audio_count,
+            "other_count": other_count,
+            "chart_data": chart_data,
+            "total_participations": total_count,
+            "total_users": total_users,
+            "total_evaluations": total_evaluations,
+            "labels": json.dumps(labels),
+            "data": json.dumps(data),
+            "management": True,
+            "reviewers": reviewers,
+            "can_access_evaluation_panel": can_access_evaluation_panel,
+            "base_cost": BASE_COST_PER_PARTICIPATION,
+            "total_overtime_cost": total_overtime_cost,
+            "today_count": today_count,  # ۲. تعداد مشارکت های امروز
+            "today_overtime_cost": today_overtime_cost,
+            "total_count": total_count,
+            "role_name": role_name,
+            "holding_id": holding_id,
+            "factory_id": factory_id,
+            "department_id": department_id,
+            "subdepartment_id": subdepartment_id,
+            "can_choose_holding": can_choose_holding,
+            "can_choose_factory": can_choose_factory,
+            "can_choose_department": can_choose_department,
+            "can_choose_subdepartment": can_choose_subdepartment,
+            # مقادیر انتخاب شده نهایی (برای فرم و کوئری)
+            "selected_holding_id": selected_holding_id or "",
+            "selected_factory_id": selected_factory_id or "",
+            "selected_department_id": selected_department_id or "",
+            "selected_subdepartment_id": selected_subdepartment_id or "",
+            "holdings": Holding.objects.all(),
+            "holdings_json": json.dumps(list(holdings), cls=DjangoJSONEncoder),
+            "factories_json": json.dumps(list(factories), cls=DjangoJSONEncoder),
+            "departments_json": json.dumps(list(departments), cls=DjangoJSONEncoder),
+            "subdepartments_json": json.dumps(
+                list(subdepartments), cls=DjangoJSONEncoder
+            ),
+            "participation_status_choices": Participation.STATUS_CHOICES,
+            "participation_item_type_choices": Participation.ITEM_TYPES,
+            "selected_status": selected_status,
+            "selected_item_type": selected_item_type,
+            "user_is_self_manager": user_is_self_manager,
+            "user_is_restaurant": user_is_restaurant,
+            "can_import_excel": can_import_excel,
+            "can_manage_bimeh": can_manage_bimeh,
+        },
+    )
+
+
+def search_employees(request):
+    q = request.GET.get("q", "").strip()
+    print(q)
+    if len(q) < 2:
+        return JsonResponse([], safe=False)
+
+    employees = Employee.objects.filter(is_active=True).filter(
+        Q(first_name__icontains=q)
+        | Q(national_id__icontains=q)
+        | Q(personnel_code__icontains=q)
+    )[
+        :20
+    ]  # حداکثر 20 نتیجه
+
+    results = []
+    for emp in employees:
+        results.append(
+            {
+                "id": emp.id,
+                "text": emp.full_name,
+                "national_id": emp.national_id,
+                "personnel_code": emp.personnel_code or "ندارد",
+            }
+        )
+
+    return JsonResponse(results, safe=False)
+
+
+@login_required
+def manage_self_menu(request):
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    management_tree = request.session.get("management_tree", [])
+    management_roles = [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]
+    is_committee = request.session["current_is_committee"]
+    real_role = request.session["current_real_role"]
+
+    user = request.user
+
+    has_management_access = role_name in management_roles
+    can_access_evaluation_panel = role_name in ["super_admin", "department_manager"]
+
+    # دسترسی فقط برای مدیر سلف
+    if not Department.objects.filter(manager=request.user, is_self=True).exists():
+        messages.error(request, "شما دسترسی به مدیریت منوی سلف ندارید.")
+        return redirect("users:management_dashboard")
+
+    # رستوران‌ها
+    restaurants = Subdepartment.objects.filter(
+        department__manager=request.user,
+        department_id=department_id,
+        department__is_self=True,
+        is_restaurant=True,
+    ).select_related("department__factory")
+
+    today_gdate = date.today()
+    today_jdate = jdatetime.date.today()
+
+    days_until_this_saturday = today_jdate.weekday()
+    this_saturday_gdate = (
+        today_jdate - timedelta(days=days_until_this_saturday)
+    ).togregorian()
+    save_week_start_gdate = this_saturday_gdate + timedelta(days=7)  # همیشه هفته آینده
+    save_week_start_persian = jdatetime.date.fromgregorian(
+        date=save_week_start_gdate
+    ).strftime("%Y/%m/%d")
+
+    # 2. پیدا کردن آخرین منوی موجود برای نمایش (حتی اگر مال هفته‌های قبل باشه)
+    latest_menu_any = (
+        WeeklyMenu.objects.filter(restaurant__in=restaurants)
+        .order_by("-week_start_date")
+        .first()
+    )
+
+    if latest_menu_any:
+        display_week_start_gdate = latest_menu_any.week_start_date
+    else:
+        # اگر هیچ منویی وجود نداشت، هفته آینده رو نشون بده
+        display_week_start_gdate = save_week_start_gdate
+
+    display_week_start_persian = jdatetime.date.fromgregorian(
+        date=display_week_start_gdate
+    ).strftime("%Y/%m/%d")
+
+    # متغیرهایی که به تمپلیت و ذخیره می‌فرستیم
+    week_start_for_save = save_week_start_gdate
+    week_start_for_display = display_week_start_gdate
+    week_start_persian = display_week_start_persian
+
+    # همه غذاها
+    all_foods = FoodItem.objects.filter(is_active=True).order_by("name")
+
+    # روزهای هفته
+    days = [
+        ("shanbe", "شنبه"),
+        ("1shanbe", "یکشنبه"),
+        ("2shanbe", "دوشنبه"),
+        ("3shanbe", "سه‌شنبه"),
+        ("4shanbe", "چهارشنبه"),
+        ("5shanbe", "پنج‌شنبه"),
+        ("jome", "جمعه"),
+    ]
+
+    # آماده‌سازی داده برای تمپلیت
+    restaurant_data = []
+    for restaurant in restaurants:
+        menu = restaurant.weekly_menus.filter(
+            week_start_date=display_week_start_gdate
+        ).first()
+
+        selected_foods_status = {}
+        if menu:
+            for item in menu.items.all():
+                day = item.day_persian
+                food_id = item.food.id
+
+                key = f"{food_id}:{day}"
+
+                # مقداردهی کلید ترکیبی
+                selected_foods_status[key] = True  # فقط وجود کلید مهم است
+        restaurant_data.append(
+            {
+                "restaurant": restaurant,
+                # 'selected_foods': selected_foods,
+                "selected_items": selected_foods_status,
+            }
+        )
+
+    context = {
+        "restaurant_data": restaurant_data,
+        "all_foods": all_foods,
+        "days": days,
+        "week_start_persian": display_week_start_persian,
+        "no_restaurant": not restaurants.exists(),
+        "save_week_start_persian": save_week_start_persian,
+    }
+
+    if request.GET.get("export") == "full":
+        start_date = request.GET.get("start_date")
+        end_date = request.GET.get("end_date")
+
+        # print(f"{}")
+
+        jalali_str = start_date.replace("-", "/").strip()
+        y, m, d = map(int, jalali_str.split("/"))
+        strt_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
+
+        jalali_str = end_date.replace("-", "/").strip()
+        y, m, d = map(int, jalali_str.split("/"))
+        end_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
+
+        employees = Employee.objects.filter(is_active=True)
+
+        # لیست داده‌ها برای اکسل
+        rows_full_name = []
+        rows_national_id = []
+        rows_personnel_code = []
+        rows_phone = []
+        rows_total_debt_raw = []  # عدد خام
+        rows_total_debt_formatted = []  # با کاما و ریال
+
+        rows_total_factory_qty = []
+        rows_total_free_qty = []
+        rows_total_guest_qty = []
+
+        for emp in employees:
+            total_debt = (
+                FoodReservation.objects.filter(
+                    employee=emp,
+                    related_factory_id=factory_id,
+                    reservation_date__gte=strt_gregorian_date,
+                    reservation_date__lte=end_gregorian_date,
+                ).aggregate(total=Sum("total_price"))["total"]
+                or 0
+            )
+
+            factory_quantity = (
+                FoodReservation.objects.filter(
+                    employee=emp,
+                    related_factory_id=factory_id,
+                    reservation_date__gte=strt_gregorian_date,
+                    reservation_date__lte=end_gregorian_date,
+                ).aggregate(total=Sum("factory_quantity"))["total"]
+                or 0
+            )
+
+            free_quantity = (
+                FoodReservation.objects.filter(
+                    employee=emp,
+                    related_factory_id=factory_id,
+                    reservation_date__gte=strt_gregorian_date,
+                    reservation_date__lte=end_gregorian_date,
+                ).aggregate(total=Sum("free_quantity"))["total"]
+                or 0
+            )
+
+            guest_quantity = (
+                FoodReservation.objects.filter(
+                    employee=emp,
+                    related_factory_id=factory_id,
+                    reservation_date__gte=strt_gregorian_date,
+                    reservation_date__lte=end_gregorian_date,
+                ).aggregate(total=Sum("guest_quantity"))["total"]
+                or 0
+            )
+
+            if (
+                total_debt == 0
+                and factory_quantity == 0
+                and free_quantity == 0
+                and guest_quantity == 0
+            ):
+                continue
+
+            rows_full_name.append(emp.full_name or "نامشخص")
+            rows_national_id.append(emp.national_id)
+            rows_personnel_code.append(emp.personnel_code or "-")
+            rows_phone.append(emp.phone_number or "-")
+            rows_total_debt_raw.append(total_debt)
+
+            rows_total_factory_qty.append(factory_quantity)
+            rows_total_free_qty.append(free_quantity)
+            rows_total_guest_qty.append(guest_quantity)
+
+            rows_total_debt_formatted.append(
+                f"{total_debt:,} ریال" if total_debt > 0 else "بدون بدهی"
+            )
+
+        # مرتب‌سازی بر اساس مبلغ بدهی (نزولی)
+
+        try:
+            combined = list(
+                zip(
+                    rows_full_name,
+                    rows_national_id,
+                    rows_personnel_code,
+                    rows_phone,
+                    rows_total_debt_raw,
+                    rows_total_factory_qty,
+                    rows_total_free_qty,
+                    rows_total_guest_qty,
+                    rows_total_debt_formatted,
+                )
+            )
+
+            combined.sort(key=lambda x: x[4], reverse=True)  # بر اساس total_debt_raw
+
+            # جدا کردن دوباره بعد از سورت
+            (
+                rows_full_name,
+                rows_national_id,
+                rows_personnel_code,
+                rows_phone,
+                _,
+                rows_total_factory_qty,
+                rows_total_free_qty,
+                rows_total_guest_qty,
+                rows_total_debt_formatted,
+            ) = zip(*combined)
+
+            # ستون‌های نهایی
+            data_columns = [
+                ("نام و نام خانوادگی", list(rows_full_name)),
+                ("کد ملی", list(rows_national_id)),
+                ("کد پرسنلی", list(rows_personnel_code)),
+                ("شماره تماس", list(rows_phone)),
+                ("تعداد سفارشات سهمیه ای", rows_total_factory_qty),
+                ("تعداد سفارشات آزاد", rows_total_free_qty),
+                ("تعداد سفارشات مهمان", rows_total_guest_qty),
+                ("مبلغ بدهی", list(rows_total_debt_formatted)),
+            ]
+
+            # نام فایل و عنوان گزارش
+            today_jalali = jdatetime.date.today().strftime("%Y/%m/%d")
+            filename = f"Bedehi_Kol_Self_{today_jalali.replace('/', '-')}"
+            report_title = f"گزارش کامل بدهی پرسنل به سلف - تولید شده در {today_jalali}"
+
+            return export_to_excel(
+                columns=data_columns, filename=filename, report_title=report_title
+            )
+        except:
+            messages.error(request, "در این بازه زمانی اطلاعاتی در دسترس نیست!!!")
+            return redirect("users:manage_self_menu")
+
+    elif request.GET.get("export") == "single" and request.GET.get("employee_id"):
+        start_date = request.GET.get("start_date")
+        end_date = request.GET.get("end_date")
+
+        # print(f"{}")
+
+        jalali_str = start_date.replace("-", "/").strip()
+        y, m, d = map(int, jalali_str.split("/"))
+        strt_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
+
+        jalali_str = end_date.replace("-", "/").strip()
+        y, m, d = map(int, jalali_str.split("/"))
+        end_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
+
+        employee_id = request.GET.get("employee_id")
+        try:
+            employee = Employee.objects.get(id=employee_id)
+        except Employee.DoesNotExist:
+            messages.error(request, "کارمند یافت نشد.")
+            return redirect(request.path)
+
+        # گرفتن تمام رزروهای تحویل‌شده و لغو نشده
+        reservations = (
+            FoodReservation.objects.filter(
+                employee=employee,
+                reservation_date__gte=strt_gregorian_date,
+                reservation_date__lte=end_gregorian_date,
+            )
+            .select_related("menu_item__food", "menu_item__weekly_menu__restaurant")
+            .order_by("-reservation_date")
+        )
+
+        # ساخت داده‌های اکسل
+        col_names = [
+            "تاریخ رزرو",
+            "روز هفته",
+            "رستوران",
+            "غذا",
+            "تعداد کارخانه",
+            "تعداد آزاد",
+            "تعداد مهمان",
+            "هزینه کل سفارش (ریال)",
+        ]
+
+        rows_date = []
+        rows_day = []
+        rows_restaurant = []
+        rows_food = []
+        rows_factory_qty = []
+        rows_free_qty = []
+        rows_guest_qty = []
+        rows_total_price = []
+
+        total_debt = 0
+
+        for res in reservations:
+            jalali_date = jdatetime.date.fromgregorian(date=res.reservation_date)
+            day_name = jalali_date.strftime("%A")  # شنبه، یکشنبه و...
+
+            rows_date.append(jalali_date.strftime("%Y/%m/%d"))
+            rows_day.append(day_name)
+            rows_restaurant.append(res.menu_item.weekly_menu.restaurant.name)
+            rows_food.append(res.menu_item.food.name)
+            rows_factory_qty.append(res.factory_quantity)
+            rows_free_qty.append(res.free_quantity)
+            rows_guest_qty.append(res.guest_quantity)
+            rows_total_price.append(res.total_price)
+
+            total_debt += res.total_price
+
+        # ستون‌ها
+        data_columns = [
+            ("تاریخ رزرو", rows_date),
+            ("روز هفته", rows_day),
+            ("رستوران", rows_restaurant),
+            ("غذا", rows_food),
+            ("تعداد سهمیه", rows_factory_qty),
+            ("تعداد آزاد", rows_free_qty),
+            ("تعداد مهمان", rows_guest_qty),
+            ("هزینه کل سفارش (ریال)", rows_total_price),
+        ]
+
+        today = jdatetime.date.today().strftime("%Y-%m-%d")
+        filename = f"Bedehi_{employee.full_name.replace(' ', '_')}_{today}"
+        report_title = f"گزارش کامل رزروهای غذا - {employee.full_name} (کد ملی: {employee.national_id}) - مجموع بدهی: {total_debt:,} ریال"
+
+        return export_to_excel(
+            columns=data_columns, filename=filename, report_title=report_title
+        )
+
+    # ==================== POST ====================
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        # حالت اول: ثبت غذای جدید
+        if request.POST.get("add_food") or action == "add_food":
+            name = request.POST.get("food_name", "").strip()
+            price_raw = request.POST.get("food_price", "")
+            free_price_row = request.POST.get("food_free_price", "")
+
+            if not name:
+                messages.error(request, "نام غذا نمی‌تواند خالی باشد.")
+            elif not price_raw.isdigit():
+                messages.error(request, "قیمت کارخانه را مشخص نکرده اید.")
+            elif not free_price_row.isdigit():
+                messages.error(request, "قیمت آزاد را مشخص نکرده اید.")
+            else:
+                price = int(price_raw)
+                free_price = int(free_price_row)
+                food, created = FoodItem.objects.update_or_create(
+                    name__iexact=name,
+                    defaults={
+                        "name": name,
+                        "factory_price": price,
+                        "is_active": True,
+                        "free_price": free_price,
+                    },
+                )
+                verb = "اضافه" if created else "به‌روزرسانی"
+                messages.success(request, f"غذا «{name}» با موفقیت {verb} شد.")
+
+            return redirect("users:manage_self_menu")
+
+        # حالت دوم: ذخیره منوی هفتگی
+        elif action == "save_menu":
+            saved = 0
+            for restaurant in restaurants:
+                menu, _ = WeeklyMenu.objects.get_or_create(
+                    restaurant=restaurant,
+                    week_start_date=week_start_for_save,
+                    defaults={"is_active": True},
+                )
+                menu.items.all().delete()
+
+                for food in all_foods:
+                    for day_code, _ in days:
+                        key = f"food_{restaurant.id}_{food.id}_{day_code}"
+                        if request.POST.get(key):
+                            MenuItem.objects.create(
+                                weekly_menu=menu, food=food, day_persian=day_code
+                            )
+                            saved += 1
+
+            messages.success(request, f"منوی هفتگی با موفقیت ذخیره شد ({saved} مورد)")
+            return redirect("users:manage_self_menu")
+
+        else:
+            messages.error(request, "عملیات نامشخص بود.")
+            return redirect("users:manage_self_menu")
+
+    # ==================== GET ====================
+    return render(request, "users/manage_self_menu.html", context)
+
+
+@login_required
+def restaurant_management_dashboard(request):
+    # 1. دریافت اطلاعات نقش و جایگاه فعلی از سشن
+    role_name = request.session.get("current_role")
+    subdepartment_id = request.session.get("current_subdepartment_id")
+
+    # 2. بررسی دسترسی
+    if role_name != "supervisor" or not subdepartment_id:
+        messages.error(request, "شما دسترسی به داشبورد مدیریت رستوران را ندارید.")
+        return redirect("users:dashboard")
+
+    restaurant = get_object_or_404(Subdepartment, id=subdepartment_id)
+
+    if not restaurant.is_restaurant:
+        messages.error(request, "زیربخش فعلی شما به عنوان رستوران تعریف نشده است.")
+        return redirect("users:dashboard")
+
+    today_gdate = date.today()
+    today_jdate = jdatetime.date.today()
+    days_until_saturday = today_jdate.weekday()
+    week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
+    current_week_start = week_start_jdate.togregorian()
+
+    week_end_jdate = week_start_jdate + timedelta(days=6)
+    current_week_end = week_end_jdate.togregorian()
+
+    # current_week_start = today_gdate - timedelta(days=(today_gdate.weekday() + 1) % 7)
+
+    # print(week_start_date)
+
+    # 3. پیدا کردن آخرین منوی هفتگی فعال
+    latest_menu = (
+        WeeklyMenu.objects.filter(
+            restaurant=restaurant, week_start_date__lte=today_gdate
+        )
+        .order_by("-week_start_date")
+        .first()
+    )
+
+    menu_start_date = current_week_start
+
+    weekly_report_data = []
+    latest_menu_info = "هیچ منوی فعالی یافت نشد."
+
+    if latest_menu:
+        latest_menu_info = f"اخرین تاریخ تغییر منو {jdatetime.date.fromgregorian(date=latest_menu.week_start_date).strftime('%Y/%m/%d')}"
+
+        # لیست کدهای روزهای هفته (برای دیتابیس)
+        week_days_codes = [
+            "shanbe",
+            "1shanbe",
+            "2shanbe",
+            "3shanbe",
+            "4shanbe",
+            "5shanbe",
+            "jome",
+        ]
+
+        # 🌟 لیست نام‌های فارسی روزهای هفته (برای نمایش) 🌟
+        persian_day_names = [
+            "شنبه",
+            "یکشنبه",
+            "دوشنبه",
+            "سه‌شنبه",
+            "چهارشنبه",
+            "پنج‌شنبه",
+            "جمعه",
+        ]
+
+        # تاریخ شروع منو (که همیشه شنبه است)
+        # menu_start_date = latest_menu.week_start_date
+        menu_items = MenuItem.objects.filter(weekly_menu=latest_menu).select_related(
+            "food"
+        )
+
+        # 4. حلقه روی تمام 7 روز هفته (بدون توجه به اینکه گذشته یا آینده است)
+        for i, day_code in enumerate(week_days_codes):
+
+            print(day_code)
+            current_day_date = menu_start_date + timedelta(days=i)
+
+            # تبدیل به تاریخ شمسی
+            j_date = jdatetime.date.fromgregorian(date=current_day_date)
+
+            # 🌟 اصلاح شده: استفاده از لیست فارسی بجای %A 🌟
+            jdate_str = f"{persian_day_names[i]} {j_date.strftime('%Y/%m/%d')}"
+
+            day_menu_items = menu_items.filter(day_persian=day_code)
+
+            foods_data = []
+            if day_menu_items.exists():
+                for item in day_menu_items:
+                    reservations = FoodReservation.objects.filter(
+                        menu_item=item,
+                        reservation_date=current_day_date,
+                        is_canceled=False,
+                    )
+
+                    factory_quantity = (
+                        reservations.aggregate(total=Sum("factory_quantity"))["total"]
+                        or 0
+                    )
+                    free_quantity = (
+                        reservations.aggregate(total=Sum("free_quantity"))["total"] or 0
+                    )
+                    guest_quantity = (
+                        reservations.aggregate(total=Sum("guest_quantity"))["total"]
+                        or 0
+                    )
+                    total_count = factory_quantity + free_quantity + guest_quantity
+
+                    foods_data.append(
+                        {
+                            "food_name": item.food.name,
+                            "quota_count": factory_quantity,
+                            "extra_count": free_quantity,
+                            "guest_count": guest_quantity,
+                            "total_count": total_count,
+                        }
+                    )
+
+            weekly_report_data.append(
+                {
+                    "date_obj": current_day_date,
+                    "jdate_str": jdate_str,
+                    "jdate_only": j_date.strftime("%Y/%m/%d"),
+                    "is_today": current_day_date == today_gdate,
+                    "foods": foods_data,
+                }
+            )
+
+    export_date_str = request.GET.get("export_date") or request.GET.get(
+        "date"
+    )  # هر دو رو قبول کن
+
+    if export_date_str:
+        try:
+            jy, jm, jd = map(int, export_date_str.split("/"))
+            export_gdate = jdatetime.date(jy, jm, jd).togregorian()
+            # فیلتر فقط اون روز
+            weekly_report_data = [
+                day for day in weekly_report_data if day["date_obj"] == export_gdate
+            ]
+        except:
+            pass  # اگر تاریخ اشتباه بود، کل هفته رو نگه دار
+
+    # --- حالا چک می‌کنیم آیا باید اکسل بده یا نه ---
+    if request.GET.get("export") == "excel" or export_date_str:
+        # آماده‌سازی داده‌ها برای اکسل
+        col_dates, col_days, col_foods = [], [], []
+        col_quota, col_extra, col_total = [], [], []
+
+        for day_data in weekly_report_data:
+            day_name_part = day_data["jdate_str"].split(" ")[0]
+            date_part = day_data["jdate_str"].split(" ")[1]
+
+            if day_data["foods"]:
+                for food in day_data["foods"]:
+                    col_days.append(day_name_part)
+                    col_dates.append(date_part)
+                    col_foods.append(food["food_name"])
+                    col_quota.append(food["quota_count"])
+                    col_extra.append(food["extra_count"])
+                    col_total.append(food["total_count"])
+            else:
+                col_days.append(day_name_part)
+                col_dates.append(date_part)
+                col_foods.append("---")
+                col_quota.append(0)
+                col_extra.append(0)
+                col_total.append(0)
+
+        data_columns = [
+            ("روز هفته", col_days),
+            ("تاریخ", col_dates),
+            ("نام غذا", col_foods),
+            ("تعداد سهمیه (پرسنلی)", col_quota),
+            ("تعداد آزاد", col_extra),
+            ("مجموع کل", col_total),
+        ]
+
+        # تنظیم اسم فایل و عنوان
+        if len(weekly_report_data) == 1:
+            the_day_str = weekly_report_data[0]["jdate_str"]
+            filename = (
+                f"Gozaresh_Restaurant_{the_day_str.replace(' ', '_').replace('/', '-')}"
+            )
+            report_title = f"گزارش رزرو غذا - {the_day_str} - {restaurant.name}"
+        else:
+            today_str = jdatetime.date.today().strftime("%Y-%m-%d")
+            filename = f"Gozaresh_Restaurant_{today_str}"
+            report_title = (
+                f"گزارش عملکرد رستوران {restaurant.name} - {latest_menu_info}"
+            )
+
+        return export_to_excel(
+            columns=data_columns, filename=filename, report_title=report_title
+        )
+
+    context = {
+        "restaurant_name": restaurant.name,
+        "latest_menu_info": latest_menu_info,
+        "weekly_data": weekly_report_data,
+    }
+
+    return render(request, "users/restaurant_management_dashboard.html", context)
+
+
+PERSIAN_WEEK_DAYS = [
+    ("shanbe", "شنبه"),
+    ("1shanbe", "یکشنبه"),
+    ("2shanbe", "دوشنبه"),
+    ("3shanbe", "سه‌شنبه"),
+    ("4shanbe", "چهارشنبه"),
+    ("5shanbe", "پنج‌شنبه"),
+    ("jome", "جمعه"),
+]
+
+
+@login_required
+def food_reservation_view(request):
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    is_committee = request.session["current_is_committee"]
+    can_choose_factory = False
+    available_factories = Factory.objects.none()
+
+    user = request.user
+
+    factory = None
+
+    # today_gdate = date.today() - timedelta(days=3)
+    # today_jdate = jdatetime.date.today() - timedelta(days=3)
+    # today_gdate = date.today() + timedelta(days=2)
+    # today_jdate = jdatetime.date.today() + timedelta(days=2)
+    today_gdate = date.today()
+    today_jdate = jdatetime.date.today()
+
+    can_choose_factory = False
+
+    can_reserve_guest = False
+
+    if (
+        role_name
+        in ["super_admin", "holding_manager", "factory_manager", "department_manager"]
+        or user.unlimit_reservation
+    ):
+        can_reserve_guest = True
+
+    if role_name in ["holding_manager", "super_admin"]:
+        can_choose_factory = True
+
+        target_factory_id = request.GET.get("target_factory_id") or request.POST.get(
+            "target_factory_id"
+        )
+
+        if role_name == "super_admin":
+            available_factories = Factory.objects.all()
+        else:
+            available_factories = Factory.objects.filter(holding_id=holding_id).all()
+
+        if target_factory_id:
+            try:
+                selected_factory = Factory.objects.filter(id=target_factory_id).first()
+                if selected_factory:
+                    factory = selected_factory
+                    request.session["food_target_factory_id"] = selected_factory.id
+                else:
+                    messages.error(request, "کارخانه انتخاب‌شده معتبر نیست.")
+            except (ValueError, TypeError):
+                messages.error(request, "شناسه کارخانه نامعتبر است.")
+        elif request.session.get("food_target_factory_id") != None:
+            # اگر هیچ target_factory_id نبود، از سشن قبلی استفاده کن
+            session_factory_id = request.session.get("food_target_factory_id")
+            if session_factory_id:
+                selected_factory = available_factories.filter(
+                    id=session_factory_id
+                ).first()
+                if selected_factory:
+                    factory = selected_factory
+        else:
+            if role_name == "super_admin":
+                factory = Factory.objects.first()
+            else:
+                factory = Factory.objects.filter(holding_id=holding_id).first()
+
+    else:
+        if is_committee:
+            factory = Factory.objects.filter(id=factory_id).first().linked_factory
+        else:
+            factory = Factory.objects.filter(id=factory_id).first()
+
+    if not factory:
+        messages.warning(
+            request, "کارخانه شما مشخص نشده است. لطفا با بخش هوش مصنوعی تماس بگیرید."
+        )
+        return redirect("users:dashboard")
+
+    days_until_saturday = today_jdate.weekday()
+    week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
+    week_start_date = (
+        week_start_jdate.togregorian()
+    )  # تاریخ میلادی برای جستجوی WeeklyMenu
+
+    latest_start_dates = (
+        WeeklyMenu.objects.filter(
+            restaurant__department__factory=factory,
+            week_start_date__lte=week_start_date,
+        )
+        .values("restaurant")
+        .annotate(latest_start_date=Max("week_start_date"))
+    )
+
+    # 2. ساخت Q object برای فچ کردن منوهای دقیق (Greatest-N-per-Group)
+    q_objects = Q()
+    if latest_start_dates.exists():
+        for item in latest_start_dates:
+            # ترکیب شناسه رستوران و آخرین تاریخ شروع آن
+            q_objects |= Q(
+                restaurant_id=item["restaurant"],
+                week_start_date=item["latest_start_date"],
+            )
+
+        # فچ کردن منوهای هفتگی که شرایط Q object را دارند
+        weekly_menus = (
+            WeeklyMenu.objects.filter(q_objects)
+            .select_related("restaurant", "restaurant__department")
+            .all()
+        )
+    else:
+        weekly_menus = WeeklyMenu.objects.none()
+
+    if weekly_menus:
+        all_menu_items = (
+            MenuItem.objects.filter(weekly_menu__in=weekly_menus)
+            .select_related("food", "weekly_menu__restaurant")
+            .all()
+        )
+    else:
+        all_menu_items = MenuItem.objects.none()
+
+    existing_reservations = (
+        FoodReservation.objects.filter(
+            employee=user,
+            reservation_date__gte=week_start_date,
+            reservation_date__lte=week_start_date + timedelta(days=6),
+            related_factory=factory,
+        )
+        .select_related(
+            "menu_item__food", "menu_item__weekly_menu__restaurant__department"
+        )
+        .order_by("reserved_at")
+        .all()
+    )
+
+    weekly_data = []
+    week_days = [code for code, name in PERSIAN_WEEK_DAYS]
+
+    for i, day_code in enumerate(week_days):
+        day_date_j = week_start_jdate + jdatetime.timedelta(days=i)
+        day_date_g = week_start_date + timedelta(days=i)
+        day_name = dict(PERSIAN_WEEK_DAYS)[day_code]
+
+        # لیست منوها برای این روز (هر ترکیب غذا + رستوران جداگانه)
+        menus = all_menu_items.filter(day_persian=day_code)
+
+        # امکان رزرو: آینده یا امروز قبل از ۱۰ صبح
+        is_reservation_possible = day_date_g >= today_gdate
+
+        tehran_aware_datetime = timezone.localtime(timezone.now())
+        is_reservation_time_passed = False
+        if day_date_g == today_gdate:
+            is_reservation_time_passed = tehran_aware_datetime.time() > time(
+                close_food_res_time_H, close_food_res_time_M
+            )
+
+        is_today_comment_time = (
+            not is_reservation_possible
+            or (day_date_g == today_gdate)
+            and tehran_aware_datetime.time()
+            > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
+        )
+
+        # لیست IDهای منوهای موجود (برای چک رزروهای قدیمی)
+        available_menu_ids = list(menus.values_list("id", flat=True))
+        print(f"**************{available_menu_ids}")
+
+        # رزروهای قبلی برای این روز
+        day_reservations = existing_reservations.filter(reservation_date=day_date_g)
+
+        user_food_ids = day_reservations.values_list("menu_item__id", flat=True)
+
+        users_feedbacks = (
+            FoodReservation.objects.filter(
+                menu_item__id__in=user_food_ids
+                # ).exclude(employee=user
+            )
+            .exclude(Q(feedback__isnull=True) & Q(rating__isnull=True))
+            .select_related("menu_item__food", "employee")
+        )
+
+        # دیکشنری خروجی نهایی
+        day_food_feedbacks = {}
+        # print(users_feedbacks)
+
+        for item in users_feedbacks:
+            food_id = item.menu_item.id
+            user_can_comment = True if item.employee != user else False
+
+            # print(user_can_comment)
+
+            if food_id not in day_food_feedbacks:
+                day_food_feedbacks[food_id] = {"comments": [], "ratings": []}
+
+            if item.feedback:
+                day_food_feedbacks[food_id]["comments"].append(
+                    {
+                        "text": item.feedback,
+                        "rating": item.rating,
+                        "user": item.employee.full_name,
+                        "date": item.reserved_at,
+                        "user_can_comment": user_can_comment,
+                    }
+                )
+
+            if item.rating:
+                day_food_feedbacks[food_id]["ratings"].append((item.rating))
+
+        day_previous_comments = []
+        day_average_ratings = 3.5
+        user_can_comment = True
+        is_today_comment_time = True
+
+        weekly_data.append(
+            {
+                "day_name": day_name,
+                "jdate_str": day_date_j.strftime("%Y/%m/%d"),
+                "gdate_str": day_date_g.strftime("%Y-%m-%d"),
+                "menus": menus,
+                "is_reservation_possible": is_reservation_possible,
+                "is_reservation_time_passed": is_reservation_time_passed,
+                "available_menu_ids": available_menu_ids,
+                # 'previous_comments': day_previous_comments,
+                "average_ratings": day_average_ratings,
+                "user_can_comment": user_can_comment,
+                "day_reservations": day_reservations,
+                "day_food_feedbacks": day_food_feedbacks,
+                "reservation_time_limit": time(
+                    close_food_res_time_H, close_food_res_time_M
+                ),
+                "is_today_comment_time": is_today_comment_time,
+            }
+        )
+
+    if request.method == "POST" and "submit_reservations" in request.POST:
+
+        is_reservation_time_passed = tehran_aware_datetime.time() > time(
+            close_food_res_time_H, close_food_res_time_M
+        )
+
+        today = tehran_aware_datetime.date()
+
+        parsed_reservations = []
+
+        for key, value in request.POST.items():
+            if not key.startswith("reservations["):
+                continue
+
+            parts = key.split("][")
+
+            date_str = parts[0].replace("reservations[", "")
+            index = parts[1]
+            field = parts[2].replace("]", "")
+
+            if date_str not in [d["date"] for d in parsed_reservations]:
+                pass  # handled below
+
+            # یک دیکشنری پیدا کن (یا بساز)
+            target_key = f"{date_str}-{index}"
+
+            if target_key not in [r.get("key") for r in parsed_reservations]:
+                parsed_reservations.append(
+                    {
+                        "key": target_key,
+                        "date": date_str,
+                        "food_choice": None,
+                        "quantity": None,
+                        "price_type": None,
+                    }
+                )
+
+            # دیکشنری مربوطه را بگیر
+            target = next(r for r in parsed_reservations if r["key"] == target_key)
+
+            # حالا مقدار فیلد را ثبت کن
+            if field == "food_choice":
+                target["food_choice"] = int(value)
+            elif field == "quantity":
+                target["quantity"] = int(value)
+            elif field == "price_type":
+                target["price_type"] = value
+
+        # حذف رکوردهای خالی یا food_choice=0
+        parsed_reservations = [
+            r
+            for r in parsed_reservations
+            if r["food_choice"] not in [None, 0] and r["quantity"] > 0
+        ]
+
+        if not is_reservation_time_passed:
+            FoodReservation.objects.filter(
+                employee=user,
+                related_factory=factory,
+                reservation_date__gte=today,
+            ).delete()
+        else:
+            FoodReservation.objects.filter(
+                employee=user,
+                related_factory=factory,
+                reservation_date__gt=today,
+            ).delete()
+
+        for item in parsed_reservations:
+
+            date_g = datetime.strptime(item["date"], "%Y-%m-%d").date()
+
+            menu_item = MenuItem.objects.filter(id=item["food_choice"]).first()
+            if not menu_item:
+                continue
+
+            # نوع قیمت → انتخاب فیلدها
+            fq = ffree = fg = 0
+            if item["price_type"] == "factory":
+                fq = item["quantity"]
+                unit_price = menu_item.food.factory_price
+            elif item["price_type"] == "free":
+                ffree = item["quantity"]
+                unit_price = menu_item.food.free_price
+            elif item["price_type"] == "guest":
+                if can_reserve_guest:
+                    fg = item["quantity"]
+                    print(f"done{fg}")
+                else:
+                    print("0")
+                    fg = 0
+                unit_price = menu_item.food.guest_price
+
+            # -----------------------------------------
+            # 1) چک کن آیا رکورد موجود هست؟
+            # -----------------------------------------
+            existing = FoodReservation.objects.filter(
+                employee=request.user,
+                reservation_date=date_g,
+                menu_item=menu_item,
+                related_factory=factory,
+                is_canceled=False,
+            ).first()
+
+            if existing:
+                # -----------------------------------------
+                # 2) اگر هست → فقط مقدارها رو اضافه کن
+                # -----------------------------------------
+                existing.factory_quantity += fq
+                existing.free_quantity += ffree
+                existing.guest_quantity += fg
+
+                # قیمت‌ها یک بار برای همیشه ثابت می‌مونن
+                existing.factory_price = menu_item.food.factory_price
+                existing.free_price = menu_item.food.free_price
+                existing.guest_price = menu_item.food.guest_price
+
+                # total_price باید مجموع همه‌ی قیمت‌ها بشه
+                existing.total_price = (
+                    existing.factory_quantity * existing.factory_price
+                    + existing.free_quantity * existing.free_price
+                    + existing.guest_quantity * existing.guest_price
+                )
+
+                existing.save()
+                continue
+
+            # -----------------------------------------
+            # 3) اگر نبود → رکورد جدید بساز
+            # -----------------------------------------
+            FoodReservation.objects.create(
+                employee=request.user,
+                menu_item=menu_item,
+                reservation_date=date_g,
+                related_factory=factory,
+                factory_quantity=fq,
+                free_quantity=ffree,
+                guest_quantity=fg,
+                factory_price=menu_item.food.factory_price,
+                free_price=menu_item.food.free_price,
+                guest_price=menu_item.food.guest_price,
+                total_price=(unit_price * item["quantity"]),
+            )
+
+    elif request.method == "POST" and "submit_comment" in request.POST:
+        # print("comment")
+        # print(request.POST)
+        comment_text = request.POST.get("comment_text")
+        rating = request.POST.get("rating")
+        menu_item_id = request.POST.get("menu_item_id")
+        comment_date = request.POST.get("comment_date")
+
+        # print(comment_text)
+        # print(rating)
+        # print(menu_item_id)
+        # print(comment_date)
+
+        existing = FoodReservation.objects.filter(
+            employee=request.user,
+            reservation_date=comment_date,
+            menu_item__id=menu_item_id,
+            related_factory=factory,
+        ).first()
+
+        # آپدیت نظر و امتیاز
+        existing.feedback = comment_text
+        existing.rating = rating
+
+        existing.save(update_fields=["feedback", "rating"])
+
+    if not user.unlimit_reservation:
+        max_factory_quantity = 1
+        max_free_quantity = 10
+        max_guest_quantity = 20
+    else:
+        max_factory_quantity = 1
+        max_free_quantity = 100
+        max_guest_quantity = 100
+
+    context = {
+        "weekly_data": weekly_data,
+        "week_start_date": week_start_date,
+        "max_factory_quantity": max_factory_quantity,
+        "max_free_quantity": max_free_quantity,
+        "max_guest_quantity": max_guest_quantity,
+        "can_reserve_guest": can_reserve_guest,
+        "user_factory_name": factory.name,
+        "can_choose_factory": can_choose_factory,
+        "available_factories": available_factories,
+        "selected_factory_id": factory.id,
+        "current_factory_id": factory.id,
+        "today_gdate_str": tehran_aware_datetime.date(),
+        "is_reservation_time_passed": is_reservation_time_passed,
+    }
+
+    return render(request, "users/food_reservation.html", context)
+
+
+@login_required
+def load_more_participations(request):
+    # تنظیم تعداد مشارکت‌ها در هر بار
+    # PARTICIPATIONS_PER_LOAD = 20
+
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    user = request.user
+    management_tree = request.session.get("management_tree", [])
+
+    # دریافت پارامتر offset از درخواست AJAX
+    offset = int(request.GET.get("offset", 0))
+    is_management = request.GET.get("management", "false") == "true"
+
+    if is_management:
+        if role_name == "super_admin":
+            all_participations = Participation.objects.filter(
+                status="approved"
+            ).order_by("-created_at")
+            all_employees = Employee.objects.all()
+        elif role_name == "holding_manager":
+            all_participations = Participation.objects.filter(
+                holding_id=holding_id, status="approved"
+            ).order_by("-created_at")
+            all_employees = Employee.objects.filter(
+                assigned_subdepartments__department__factory__holding_id=holding_id
+            ).distinct()
+        elif role_name == "factory_manager":
+            all_participations = Participation.objects.filter(
+                factory_id=factory_id, status="approved"
+            ).order_by("-created_at")
+            all_employees = Employee.objects.filter(
+                assigned_subdepartments__department__factory_id=factory_id
+            ).distinct()
+        elif role_name == "department_manager":
+            all_participations = Participation.objects.filter(
+                department_id=department_id, status="manager_review"
+            ).order_by("-created_at")
+            all_employees = Employee.objects.filter(
+                assigned_subdepartments__department_id=department_id
+            ).distinct()
+        elif role_name == "supervisor":
+            all_participations = Participation.objects.filter(
+                subdepartment_id=subdepartment_id, status="supervisor_review"
+            ).order_by("-created_at")
+            all_employees = Employee.objects.filter(
+                assigned_subdepartments__id=subdepartment_id
+            ).distinct()
+
+        # اعمال فیلترهای فرم (اگر در request.GET وجود داشته باشند)
+        form = ManagementFilterForm(request.GET or None)
+        if form.is_valid():
+            factory = form.cleaned_data.get("factory")
+            department = form.cleaned_data.get("department")
+            role = form.cleaned_data.get("role")
+            search_name = form.cleaned_data.get("search_name")
+            if factory:
+                all_participations = all_participations.filter(user__factory=factory)
+            if department:
+                all_participations = all_participations.filter(
+                    user__department=department
+                )
+            if role:
+                all_participations = all_participations.filter(user__role=role)
+            if search_name:
+                q_filter = (
+                    Q(user__first_name__icontains=search_name)
+                    | Q(user__last_name__icontains=search_name)
+                    | Q(user__national_id__icontains=search_name)
+                )
+                all_participations = all_participations.filter(q_filter)
+
+    else:
+        # منطق فیلتر dashboard
+        role_name = request.session.get("current_role")
+        holding_id = request.session.get("current_holding_id")
+        factory_id = request.session.get("current_factory_id")
+        department_id = request.session.get("current_department_id")
+        subdepartment_id = request.session.get("current_subdepartment_id")
+
+        # اعمال فیلترهای نقش و مکان ذخیره شده در مدل Participation
+        all_participations = Participation.objects.filter(
+            user=request.user,
+            role_name=role_name,
+            holding_id=holding_id,
+            factory_id=factory_id,
+            department_id=department_id,
+            subdepartment_id=subdepartment_id,
+        ).order_by("-created_at")
+
+    # اعمال بارگذاری تنبل
+    participations = all_participations[offset : offset + PARTICIPATIONS_PER_LOAD]
+
+    # تعیین اینکه آیا مشارکت‌های بیشتری برای بارگذاری وجود دارد
+    has_more = all_participations.count() > (offset + len(participations))
+
+    reviewers = ["super_admin", "holding_manager", "factory_manager"]
+
+    # رندر کردن قطعه HTML جدول
+    # از یک فایل تمپلیت مجزا برای سطرها استفاده کنید: 'users/participation_rows.html'
+    context = {
+        "participations": participations,
+        "user": request.user,
+        "is_management_view": is_management,
+        "reviewers": reviewers,
+    }
+    html_content = render(
+        request, "users/participation_rows.html", context
+    ).content.decode("utf-8")
+
+    return JsonResponse(
+        {
+            "html": html_content,
+            "has_more": has_more,
+            "new_offset": offset + len(participations),
+        }
+    )
+
+
+@login_required
+def user_management(request):
+    """مدیریت کاربران - فقط برای super_admin, holding_manager, factory_manager"""
+    # چک دسترسی
+    user_role = request.user.roles.values_list("name", flat=True)
+    if not any(
+        role in ["super_admin", "holding_manager", "factory_manager"]
+        for role in user_role
+    ):
+        raise PermissionDenied("شما مجاز به دسترسی به این بخش نیستید.")
+
+    form = ManagementFilterForm(request.GET or None)
+
+    # فیلتر اولیه بر اساس نقش کاربر
+    if "super_admin" in user_role:
+        employees = Employee.objects.all()
+    elif "holding_manager" in user_role:
+        managed_holding = Holding.objects.filter(manager=request.user).first()
+        employees = (
+            Employee.objects.filter(holding=managed_holding)
+            if managed_holding
+            else Employee.objects.none()
+        )
+    elif "factory_manager" in user_role:
+        managed_factory = Factory.objects.filter(manager=request.user).first()
+        employees = (
+            Employee.objects.filter(factory=managed_factory)
+            if managed_factory
+            else Employee.objects.none()
+        )
+    else:
+        employees = Employee.objects.none()
+
+    # اضافه کردن فیلتر holding فقط برای super_admin
+    if "super_admin" in user_role:
+        if not hasattr(form.fields, "holding"):
+            form.fields["holding"] = forms.ModelChoiceField(
+                queryset=Holding.objects.all(), required=False, label="هلدینگ"
+            )
+
+    # اگر فرم معتبر است، فیلترها را اعمال کنید
+    if form.is_valid():
+        factory = form.cleaned_data.get("factory")
+        department = form.cleaned_data.get("department")
+        # تغییر role به roles_filter (چون role فیلد ManyToMany است)
+        roles_filter = form.cleaned_data.get("roles_filter")  # باید در فرم آپدیت شود
+        search_name = form.cleaned_data.get("search_name")
+        holding = form.cleaned_data.get("holding")  # جدید
+
+        if holding:
+            employees = employees.filter(holding=holding)
+        if factory:
+            employees = employees.filter(factory=factory)
+        if department:
+            employees = employees.filter(department=department)
+        if roles_filter:
+            # فیلتر بر اساس roles (ManyToMany)
+            employees = employees.filter(roles=roles_filter)
+        if search_name:
+            employees = employees.filter(
+                Q(first_name__icontains=search_name)
+                | Q(last_name__icontains=search_name)
+                | Q(national_id__icontains=search_name)
+            )
+
+    # محاسبه is_super_admin
+
+    context = {
+        "form": form,
+        "employees": employees,
+        "user": request.user,
+    }
+
+    return render(request, "users/user_management.html", context)
+
+
+@login_required
+def user_details(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    if request.user.role.name != "super_admin" and request.user != employee:
+        raise PermissionDenied("شما اجازه مشاهده جزئیات این کارمند را ندارید.")
+    form = UserDetailsFilterForm(request.GET or None)
+    participations = Participation.objects.filter(user=employee)
+
+    if form.is_valid():
+        factory = form.cleaned_data.get("factory")
+        department = form.cleaned_data.get("department")
+        role = form.cleaned_data.get("role")
+        search_title = form.cleaned_data.get("search_title")
+        if factory:
+            participations = participations.filter(user__factory=factory)
+        if department:
+            participations = participations.filter(user__department=department)
+        if role:
+            participations = participations.filter(user__role=role)
+        if search_title:
+            participations = participations.filter(
+                Q(title__icontains=search_title)
+                | Q(description__icontains=search_title)
+            )
+
+    print(
+        f"User: {employee.full_name} (ID: {employee.id}), Participations count: {participations.count()}"
+    )
+
+    participation_counts = {
+        item_type[0]: participations.filter(item_type=item_type[0]).count()
+        for item_type in Participation.ITEM_TYPES
+    }
+    participation_display = [
+        {"display": label, "count": participation_counts.get(key, 0), "audio_count": 0}
+        for key, label in Participation.ITEM_TYPES
+    ]
+    audio_count = participations.filter(item_type="performance_file").count()
+    other_count = participations.exclude(item_type="performance_file").count()
+
+    chart_data = (
+        json.dumps(list(participation_counts.values()))
+        if participation_counts
+        else json.dumps([0, 0, 0, 0, 0])
+    )
+    file_type_chart_data = chart_data
+
+    return render(
+        request,
+        "users/user_details.html",
+        {
+            "employee": employee,
+            "form": form,
+            "participations": participations,
+            "user": request.user,
+            "participation_display": participation_display,
+            "audio_count": audio_count,
+            "other_count": other_count,
+            "chart_data": chart_data,
+            "file_type_chart_data": file_type_chart_data,
+        },
+    )
+
+
+@login_required
+def submit_participation(request):
+
+    can_referral = True
+
+    if request.method == "POST":
+        form = ParticipationForm(request.POST, request.FILES, user=request.user)
+        if form.is_valid():
+            participation = form.save(commit=False)
+            participation.user = request.user
+            # تنظیم وضعیت اولیه بر اساس نقش
+
+            role_name = request.session["current_role"]
+            # holding_id = request.session['current_holding_id']
+            # factory_id = request.session['current_factory_id']
+            # department_id = request.session['current_department_id']
+            # subdepartment_id = request.session['current_subdepartment_id']
+
+            participation.role_name = role_name
+            # participation.holding_id = holding_id
+            # participation.factory_id = factory_id
+            # participation.department_id = department_id
+            # participation.subdepartment_id = subdepartment_id
+
+            if participation.is_committee and participation.subdepartment:
+                # کمیته: همه چیز از subdepartment
+                sub = participation.subdepartment
+                participation.subdepartment_committee = sub
+                participation.department_committee = sub.department
+                participation.factory_committee = sub.department.factory
+                participation.holding_committee = (
+                    sub.department.factory.holding
+                )  # اگر holding نباشه None میشه
+
+                # فیلدهای عادی رو از سشن می‌گذاریم (اختیاری، ولی برای یکپارچگی خوبه)
+                participation.subdepartment_id = request.session.get(
+                    "current_subdepartment_id"
+                )
+                participation.department_id = request.session.get(
+                    "current_department_id"
+                )
+                participation.factory_id = request.session.get("current_factory_id")
+                participation.holding_id = request.session.get("current_holding_id")
+
+            else:
+                # عادی: فقط از سشن پر می‌کنیم
+                participation.subdepartment_id = request.session.get(
+                    "current_subdepartment_id"
+                )
+                participation.department_id = request.session.get(
+                    "current_department_id"
+                )
+                participation.factory_id = request.session.get("current_factory_id")
+                participation.holding_id = request.session.get("current_holding_id")
+
+                # اگر بخوای فیلدهای کمیته رو خالی کنی (تمیزتره)
+                participation.subdepartment_committee = None
+                participation.department_committee = None
+                participation.factory_committee = None
+                participation.holding_committee = None
+
+            if participation.attachment:
+                root, ext = os.path.splitext(participation.attachment.name.lower())
+            if not participation.attachment or not (
+                ext in security.audio or ext in security.video
+            ):
+                participation.text_content = participation.description
+                participation.status = "user_review"
+            else:
+                participation.is_audio = True
+                participation.status = "pending"
+
+            participation.save()
+            messages.success(request, "مشارکت با موفقیت ثبت شد.")
+            return redirect("users:dashboard")
+
+    else:
+        form = ParticipationForm(user=request.user)
+    return render(request, "users/submit_participation.html", {"form": form})
+
+
+@login_required
+def evaluation_panel(request):
+    user_role = request.user.roles.values_list("name", flat=True)
+    if not any(role in ["super_admin", "department_manager"] for role in user_role):
+        raise PermissionDenied("شما اجازه دسترسی به پنل ارزیابی را ندارید.")
+
+    form = EvaluationFilterForm(request.GET or None)
+    evaluations = Evaluation.objects.all()
+
+    # فیلتر اولیه بر اساس نقش
+    if "super_admin" in user_role:
+        evaluations = Evaluation.objects.all()
+    elif "department_manager" in user_role:
+        managed_department = Department.objects.filter(manager=request.user).first()
+        evaluations = (
+            Evaluation.objects.filter(user__department=managed_department)
+            if managed_department
+            else Evaluation.objects.none()
+        )
+
+    if form.is_valid():
+        period = form.cleaned_data.get("period")
+        factory = form.cleaned_data.get("factory")
+        department = form.cleaned_data.get("department")
+        employee = form.cleaned_data.get("employee")
+        start_date = form.cleaned_data.get("start_date")
+        end_date = form.cleaned_data.get("end_date")
+        if period:
+            if period == "custom":
+                if start_date and end_date:
+                    evaluations = evaluations.filter(
+                        created_at__range=(start_date, end_date)
+                    )
+            else:
+                evaluations = evaluations.filter(period=period)
+        if factory:
+            evaluations = evaluations.filter(user__factory=factory)
+        if department:
+            evaluations = evaluations.filter(user__department=department)
+        if employee:
+            evaluations = evaluations.filter(user=employee)
+
+    print(f"Number of evaluations after filter: {evaluations.count()}")
+
+    progress_data = {}
+    for eval in evaluations:
+        total_participations = Participation.objects.filter(user=eval.user).count()
+        period_participations = Participation.objects.filter(
+            user=eval.user,
+            created_at__range=(
+                (
+                    eval.created_at.replace(day=1),
+                    eval.created_at.replace(day=28) + timedelta(days=3),
+                )
+                if eval.period == "monthly"
+                else (
+                    (eval.created_at - timedelta(days=7), eval.created_at)
+                    if eval.period == "weekly"
+                    else (
+                        (eval.created_at, eval.created_at + timedelta(days=1))
+                        if eval.period == "daily"
+                        else (eval.created_at, eval.created_at)
+                    )
+                )
+            ),
+        ).count()
+        progress = (
+            (period_participations / total_participations * 100)
+            if total_participations > 0
+            else 0
+        )
+        progress_data[eval.id] = {
+            "user": eval.user.full_name,
+            "period": eval.get_period_display(),
+            "participation_count": period_participations,
+            "progress": round(progress, 2),
+        }
+
+    chart_data = (
+        json.dumps(
+            [
+                progress_data[eval.id]["progress"]
+                for eval in evaluations.order_by("-created_at")[:5]
+            ]
+        )
+        if evaluations.exists()
+        else json.dumps([0, 0, 0, 0, 0])
+    )
+
+    return render(
+        request,
+        "users/evaluation_panel.html",
+        {
+            "form": form,
+            "evaluations": evaluations,
+            "progress_data": progress_data,
+            "chart_data": chart_data,
+            "user": request.user,
+        },
+    )
+
+
+@login_required
+def process_participation(request, participation_id):
+
+    participation = get_object_or_404(Participation, pk=participation_id)
+
+    user_role = request.user.roles.values_list("name", flat=True)
+    # if not any(role in ['super_admin', 'factory_manager', 'department_manager', 'supervisor'] for role in user_role):
+
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    participation_is_committee = participation.is_committee
+    real_role = request.session["current_real_role"]
+
+    if participation.user != request.user and role_name not in [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]:
+        raise PermissionDenied("شما اجازه دسترسی به این مشارکت را ندارید.")
+
+    # if participation.user != request.user and role_name not in ['super_admin', 'factory_manager', 'department_manager', 'supervisor']:
+    print(role_name)
+    if participation.user != request.user and not role_name in [
+        "super_admin",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]:
+        raise PermissionDenied("شما اجازه دسترسی به این مشارکت را ندارید.")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if (
+            action == "convert_to_text"
+            and participation.status == "pending"
+            and participation.attachment
+            and (
+                participation.attachment.name.lower().endswith(".mp3")
+                or participation.attachment.name.lower().endswith(".mp4")
+            )
+            and not participation.text_content
+        ):
+            try:
+                file_path = participation.attachment.path
+
+                if os.path.exists(file_path):
+                    temp_wav_path = file_path.rsplit(".", 1)[0] + "_temp.wav"
+                    text = STT_full_file(file_path, temp_wav_path, 10)
+                    participation.text_content = text
+                    participation.orginal_content = text
+                    user_role = request.user.roles.values_list("name", flat=True)
+                    if "employee" in user_role:
+                        participation.status = "user_review"
+                    elif "supervisor" in user_role:
+                        participation.status = "user_review"  # سرپرست خودش تأیید می‌کنه
+                    elif "department_manager" in user_role:
+                        participation.status = (
+                            "user_review"  # مدیر بخش خودش تأیید می‌کنه
+                        )
+                    elif "factory_manager" in user_role:
+                        participation.status = (
+                            "user_review"  # مدیر کارخانه خودش تأیید می‌کنه
+                        )
+                    elif "super_admin" in user_role:
+                        participation.status = "user_review"  # مدیر کل خودش تأیید می‌کنه
+                    participation.save()
+                    messages.success(request, "متن با موفقیت استخراج شد.")
+                    if os.path.exists(temp_wav_path):
+                        os.remove(temp_wav_path)
+                else:
+                    messages.error(request, f"فایل یافت نشد: {file_path}")
+            except sr.UnknownValueError:
+                messages.error(request, "نمی‌توانم صوت را بفهمم.")
+            except sr.RequestError as e:
+                messages.error(request, f"خطا در سرویس تشخیص: {str(e)}")
+            except Exception as e:
+                messages.error(request, f"خطا در پردازش: {str(e)}")
+
+        elif (
+            action == "delete"
+            and (
+                participation.status == "user_review"
+                or participation.status == "pending"
+            )
+            and not participation.is_finalized
+            and participation.user == request.user
+        ):
+            try:
+                if participation.attachment:
+                    # 1. گرفتن مسیر کامل فایل در سیستم
+                    file_path = participation.attachment.path
+
+                    # 2. بررسی وجود فایل در سیستم قبل از حذف
+                    if os.path.exists(file_path):
+                        try:
+                            os.remove(file_path)
+                            # در اینجا می‌توان یک پیام log یا debug اضافه کرد
+                        except Exception as e:
+                            # اگر فایل حذف نشد، باید یک اخطار به کاربر داده شود (اختیاری)
+                            messages.error(
+                                request, f"اخطار: فایل ضمیمه حذف نشد. {str(e)}"
+                            )
+
+                participation.delete()
+                messages.success(request, "مشارکت با موفقیت حذف شد.")
+                # هدایت به داشبورد پس از حذف موفق
+                return redirect("users:dashboard")
+            except Exception as e:
+                messages.error(request, f"خطا در حذف مشارکت: {str(e)}")
+
+        elif (
+            action == "edit_text"
+            and participation.status == "user_review"
+            and not participation.is_finalized
+            and participation.user == request.user
+        ):
+            raw_text = request.POST.get("text_content", "")
+
+            try:
+                # این خط مهم‌ترین خط امنیتی پروژه‌اته!
+                cleaned_text = clean_user_text(raw_text)
+            except SuspiciousOperation:
+                messages.error(request, "متن وارد شده شامل کد مخرب است و رد شد.")
+                return redirect("users:process_participation", participation_id)
+
+            text = cleaned_text
+            if text:
+                participation.text_content = text
+                participation.save()
+                messages.success(request, "متن با موفقیت ویرایش شد.")
+
+        elif (
+            action == "finalize_text"
+            and participation.status == "user_review"
+            and not participation.is_finalized
+            and participation.user == request.user
+        ):
+            participation.is_finalized = True
+            raw_text = request.POST.get("text_content", "")
+
+            try:
+                # این خط مهم‌ترین خط امنیتی پروژه‌اته!
+                cleaned_text = clean_user_text(raw_text)
+            except SuspiciousOperation:
+                messages.error(request, "متن وارد شده شامل کد مخرب است و رد شد.")
+                return redirect("users:process_participation", participation_id)
+
+            text = cleaned_text
+            if text:
+                participation.text_content = text
+                participation.save()
+                messages.success(request, "متن با موفقیت ویرایش شد.")
+
+            if "employee" in role_name:
+                subdepartment_supervisor = None
+                if subdepartment_id and subdepartment_id != None:
+                    subdepartment_supervisor = (
+                        Subdepartment.objects.filter(id=subdepartment_id)
+                        .first()
+                        .supervisor
+                    )
+
+                if subdepartment_supervisor and subdepartment_supervisor != None:
+                    participation.status = "supervisor_review"
+                else:
+                    participation.status = "manager_review"
+
+            elif "supervisor" in role_name:
+                if participation_is_committee:
+                    participation.status = "supervisor_review"
+                else:
+                    participation.status = "manager_review"
+            elif "department_manager" in role_name:
+                if participation_is_committee:
+                    participation.status = "supervisor_review"
+                else:
+                    participation.status = "approved"  # مدیر بخش مستقیم تأیید می‌کنه
+            elif "factory_manager" in role_name:
+                participation.status = "approved"  # مدیر کارخانه مستقیم تأیید می‌کنه
+            elif "holding_manager" in role_name:
+                participation.status = "approved"
+            elif "super_admin" in role_name:
+                participation.status = "approved"  # مدیر کل مستقیم تأیید می‌کنه
+            participation.save()
+            messages.success(request, "تأیید نهایی کاربر ثبت شد.")
+
+        elif (
+            action == "summarized_text"
+            and participation.text_content
+            and (
+                participation.user == request.user
+                or role_name in ["super_admin", "factory_manager", "department_manager"]
+            )
+        ):
+
+            def summarizing(text):
+                summarized_text = summarizer(text)
+                return summarized_text
+
+            if not participation.count_sumerized:
+                participation.count_sumerized = 0
+
+            if participation.count_sumerized >= 2:
+
+                participation.text_content = participation.summarized_content
+                participation.save()
+                messages.success(
+                    request,
+                    "متن خلاصه شده قبلی، محدودیت استفاده از خلاصه سازی شما برای این مشارکت تمام شده است.",
+                )
+            else:
+                try:
+                    summarized_text = summarizing(participation.text_content)
+                    participation.summarized_content = summarized_text
+                    participation.text_content = summarized_text
+                    participation.count_sumerized += 1
+                    participation.save()
+                    messages.success(request, "متن با موفقیت خلاصه شد.")
+                except Exception as e:
+                    messages.error(request, f"خطا در خلاصه سازی متن: {str(e)}")
+
+        elif (
+            action == "normal_text"
+            and participation.text_content
+            and (
+                participation.user == request.user
+                or role_name in ["super_admin", "factory_manager", "department_manager"]
+            )
+        ):
+            participation.text_content = participation.orginal_content
+            participation.save()
+            messages.success(request, "متن اصلی.")
+
+        return redirect(request.path_info)
+
+    if request.method == "GET" and participation.status == "approved":
+        action = request.GET.get("action")
+        if (
+            action == "download_text"
+            and participation.text_content
+            and (
+                participation.user == request.user
+                or role_name in ["super_admin", "factory_manager", "department_manager"]
+            )
+        ):
+            response = HttpResponse(
+                participation.text_content, content_type="text/plain"
+            )
+            response["Content-Disposition"] = (
+                f'attachment; filename="{participation.title}_text.txt"'
+            )
+            return response
+        elif (
+            action == "download_pdf"
+            and participation.text_content
+            and (
+                participation.user == request.user
+                or role_name in ["super_admin", "factory_manager", "department_manager"]
+            )
+        ):
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_filename = f"Participation_{participation.id}_{timestamp}.pdf"
+
+            pdf_buffer = save_as_pdf(text=participation.text_content)
+
+            response = HttpResponse(
+                pdf_buffer.getvalue(), content_type="application/pdf"
+            )
+
+            # تنظیم هدر برای دانلود
+            response["Content-Disposition"] = f'attachment; filename="{safe_filename}"'
+
+            # 4. بستن حافظه موقت
+            pdf_buffer.close()
+
+            return response
+
+        elif (
+            action == "download_word"
+            and participation.text_content
+            and (
+                participation.user == request.user
+                or role_name in ["super_admin", "factory_manager", "department_manager"]
+            )
+        ):
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_filename = f"Participation_{participation.id}_{timestamp}.docx"
+
+            word_buffer = save_as_word(
+                text=participation.text_content,
+                # filename=safe_filename,  # این پارامتر در تابع جدید ضروری نیست اما برای خوانایی می‌ماند
+                title=participation.title,
+            )
+
+            response = HttpResponse(
+                word_buffer.getvalue(),  # گرفتن داده‌های باینری از BytesIO
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+
+            # تنظیم هدر برای دانلود به جای نمایش در مرورگر
+            response["Content-Disposition"] = f'attachment; filename="{safe_filename}"'
+
+            word_buffer.close()
+
+            return response
+        elif (
+            action == "download_mp3"
+            and participation.text_content
+            and (
+                participation.user == request.user
+                or role_name in ["super_admin", "factory_manager", "department_manager"]
+            )
+            and participation.attachment
+        ):
+            file_path = participation.attachment.path
+            file_name = os.path.basename(file_path)
+            if os.path.exists(file_path):
+
+                if not os.path.exists(file_path):
+                    raise Http404("فایل روی سرور یافت نشد.")
+
+                try:
+                    response = FileResponse(open(file_path, "rb"))
+
+                    response["Content-Type"] = "application/octet-stream"
+                    response["Content-Disposition"] = (
+                        f'attachment; filename="{file_name}"'
+                    )
+
+                    return response
+                except Exception as e:
+                    messages.error(request, f"خطا در ارسال فایل: {str(e)}")
+            else:
+                messages.error(request, "فایل مورد نظر در سرور موجود نیست.")
+
+    # print(f"Debug - Participation ID: {participation.id}, Status: {participation.status}, is_finalized: {participation.is_finalized}, User: {participation.user.username}, Current User: {request.user.username}")
+    can_convert = (
+        participation.status == "pending"
+        and participation.attachment
+        and (
+            participation.attachment.name.lower().endswith(".mp3")
+            or participation.attachment.name.lower().endswith(".mp4")
+        )
+        and not participation.text_content
+        and participation.user == request.user
+    )
+
+    can_edit = (
+        participation.status == "user_review"
+        and not participation.is_finalized
+        and participation.user == request.user
+        and role_name == participation.role_name
+    )
+    can_finalize = (
+        participation.status == "user_review"
+        and not participation.is_finalized
+        and participation.user == request.user
+        and role_name == participation.role_name
+    )
+    can_summarize = (
+        participation.status == "user_review"
+        and not participation.is_finalized
+        and participation.user == request.user
+        and role_name == participation.role_name
+    )
+
+    can_delete = (
+        (participation.status == "user_review" or participation.status == "pending")
+        and not participation.is_finalized
+        and participation.user == request.user
+        and role_name == participation.role_name
+    )
+
+    can_download = (
+        participation.status == "approved"
+        and participation.is_finalized
+        and (
+            participation.user == request.user
+            or role_name
+            in [
+                "super_admin",
+                "holding_manager",
+                "factory_manager",
+                "department_manager",
+                "supervisor",
+            ]
+        )
+    )
+
+    can_referral = participation.status == "approved"
+
+    return render(
+        request,
+        "users/participation_detail.html",
+        {
+            "participation": participation,
+            "can_convert": can_convert,
+            "can_edit": can_edit,
+            "can_finalize": can_finalize,
+            "can_summarize": can_summarize,
+            "can_delete": can_delete,
+            "can_download": can_download,
+            "can_referral": can_referral,
+        },
+    )
+
+
+@login_required
+def search_org_units(request):
+    q = request.GET.get("q", "").strip()
+    if len(q) < 2:
+        return JsonResponse([], safe=False)
+
+    results = []
+
+    employees = (
+        Employee.objects.filter(assigned_subdepartments__isnull=False)
+        .filter(
+            Q(first_name__icontains=q)
+            | Q(last_name__icontains=q)
+            | Q(national_id__icontains=q)
+        )
+        .distinct()[:10]
+    )
+
+    print(employees)
+
+    for e in employees:
+        # گرفتن اولین زیربخش برای نمایش (اگر چند تا باشه)
+        subdept = e.assigned_subdepartments.first()
+        dept_name = subdept.department.name if subdept else "نامشخص"
+        factory_name = subdept.department.factory.name if subdept else "نامشخص"
+        subdept_name = subdept.name if subdept else "نامشخص"
+
+        manager_name = e.get_full_name()
+        results.append(
+            {
+                "id": e.id,
+                "text": subdept.name,
+                "factory": factory_name,
+                "department": dept_name,
+                "subdepartment": subdept_name,
+                "content_type": ContentType.objects.get_for_model(Employee).id,
+                "role": "employee",
+                "role_display": "پرسنل",
+                "manager_name": manager_name,
+                "manager_search": manager_name.lower(),
+            }
+        )
+
+    super_admin_role = Role.objects.filter(name="super_admin").first()
+    if super_admin_role:
+        admins = Employee.objects.filter(
+            Q(roles=super_admin_role)
+            & (
+                Q(first_name__icontains=q)
+                | Q(last_name__icontains=q)
+                | Q(national_id__icontains=q)
+            )
+        ).distinct()
+
+        for admin in admins:
+            results.append(
+                {
+                    "id": admin.id,
+                    "text": f"مدیر کل: {admin.get_full_name()}",
+                    "content_type": ContentType.objects.get_for_model(
+                        Employee
+                    ).id,  # یا یه مدل جدا برای سیستم
+                    "role": "super_admin",
+                    "role_display": "مدیر کل",
+                    "manager_name": admin.get_full_name(),
+                    "manager_search": admin.get_full_name().lower(),
+                    "is_system": True,  # برای تشخیص در فرانت‌اند
+                }
+            )
+
+    # هلدینگ‌ها
+    holdings = Holding.objects.filter(
+        Q(name__icontains=q)
+        | Q(manager__first_name__icontains=q)
+        | Q(manager__last_name__icontains=q)
+    ).distinct()[:10]
+
+    for h in holdings:
+        manager_name = h.manager.get_full_name() if h.manager else "تعیین نشده"
+        results.append(
+            {
+                "id": h.id,
+                "text": h.name,
+                "content_type": ContentType.objects.get_for_model(Holding).id,
+                "role": "holding_manager",
+                "role_display": "مدیر هلدینگ",
+                "manager_name": manager_name,
+                "manager_search": manager_name.lower(),  # برای جستجو
+            }
+        )
+
+    # کارخانه‌ها
+    factories = Factory.objects.filter(
+        Q(name__icontains=q)
+        | Q(manager__first_name__icontains=q)
+        | Q(manager__last_name__icontains=q)
+    ).distinct()[:10]
+
+    for f in factories:
+        manager_name = f.manager.get_full_name() if f.manager else "تعیین نشده"
+        results.append(
+            {
+                "id": f.id,
+                "text": f.name,
+                "factory": f.name,
+                "content_type": ContentType.objects.get_for_model(Factory).id,
+                "role": "factory_manager",
+                "role_display": "مدیر کارخانه",
+                "manager_name": manager_name,
+                "manager_search": manager_name.lower(),
+            }
+        )
+
+    # بخش‌ها
+    departments = Department.objects.filter(
+        Q(name__icontains=q)
+        | Q(manager__first_name__icontains=q)
+        | Q(manager__last_name__icontains=q)
+    ).distinct()[:10]
+
+    for d in departments:
+        manager_name = d.manager.get_full_name() if d.manager else "تعیین نشده"
+        results.append(
+            {
+                "id": d.id,
+                "text": d.name,
+                "factory": d.factory.name,
+                "department": d.name,
+                "content_type": ContentType.objects.get_for_model(Department).id,
+                "role": "department_manager",
+                "role_display": "مدیر بخش",
+                "manager_name": manager_name,
+                "manager_search": manager_name.lower(),
+            }
+        )
+
+    # زیربخش‌ها
+    subdepartments = Subdepartment.objects.filter(
+        Q(name__icontains=q)
+        | Q(supervisor__first_name__icontains=q)
+        | Q(supervisor__last_name__icontains=q)
+    ).distinct()[:10]
+
+    for s in subdepartments:
+        manager_name = s.supervisor.get_full_name() if s.supervisor else "تعیین نشده"
+        results.append(
+            {
+                "id": s.id,
+                "text": s.name,
+                "factory": s.department.factory.name,
+                "department": s.department.name,
+                "subdepartment": s.name,
+                "content_type": ContentType.objects.get_for_model(Subdepartment).id,
+                "role": "supervisor",
+                "role_display": "سرپرست",
+                "manager_name": manager_name,
+                "manager_search": manager_name.lower(),
+            }
+        )
+
+    # employees = Employee.objects.filter(
+    #     assigned_subdepartments__isnull=False
+    # ).filter(
+    #     Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(national_id__icontains=q)
+    # ).distinct()[:10]
+    #
+    # print(employees)
+    #
+    # for e in employees:
+    #     # گرفتن اولین زیربخش برای نمایش (اگر چند تا باشه)
+    #     subdept = e.assigned_subdepartments.first()
+    #     dept_name = subdept.department.name if subdept else "نامشخص"
+    #     factory_name = subdept.department.factory.name if subdept else "نامشخص"
+    #     subdept_name = subdept.name if subdept else "نامشخص"
+    #
+    #     manager_name = e.get_full_name()
+    #     results.append({
+    #         'id': e.id,
+    #         'text': manager_name,
+    #         'factory': factory_name,
+    #         'department': dept_name,
+    #         'subdepartment': subdept_name,
+    #         'content_type': ContentType.objects.get_for_model(Employee).id,
+    #         'role': 'employee',
+    #         'role_display': 'پرسنل',
+    #         'manager_name': manager_name,
+    #         'manager_search': manager_name.lower()
+    #     })
+
+    # محدود کردن نتایج کلی
+    return JsonResponse(results[:25], safe=False)
+
+
+@login_required
+def referral_create(request, participation_id):
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    real_role = request.session["current_real_role"]
+
+    participation = get_object_or_404(Participation, id=participation_id)
+    participation_is_committee = participation.is_committee
+
+    # چک وضعیت مشارکت
+    if participation.status != "approved":
+        messages.error(request, "فقط مشارکت‌های تأیید شده قابل ارجاع هستند.")
+        return redirect("users:participation_detail", participation_id)
+
+    current_role_name = request.session.get("current_role", "employee")
+    # if current_role_name == 'employee':
+    #     messages.error(request, "شما اجازه ارجاع ندارید.")
+    #     return redirect('users:participation_detail', participation_id)
+
+    current_user = request.user
+    # current_role = role_name
+    current_role = Role.objects.get(name=current_role_name)
+
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip()
+        comment = request.POST.get("comment", "").strip()
+        target_object_id = request.POST.get("target_object_id")
+        target_content_type_id = request.POST.get("target_content_type")
+
+        if not all([title, comment, target_object_id, target_content_type_id]):
+            messages.error(request, "همه فیلدها الزامی هستند.")
+            return render(
+                request, "users/referral_create.html", {"participation": participation}
+            )
+
+        try:
+            with transaction.atomic():
+                content_type = ContentType.objects.get_for_id(target_content_type_id)
+                target_object = content_type.get_object_for_this_type(
+                    id=target_object_id
+                )
+
+                # پیدا کردن مسئول مقصد (Employee)
+                if content_type.model == "employee":
+                    to_user = target_object
+                elif hasattr(target_object, "manager") and target_object.manager:
+                    to_user = target_object.manager
+                elif hasattr(target_object, "supervisor") and target_object.supervisor:
+                    to_user = target_object.supervisor
+                else:
+                    messages.error(request, "این واحد مسئول مشخصی ندارد.")
+                    return render(
+                        request,
+                        "users/referral_create.html",
+                        {"participation": participation},
+                    )
+
+                # ساخت یا گرفتن OrgUnit مقصد (بدون تکرار!)
+                unit_kwargs = {"unit_type": content_type.model}
+
+                if content_type.model != "employee":
+                    unit_kwargs[content_type.model] = target_object
+                else:
+                    unit_kwargs["unit_type"] = "system"
+
+                final_unit, created = OrgUnit.objects.get_or_create(
+                    **unit_kwargs, defaults=unit_kwargs
+                )
+
+                # ساخت یا گرفتن OrgUnit مبدا (کاربر فعلی)
+                created_by_unit_kwargs = {}
+                if current_role_name == "super_admin":
+                    created_by_unit_kwargs = {"unit_type": "system"}
+
+                elif current_role_name == "employee":
+
+                    subdepartment_id = request.session.get("current_subdepartment_id")
+                    created_by_unit_kwargs = {
+                        "unit_type": "employee",
+                        "subdepartment_id": subdepartment_id,
+                    }
+
+                    print(subdepartment_id)
+                    print(created_by_unit_kwargs)
+
+                else:
+                    holding_id = request.session.get("current_holding_id")
+                    factory_id = request.session.get("current_factory_id")
+                    department_id = request.session.get("current_department_id")
+                    subdepartment_id = request.session.get("current_subdepartment_id")
+
+                    print(f"****{subdepartment_id}")
+                    print(f"***{department_id}")
+                    print(f"**{factory_id}")
+                    print(f"*{holding_id}")
+
+                    if subdepartment_id:
+                        created_by_unit_kwargs = {
+                            "unit_type": "subdepartment",
+                            "subdepartment_id": subdepartment_id,
+                        }
+                    elif department_id:
+                        created_by_unit_kwargs = {
+                            "unit_type": "department",
+                            "department_id": department_id,
+                        }
+                    elif factory_id:
+                        created_by_unit_kwargs = {
+                            "unit_type": "factory",
+                            "factory_id": factory_id,
+                        }
+                    elif holding_id:
+                        created_by_unit_kwargs = {
+                            "unit_type": "holding",
+                            "holding_id": holding_id,
+                        }
+
+                    # print(created_by_unit_kwargs)
+
+                if not created_by_unit_kwargs:
+                    raise ValueError("واحد سازمانی مبدا مشخص نیست.")
+
+                created_by_unit, _ = OrgUnit.objects.get_or_create(
+                    **created_by_unit_kwargs, defaults=created_by_unit_kwargs
+                )
+
+                # ساخت Referral
+                referral = Referral.objects.create(
+                    title=title,
+                    description=comment,
+                    participation=participation,
+                    created_by_unit=created_by_unit,
+                    created_by_role=current_role,
+                    created_by_user=current_user,
+                    final_unit=final_unit,
+                )
+
+                # تعیین نقش مقصد
+                role_map = {
+                    "holding": "holding_manager",
+                    "factory": "factory_manager",
+                    "department": "department_manager",
+                    "subdepartment": "supervisor",
+                    "employee": "super_admin",
+                }
+                to_role_name = role_map.get(content_type.model, "employee")
+                to_role = Role.objects.get(name=to_role_name)
+
+                # ساخت اولین مرحله
+                ReferralStep.objects.create(
+                    referral=referral,
+                    from_unit=created_by_unit,
+                    to_unit=final_unit,
+                    from_role=current_role,
+                    to_role=to_role,
+                    from_user=current_user,
+                    to_user=to_user,
+                    comment=comment,
+                    order=1,
+                    is_approved=None,
+                )
+
+            messages.success(
+                request, f"ارجاع با موفقیت به {to_user.get_full_name()} ارسال شد."
+            )
+            return redirect("users:dashboard")
+
+        except Exception as e:
+            messages.error(request, f"خطا در ایجاد ارجاع: {str(e)}")
+            return render(
+                request, "users/referral_create.html", {"participation": participation}
+            )
+
+    return render(
+        request, "users/referral_create.html", {"participation": participation}
+    )
+
+
+@login_required
+def referrals_inbox(request):
+    current_user = request.user
+    current_role_name = request.session.get("current_role", "employee")
+
+    # ۱. پیدا کردن تمام OrgUnitهایی که این کاربر الان مسئولشونه (بر اساس نقش فعلی)
+    current_units = []
+
+    if current_role_name == "super_admin":
+        # مدیر کل: همه ارجاعات رو می‌بینه؟ یا فقط اونایی که مستقیم بهش ارسال شده؟
+        # فعلاً فرض: فقط اونایی که to_user = خودش باشه
+        current_units = OrgUnit.objects.filter(unit_type="system")
+
+    elif current_role_name == "holding_manager":
+        holding_id = request.session.get("current_holding_id")
+        if holding_id:
+            current_units = OrgUnit.objects.filter(
+                unit_type="holding", holding_id=holding_id
+            )
+
+    elif current_role_name == "factory_manager":
+        factory_id = request.session.get("current_factory_id")
+        if factory_id:
+            current_units = OrgUnit.objects.filter(
+                unit_type="factory", factory_id=factory_id
+            )
+
+    elif current_role_name == "department_manager":
+        department_id = request.session.get("current_department_id")
+        if department_id:
+            current_units = OrgUnit.objects.filter(
+                unit_type="department", department_id=department_id
+            )
+
+    elif current_role_name == "supervisor":
+        subdepartment_id = request.session.get("current_subdepartment_id")
+        if subdepartment_id:
+            current_units = OrgUnit.objects.filter(
+                unit_type="subdepartment", subdepartment_id=subdepartment_id
+            )
+
+    elif current_role_name == "employee":
+        subdepartment_id = request.session.get("current_subdepartment_id")
+        if subdepartment_id:
+            current_units = OrgUnit.objects.filter(
+                unit_type="employee", subdepartment_id=subdepartment_id
+            )
+
+    # ۲. پیدا کردن تمام ReferralStepهایی که to_unit یکی از current_units هست
+    steps = (
+        ReferralStep.objects.filter(
+            Q(from_unit__in=current_units) | Q(to_unit__in=current_units)
+        )
+        .select_related(
+            "referral",
+            "referral__participation",
+            "from_user",
+            "to_user",
+            "from_role",
+            "to_role",
+        )
+        .order_by("-created_at")
+    )
+
+    # ۳. استخراج Referralهای یکتا + اطلاعات وضعیت فعلی
+    referrals = []
+    seen_referral_ids = set()
+
+    for step in steps:
+        if step.referral.id in seen_referral_ids:
+            continue
+
+        seen_referral_ids.add(step.referral.id)
+
+        # آیا این مرحله فعلی نوبت کاربر است؟
+        is_my_turn = (
+            step.to_unit in current_units
+            and step.to_user == current_user
+            and step.is_approved is None
+        )
+
+        # آیا من فرستنده این مرحله بودم؟
+        is_sent_by_me = (
+            step.from_unit in current_units and step.from_user == current_user
+        )
+
+        referrals.append(
+            {
+                "referral": step.referral,
+                "current_step": step,
+                "is_my_turn": is_my_turn,
+                "is_sent_by_me": is_sent_by_me,
+                "total_steps": step.referral.steps.count(),
+                "latest_step": step,  # آخرین مرحله این ارجاع
+            }
+        )
+
+    # ۴. صفحه‌بندی
+    paginator = Paginator(referrals, 15)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "total_referrals": len(referrals),
+        "current_role_display": dict(Role._meta.get_field("name").flatchoices).get(
+            current_role_name, current_role_name
+        ),
+    }
+    return render(request, "users/referrals_inbox.html", context)
+
+
+@login_required
+def referral_detail(request, referral_id):
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    user = request.user
+    management_tree = request.session.get("management_tree", [])
+    is_committee = request.session["current_is_committee"]
+    real_role_name = request.GET.get("current_real_role")
+
+    referral = get_object_or_404(Referral, id=referral_id)
+
+    # تمام مراحل این ارجاع
+    steps = referral.steps.select_related(
+        "from_user", "to_user", "from_role", "to_role", "from_unit", "to_unit"
+    ).order_by("order")
+
+    # آیا کاربر فعلی در این ارجاع دخیل است؟
+    current_user = user
+    user_involved = steps.filter(
+        Q(from_user=current_user) | Q(to_user=current_user)
+    ).exists()
+
+    # آخرین مرحله (برای نمایش وضعیت فعلی)
+    latest_step = steps.last()
+
+    # Set can_proceed flag based on referral conditions
+    # can_proceed = True if latest_step.is_approved is None else False
+
+    if not latest_step:
+        can_proceed = False
+
+    else:
+        if role_name == "employee":
+            can_proceed = (
+                latest_step.to_unit.unit_type == "employee"
+                and latest_step.to_unit.subdepartment_id == int(subdepartment_id)
+            )
+
+        elif role_name == "supervisor":
+            can_proceed = (
+                latest_step.to_unit.unit_type == "subdepartment"
+                and latest_step.to_unit.subdepartment_id == int(subdepartment_id)
+            )
+
+        elif role_name == "dapartment_manager":
+            can_proceed = (
+                latest_step.to_unit.unit_type == "department"
+                and latest_step.to_unit.department_id == int(department_id)
+            )
+
+        elif role_name == "factory_manager":
+            can_proceed = (
+                latest_step.to_unit.unit_type == "factory"
+                and latest_step.to_unit.factory_id == int(factory_id)
+            )
+
+        elif role_name == "holding_manager":
+            can_proceed = (
+                latest_step.to_unit.unit_type == "holding"
+                and latest_step.to_unit.holding_id == int(holding_id)
+            )
+
+        elif role_name == "super_admin":
+            can_proceed = latest_step.to_unit.unit_type == "system"
+
+    # Handle user actions (approve or re-refer)
+    if request.method == "POST":
+        action = request.POST.get("action")  # 'approve' or 're_refer'
+        comment = request.POST.get("comment")
+
+        if action == "approve":
+            # Update referral step with approval and save comment
+            latest_step.is_approved = True
+            latest_step.comment = comment
+            latest_step.save()
+            return redirect("users:referrals_inbox")  # Redirect after approval
+
+        elif action == "re_refer":
+            comment = request.POST.get("comment")
+            if not comment:
+                messages.error(request, "لطفاً توضیحات ارجاع مجدد را وارد کنید.")
+                return redirect("users:referral_detail", referral_id=referral.id)
+
+            target_object_id = request.POST.get("target_object_id")
+            target_content_type_id = request.POST.get("target_content_type")
+
+            if not target_object_id or not target_content_type_id:
+                messages.error(request, "واحد مقصد انتخاب نشده است.")
+                return redirect("users:referral_detail", referral_id=referral.id)
+            try:
+                content_type = ContentType.objects.get_for_id(target_content_type_id)
+                target_object = content_type.get_object_for_this_type(
+                    id=target_object_id
+                )
+            except (ContentType.DoesNotExist, content_type.model_class().DoesNotExist):
+                messages.error(request, "واحد مقصد معتبر نیست.")
+                return redirect("users:referral_detail", referral_id=referral.id)
+
+            # تعیین to_user (مسئول واحد مقصد)
+            if hasattr(target_object, "manager"):
+                to_user = target_object.manager  # برای Holding, Factory, Department
+            elif hasattr(target_object, "supervisor"):
+                to_user = target_object.supervisor  # برای Subdepartment
+            else:
+                messages.error(request, "این واحد مسئول مشخصی ندارد.")
+                return redirect("users:referral_detail", referral_id=referral.id)
+
+            if not to_user:
+                messages.error(request, "مسئول این واحد تعیین نشده است.")
+                return redirect("users:referral_detail", referral_id=referral.id)
+
+            # تعیین نقش مقصد بر اساس نوع واحد
+            role_map = {
+                "holding": "holding_manager",
+                "factory": "factory_manager",
+                "department": "department_manager",
+                "subdepartment": "supervisor",
+                "employee": "employee",
+            }
+            unit_type = content_type.model  # مثلاً 'holding', 'factory', ...
+            to_role_name = role_map.get(unit_type)
+
+            if not to_role_name:
+                messages.error(request, "نقش مقصد قابل تشخیص نیست.")
+                return redirect("users:referral_detail", referral_id=referral.id)
+
+            to_role = get_object_or_404(Role, name=to_role_name)
+
+            # ایجاد OrgUnit برای مقصد
+            to_org_unit = OrgUnit.objects.get_or_create(
+                unit_type=unit_type,
+                holding_id=getattr(target_object, "holding_id", None)
+                or (target_object.id if unit_type == "holding" else None),
+                factory_id=getattr(target_object, "factory_id", None)
+                or (target_object.id if unit_type == "factory" else None),
+                department_id=getattr(target_object, "department_id", None)
+                or (target_object.id if unit_type == "department" else None),
+                subdepartment_id=getattr(target_object, "subdepartment_id", None)
+                or (target_object.id if unit_type == "subdepartment" else None),
+            )[
+                0
+            ]  # get_or_create برمی‌گرداند (object, created)
+
+            # OrgUnit فرستنده فعلی (از latest_step استفاده کن)
+            from_org_unit = (
+                latest_step.from_unit
+            )  # یا to_unit؟ بسته به منطق — معمولاً to_unit فعلی میشه from_unit جدید
+            from_role = latest_step.from_role  # نقش فعلی کاربر
+
+            # ایجاد مرحله جدید ارجاع
+            new_step = ReferralStep.objects.create(
+                referral=referral,
+                from_unit=latest_step.to_unit,  # واحد فعلی (که کاربر الان توشه) میشه فرستنده جدید
+                to_unit=to_org_unit,  # واحد جدید مقصد
+                from_role=latest_step.to_role,  # نقش فعلی کاربر
+                to_role=to_role,  # نقش مقصد
+                from_user=current_user,  # کاربر فعلی
+                to_user=to_user,  # مسئول واحد جدید
+                comment=comment,
+                order=latest_step.order + 1,
+                is_approved=None,  # در انتظار اقدام
+            )
+
+            messages.success(
+                request,
+                f"ارجاع با موفقیت به {to_org_unit.get_display_name()} ارسال شد.",
+            )
+            return redirect("users:referrals_inbox")
+
+    context = {
+        "referral": referral,
+        "participation": referral.participation,
+        "steps": steps,
+        "latest_step": latest_step,
+        "user_involved": user_involved,
+        "total_steps": steps.count(),
+        "can_proceed": can_proceed,
+    }
+    return render(request, "users/referral_detail.html", context)
+
+
+@login_required
+def review_participation(request, participation_id):
+
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    is_committee = request.session["current_is_committee"]
+    real_role = request.session["current_real_role"]
+
+    participation = get_object_or_404(Participation, pk=participation_id)
+    # user_role = list(request.user.roles.values_list('name', flat=True))[0]
+    allowed_roles = {
+        "supervisor_review": "supervisor",
+        "manager_review": "department_manager",
+    }
+
+    left_manager_review = []
+    if not participation.manager_status:
+        left_manager_review.append("department_manager")
+    if not participation.manager_2_status:
+        left_manager_review.append("department_manager_2")
+    if not participation.manager_3_status:
+        left_manager_review.append("department_manager_3")
+
+    # if (participation.status not in allowed_roles or role_name != allowed_roles[participation.status]):
+    #     raise PermissionDenied("شما اجازه بررسی این مشارکت را ندارید.")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "approve":
+
+            if participation.status == "supervisor_review":
+                if is_committee:
+                    participation.status = "factory_manager_review"
+                    participation.supervisor_status = "approved"
+                else:
+                    participation.status = "manager_review"
+
+            elif participation.status == "manager_review":
+
+                # if real_role == 'department_manager':
+                #
+                # elif real_role == 'department_manager_2':
+                # elif real_role == 'department_manager_3':
+
+                if is_committee:
+                    if real_role in left_manager_review:
+                        if real_role == "department_manager":
+                            participation.manager_status = "approved"
+                        elif real_role == "department_manager_2":
+                            participation.manager_2_status = "approved"
+                        elif real_role == "department_manager_3":
+                            participation.manager_3_status = "approved"
+
+                        participation.save()
+
+                        left_manager_review = []
+                        if not participation.manager_status:
+                            left_manager_review.append("department_manager")
+                        if not participation.manager_2_status:
+                            left_manager_review.append("department_manager_2")
+                        if not participation.manager_3_status:
+                            left_manager_review.append("department_manager_3")
+
+                        if not left_manager_review and is_committee:
+                            participation.status = "factory_manager_review"
+                            participation.save()
+                else:
+                    participation.status = "approved"
+                    participation.save()
+
+            elif participation.status == "factory_manager_review":
+                participation.status = "approved"
+                participation.save()
+
+            participation.save()
+            messages.success(request, "مشارکت تأیید شد.")
+        elif action == "reject":
+            feedback = request.POST.get("feedback")
+            if feedback:
+                if is_committee:
+                    if participation.status == "supervisor_review":
+                        participation.status = "manager_review"
+                        participation.supervisor_status = "rejected"
+                        participation.supervisor_feedback = feedback
+                        participation.save()
+                        messages.success(request, "مشارکت رد شد.")
+                    elif participation.status == "factory_manager_review":
+                        participation.status = "rejected"
+                        participation.feedback = feedback
+                        participation.save()
+                        messages.success(request, "مشارکت رد شد.")
+
+                    elif participation.status == "manager_review":
+
+                        if real_role in left_manager_review:
+                            if real_role == "department_manager":
+                                participation.manager_status = "rejected"
+                                participation.manager_feedback = feedback
+                            elif real_role == "department_manager_2":
+                                participation.manager_2_status = "rejected"
+                                participation.manager_2_feedback = feedback
+                            elif real_role == "department_manager_3":
+                                participation.manager_3_status = "rejected"
+                                participation.manager_3_feedback = feedback
+
+                        participation.save()
+                        messages.success(request, "مشارکت رد شد.")
+
+                        left_manager_review = []
+                        if not participation.manager_status:
+                            left_manager_review.append("department_manager")
+                        if not participation.manager_2_status:
+                            left_manager_review.append("department_manager_2")
+                        if not participation.manager_3_status:
+                            left_manager_review.append("department_manager_3")
+
+                        if not left_manager_review and is_committee:
+                            participation.status = "factory_manager_review"
+                            participation.save()
+
+                else:
+                    participation.status = "rejected"
+                    participation.feedback = feedback
+                    participation.save()
+                    messages.success(request, "مشارکت رد شد.")
+            else:
+                messages.error(request, "لطفاً دلیل رد را وارد کنید.")
+        elif action == "return_to_user":
+            feedback = request.POST.get("feedback")
+            if participation.return_count < 3:
+                if feedback:
+                    participation.status = "rejected"
+                    participation.feedback = feedback
+                    participation.return_count += 1
+                    participation.save()
+                    messages.success(request, "مشارکت رد شد.")
+
+                else:
+                    messages.error(request, "لطفاً دلیل رد را وارد کنید.")
+                    participation.status = "user_review"
+                    participation.is_finalized = False
+                    participation.save(update_fields=["status", "is_finalized"])
+                    messages.success(request, "مشارکت به کاربر برگردانده شد.")
+
+            else:
+                messages.error(
+                    request,
+                    "این مشارکت 3 مرتبه برگردانده شده است و دیگر نمیتوانید آنرا به کاربر برگردانید (فقط امکان رد یا تایید دارید)",
+                )
+                return redirect("users:review_participation", participation_id)
+
+        return redirect("users:management_dashboard")
+
+    # print(left_manager_review)
+    # print(real_role)
+
+    print(role_name)
+    print(participation.status)
+
+    has_review_access = False
+    if is_committee:
+        if role_name == "supervisor" and participation.status == "supervisor_review":
+            has_review_access = True
+        elif (
+            role_name == "department_manager"
+            and participation.status == "manager_review"
+            and real_role in left_manager_review
+        ):
+            has_review_access = True
+        # has_review_access = role_name in ["supervisor", "department_manager"] and participation.status in ["supervisor_review", "manager_review"] and real_role in left_manager_review
+    else:
+        has_review_access = role_name in [
+            "supervisor",
+            "department_manager",
+        ] and participation.status in ["supervisor_review", "manager_review"]
+
+    left_manager_review = []
+    if not participation.manager_status:
+        left_manager_review.append("department_manager")
+    if not participation.manager_2_status:
+        left_manager_review.append("department_manager_2")
+    if not participation.manager_3_status:
+        left_manager_review.append("department_manager_3")
+
+    if not left_manager_review and is_committee:
+        participation.status = "factory_manager_review"
+        participation.save()
+
+    if not has_review_access:
+        has_review_access = (
+            role_name in ["factory_manager"]
+            and participation.status in ["factory_manager_review"]
+            and participation.is_committee
+        )
+
+    return render(
+        request,
+        "users/review_participation.html",
+        {
+            "participation": participation,
+            "has_review_access": has_review_access,
+            "role_name": role_name,
+        },
+    )
+
+
+@login_required
+def chat_page(request):
+    """رندر کردن صفحه اصلی چت‌بات."""
+    # اگر تاریخچه چت در سشن نیست، آن را مقداردهی اولیه می‌کنیم
+    if "chat_history" not in request.session:
+        # history را به صورت لیستی از dict‌ها ذخیره می‌کنیم تا قابلیت سریالایز شدن در سشن را داشته باشد
+        # هر آیتم به شکل {'content': 'text', 'source': 'User'/'Assistant'}
+        request.session["chat_history"] = []
+
+    return render(
+        request, "users/chat.html", {"chat_history": request.session["chat_history"]}
+    )
+
+
+@login_required
+def send_message(request):
+    """مدیریت درخواست‌های AJAX برای ارسال پیام به چت‌بات."""
+    if request.method == "POST":
+        user_query = request.POST.get("message")
+
+        if not user_query:
+            return JsonResponse({"error": "پیام خالی ارسال شده است."}, status=400)
+
+        # بازیابی تاریخچه چت از سشن
+        # تاریخچه را از فرمت dict به آبجکت‌های TextMessage تبدیل می‌کنیم
+        history_dicts = request.session.get("chat_history", [])
+
+        # ما نیاز به تبدیل دیکشنری‌های ذخیره شده به آبجکت‌های TextMessage داریم
+        # تا با chat_with_bot سازگار باشند.
+
+        history_objects = [
+            TextMessage(content=item["content"], source=item["source"])
+            for item in history_dicts
+        ]
+
+        # اجرای تابع چت‌بات و دریافت پاسخ
+        # تابع chat_with_bot، history_objects را به صورت 'pass by reference' به روز می‌کند
+        try:
+            agent_response = chat_with_bot(user_query, history_objects)
+        except Exception as e:
+            return JsonResponse({"error": f"خطا در اجرای چت‌بات: {e}"}, status=500)
+
+        history_dicts.append({"content": user_query, "source": "User"})
+        # 2. پاسخ ایجنت
+        history_dicts.append({"content": agent_response, "source": "Assistant"})
+
+        request.session["chat_history"] = history_dicts
+        request.session.modified = True  # اطمینان از ذخیره شدن سشن
+
+        return JsonResponse(
+            {"user_message": user_query, "assistant_response": agent_response}
+        )
+
+    return JsonResponse({"error": "متد نامعتبر"}, status=405)
+
+
+def logout_view(request):
+    """خروج کاربر از سیستم و پاک کردن تاریخچه چت از سشن."""
+
+    if "chat_history" in request.session:
+        del request.session["chat_history"]
+
+    # ✅ ۲. خروج کاربر از سیستم (حذف سشن اصلی)
+    logout(request)
+
+    # نمایش پیام موفقیت
+    messages.success(request, "شما با موفقیت از حساب کاربری خارج شدید.")
+
+    return redirect("users:login_view")
+
+
+@login_required
+def change_password_view(request):
+    if request.method == "POST":
+        # از فرم استاندارد جنگو برای مدیریت اعتبار سنجی رمز عبور استفاده می‌کنیم
+        form = CustomPasswordChangeForm(user=request.user, data=request.POST)
+
+        was_first_login = request.user.is_first_login
+
+        if "old_password" in form.errors:
+            # 1. تشخیص خطای رمز عبور قدیمی
+            if "Your old password was entered incorrectly" in str(
+                form.errors["old_password"]
+            ):
+                # 2. پاک کردن خطای انگلیسی موجود
+                del form.errors["old_password"]
+
+                # 3. تزریق خطای فارسی به فرم
+                form.add_error(
+                    "old_password",
+                    "رمز عبور فعلی به درستی وارد نشده است. لطفاً دوباره تلاش کنید.",
+                )
+
+        if form.is_valid():
+            user = form.save()  # رمز عبور جدید را ذخیره می‌کند و هش می‌کند
+            update_session_auth_hash(request, user)
+
+            if was_first_login:
+
+                user.is_first_login = False  # تنظیم به 1
+
+                user.save(update_fields=["is_first_login"])
+
+            messages.success(request, "رمز عبور شما با موفقیت تغییر کرد.")
+            return redirect("users:dashboard")
+
+        else:
+            return render(request, "users/change_password.html", {"form": form})
+    else:
+        # متد GET: نمایش فرم خالی
+        form = CustomPasswordChangeForm(user=request.user)
+
+    return render(request, "users/change_password.html", {"form": form})
+
+
+@login_required
+def import_employees_view(request):
+
+    if not request.user.is_staff:
+        # توجه: باید نام صحیح داشبورد را جایگزین کنید (مثلاً 'users:dashboard')
+        messages.error(request, "شما مجاز به دسترسی به این بخش نیستید.")
+        return redirect("users:dashboard")
+
+    if request.method == "POST":
+        form = EmployeeImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            excel_file = form.cleaned_data["excel_file"]
+
+            # ✅ فراخوانی ماژول سرویس برای پردازش داده
+            results = import_employees_from_excel(excel_file)
+
+            # مدیریت پیام‌ها بر اساس نتایج
+            if results["errors"]:
+                messages.warning(
+                    request,
+                    f"عملیات با اخطار به پایان رسید. تعداد {results['success']} کارمند وارد/به‌روزرسانی شدند.",
+                )
+                for error in results["errors"]:
+                    messages.error(request, error)
+            else:
+                messages.success(
+                    request,
+                    f"عملیات با موفقیت انجام شد. {results['success']} کارمند با موفقیت وارد/به‌روزرسانی شدند.",
+                )
+
+            return redirect("users:import_employees")  # بازگشت به صفحه خود فرم
+
+    else:
+        form = EmployeeImportForm()
+
+    return render(request, "users/import_employees.html", {"form": form})
+
+
+@login_required
+def family_management(request):
+
+    if request.method == "POST" and request.POST.get("action") == "delete":
+        dependent_id = request.POST.get("dependent_id")
+        Dependent.objects.filter(id=dependent_id, employee=request.user).delete()
+        return redirect("users:family_management")
+
+    dependents = request.user.dependents.all()
+    context = {"dependents": dependents}
+    return render(request, "users/family_management.html", context)
+
+
+@login_required
+def add_dependent(request):
+
+    edit_id = request.POST.get("edit_id") or request.GET.get("edit")
+    dependent = None
+    if edit_id:
+        try:
+            dependent = Dependent.objects.get(id=edit_id, employee=request.user)
+            print(dependent)
+        except Dependent.DoesNotExist:
+            messages.error(request, "عضو موردنظر یافت نشد یا دسترسی ندارید.")
+            return redirect("users:family_management")
+
+    if request.method == "POST":
+        print(dependent)
+        try:
+            # دریافت داده‌ها از فرم
+            first_name = request.POST.get("first_name")
+            last_name = request.POST.get("last_name")
+            father_name = request.POST.get("father_name")
+            birth_date = request.POST.get("birth_date")  # فرمت شمسی: YYYY/MM/DD
+            gender_code = request.POST.get("gender_code")
+            marital_status_code = request.POST.get("marital_status_code")
+            national_id = request.POST.get("national_id")
+            birth_certificate_number = request.POST.get("birth_certificate_number")
+            phone_number = request.POST.get("phone_number")  # برای ContactInfo
+            relative_type_code = request.POST.get("relative_type_code")
+            dependency_status_code = request.POST.get("dependency_status_code")
+            bank_code = request.POST.get("bank_code")
+
+            # اعتبارسنجی ساده (می‌تونی پیشرفته‌تر کنی)
+            if not all(
+                [
+                    first_name,
+                    last_name,
+                    father_name,
+                    birth_date,
+                    national_id,
+                    gender_code,
+                    relative_type_code,
+                ]
+            ):
+                messages.error(request, "لطفاً تمام فیلدهای اجباری را پر کنید.")
+                return redirect("users:add_dependent")
+
+            # تبدیل تاریخ شمسی به میلادی (با jdatetime)
+            try:
+                j_date = jdatetime.datetime.strptime(birth_date, "%Y/%m/%d")
+                gregorian_birth_date = j_date.togregorian().date()
+            except:
+                messages.error(request, "فرمت تاریخ تولد نامعتبر است.")
+                return redirect("users:add_dependent")
+
+            # دریافت اشیاء مرتبط
+            gender = Gender.objects.get(code=gender_code)
+            relative_type = RelativeType.objects.get(code=relative_type_code)
+            country = Country.objects.get(
+                code=999
+            )  # ایران، کد 13 رو فرض کردم — تغییر بده اگر لازم بود
+
+            marital_status = None
+            if marital_status_code:
+                marital_status = MaritalStatus.objects.get(code=marital_status_code)
+
+            dependency_status = None
+            if dependency_status_code:
+                dependency_status = DependencyStatus.objects.get(
+                    code=dependency_status_code
+                )
+
+            if dependent:  # یعنی حالت ویرایش
+                # به‌روزرسانی فیلدهای موجود
+                dependent.first_name = first_name
+                dependent.last_name = last_name
+                dependent.father_name = father_name
+                dependent.national_id = national_id
+                dependent.birth_certificate_number = birth_certificate_number or ""
+                dependent.birth_date = gregorian_birth_date
+                dependent.gender = gender
+                dependent.relative_type = relative_type
+                dependent.marital_status = marital_status
+                dependent.dependency_status = dependency_status
+                dependent.country = country
+                dependent.save()
+
+                success_message = (
+                    f'اطلاعات "{first_name} {last_name}" با موفقیت به‌روزرسانی شد.'
+                )
+            else:  # حالت افزودن جدید
+                dependent = Dependent.objects.create(
+                    employee=request.user,
+                    relative_type=relative_type,
+                    national_id=national_id,
+                    first_name=first_name,
+                    last_name=last_name,
+                    father_name=father_name,
+                    birth_certificate_number=birth_certificate_number or "",
+                    birth_date=gregorian_birth_date,
+                    marital_status=marital_status,
+                    dependency_status=dependency_status,
+                    gender=gender,
+                    country=country,
+                )
+                success_message = (
+                    f'عضو خانواده "{first_name} {last_name}" با موفقیت ثبت شد.'
+                )
+
+            # افزودن شماره تماس (اگر موبایل یا تلفن وارد شده)
+            if phone_number:
+                contact_number = phone_number  # اولویت با موبایل
+                if len(contact_number) == 11 and contact_number.startswith("09"):
+                    ContactInfo.objects.update_or_create(
+                        dependent=dependent, defaults={"phone_number": phone_number}
+                    )
+            else:
+                ContactInfo.objects.filter(dependent=dependent).delete()
+
+            if bank_code:
+                try:
+                    bank = Banks.objects.get(code=bank_code)
+                    account_type_code = request.POST.get("bank_account_type_code")
+                    account_number = request.POST.get("account_number", "").strip()
+                    sheba_number = request.POST.get("sheba_number", "").strip()
+                    card_number = request.POST.get("card_number", "").strip()
+
+                    if account_type_code and (
+                        account_number or sheba_number or card_number
+                    ):
+                        account_type = BankAccountType.objects.get(
+                            code=account_type_code
+                        )
+                        BankAccount.objects.update_or_create(
+                            dependent=dependent,
+                            defaults={
+                                "bank": bank,
+                                "bank_account_type": account_type,
+                                "account_number": account_number,
+                                "sheba_number": sheba_number,
+                                "card_number": card_number,
+                            },
+                        )
+                except Exception as bank_error:
+                    messages.warning(
+                        request,
+                        f"عضو ثبت شد، اما خطا در ثبت حساب بانکی: {str(bank_error)}",
+                    )
+            else:
+                BankAccount.objects.filter(dependent=dependent).delete()
+
+            messages.success(request, success_message)
+            return redirect("users:family_management")
+
+        except Exception as e:
+            messages.error(request, f"خطا در عملیات: {str(e)}")
+            return redirect(request.path + (f"?edit={edit_id}" if edit_id else ""))
+
+    # GET request - نمایش فرم
+    initial_data = {}
+    if dependent:
+        # پر کردن initial_data برای حالت ویرایش
+        j_birth_date = jdatetime.date.fromgregorian(date=dependent.birth_date)
+        initial_data = {
+            "first_name": dependent.first_name,
+            "last_name": dependent.last_name,
+            "father_name": dependent.father_name,
+            "national_id": dependent.national_id,
+            "birth_certificate_number": dependent.birth_certificate_number,
+            "birth_date": j_birth_date.strftime("%Y/%m/%d"),  # تبدیل به شمسی
+            "gender_code": dependent.gender.code if dependent.gender else "",
+            "marital_status_code": (
+                dependent.marital_status.code if dependent.marital_status else ""
+            ),
+            "relative_type_code": dependent.relative_type.code,
+            "dependency_status_code": (
+                dependent.dependency_status.code if dependent.dependency_status else ""
+            ),
+        }
+
+        # شماره تماس
+        try:
+            contact = dependent.contact_infos.first()
+            if contact:
+                initial_data["phone_number"] = contact.phone_number
+        except:
+            pass
+
+        # حساب بانکی
+        try:
+            bank_account = dependent.bankaccount_set.first()
+            if bank_account:
+                initial_data.update(
+                    {
+                        "bank_code": bank_account.bank.code,
+                        "bank_account_type_code": bank_account.bank_account_type.code,
+                        "account_number": bank_account.account_number,
+                        "sheba_number": bank_account.sheba_number,
+                        "card_number": bank_account.card_number,
+                    }
+                )
+        except:
+            pass
+
+    context = {
+        "genders": Gender.objects.all().order_by("code"),
+        "marital_statuses": MaritalStatus.objects.all().order_by("code"),
+        "relative_types": RelativeType.objects.all().order_by("code"),
+        "dependency_statuses": DependencyStatus.objects.all().order_by("code"),
+        "banks": Banks.objects.all().order_by("name"),
+        "bank_account_types": BankAccountType.objects.all().order_by("code"),
+        "is_edit": bool(edit_id),  # برای نمایش عنوان مناسب در تمپلیت
+        "edit_id": edit_id,
+        **initial_data,  # این مقادیر به عنوان value در inputها استفاده می‌شوند
+    }
+    return render(request, "users/add_dependent.html", context)
+
+
+@login_required
+def manage_bimeh(request):
+    if request.GET.get("export") == "full":
+        # لیست تمام کارمندان فعال
+        employees = (
+            Employee.objects.filter(is_active=True)
+            .select_related("gender", "marital_status", "dependency_status")
+            .prefetch_related(
+                "dependents__gender",
+                "dependents__marital_status",
+                "dependents__dependency_status",
+                "dependents__relative_type",
+                "dependents__country",
+                "bimeh",
+                "bimeh__employment_type",
+                "bimeh__job_group",
+                "bimeh__base_insurance",
+                "bimeh__country",
+                "bank_accounts__bank",
+                "bank_accounts__bank_account_type",
+                "contact_infos",
+            )
+        )
+
+        # لیست برای جمع‌آوری همه ردیف‌ها (پرسنل + وابستگان)
+        data_rows = []
+
+        for emp in employees:
+            # --- اطلاعات مشترک ---
+            bimeh = (
+                emp.bimeh.first()
+            )  # فرض: هر کارمند حداکثر یک رکورد Employee_Bimeh دارد
+            main_personnel_code = emp.personnel_code or ""
+            main_national_id = emp.national_id
+
+            # شماره موبایل (اولویت: ContactInfo با موبایل، در غیر این صورت phone_number اصلی)
+            mobile = ""
+            contact = emp.contact_infos.first()
+            if contact:
+                mobile = contact.phone_number
+            elif emp.phone_number:
+                mobile = emp.phone_number
+
+            # حساب بانکی اصلی کارمند
+            bank_account = emp.bank_accounts.first()
+            bank_code = (
+                bank_account.bank.code if bank_account and bank_account.bank else ""
+            )
+            account_number = bank_account.account_number if bank_account else ""
+            sheba = bank_account.sheba_number if bank_account else ""
+            account_type_code = (
+                bank_account.bank_account_type.code
+                if bank_account and bank_account.bank_account_type
+                else ""
+            )
+            owner_name = f"{emp.first_name} {emp.last_name}"
+
+            # واحد سازمانی (مثال: کارخانه - بخش)
+            organizational_unit = ""
+            if emp.assigned_subdepartments.exists():
+                subdept = emp.assigned_subdepartments.first()
+                organizational_unit = (
+                    f"{subdept.department.factory.name} - {subdept.department.name}"
+                )
+            elif hasattr(emp, "department"):
+                organizational_unit = emp.department.name if emp.department else ""
+
+            # --- اضافه کردن خود کارمند (بیمه‌شده اصلی) ---
+            # print(f"************{bimeh}")
+            data_rows.append(
+                {
+                    "ردیف بیمه شده": "",  # خالی می‌ماند یا می‌تونی شماره‌گذاری کنی
+                    "کد پرسنلی بیمه شده اصلی": main_personnel_code,
+                    "نام": emp.first_name or "",
+                    "نام خانوادگی": emp.last_name or "",
+                    "نام پدر": emp.father_name or "",
+                    "تاریخ تولد": (
+                        emp.birth_date.strftime("%Y/%m/%d") if emp.birth_date else ""
+                    ),
+                    "کد جنسیت": emp.gender.code if emp.gender else "",
+                    "کد وضعیت تأهل": (
+                        emp.marital_status.code if emp.marital_status else ""
+                    ),
+                    "کد ملی": emp.national_id,
+                    "شماره شناسنامه": emp.birth_certificate_number or "",
+                    "شماره تلفن": emp.phone_number or "",
+                    "موبایل": mobile if mobile else "",
+                    "کد نسبت با بیمه شده اصلی": 1,  # 1 = بیمه‌شده اصلی
+                    "کد وضعیت تکفل": 3,  # 3 = بیمه‌شده اصلی (طبق لیست کدها)
+                    "کد گروه": (
+                        bimeh.job_group.code if bimeh and bimeh.job_group else ""
+                    ),
+                    "تاریخ استخدام": (
+                        bimeh.employment_date.strftime("%Y/%m/%d")
+                        if bimeh and bimeh.employment_date
+                        else ""
+                    ),
+                    "کد نوع بیمه پایه": (
+                        bimeh.base_insurance.code
+                        if bimeh and bimeh.base_insurance
+                        else ""
+                    ),
+                    "کد بانک": bank_code,
+                    "شماره حساب": account_number,
+                    "IR": "IR",
+                    "شماره شبا": sheba,
+                    "نوع حساب": account_type_code,
+                    "صاحب حساب": owner_name,
+                    "کد پرسنلی بیمه شده اصلی": main_personnel_code,
+                    "کد ملی بیمه شده اصلی": main_national_id,
+                    "علت درخواست": "",  # todo
+                    "نوع استخدام": (
+                        bimeh.employment_type.code
+                        if bimeh and bimeh.employment_type
+                        else ""
+                    ),
+                    "کد بیمه گر قبلی": (
+                        bimeh.previous_insurer_id
+                        if bimeh and bimeh.previous_insurer_id
+                        else ""
+                        # ""
+                    ),
+                    "مدت پوشش(ماه)": (
+                        bimeh.coverage_duration
+                        if bimeh and bimeh.coverage_duration
+                        else ""
+                        # ""
+                    ),
+                    "کد واحد سازمانی": organizational_unit,
+                    "کد کشور(فقط برای اتباع خارجی)": (
+                        bimeh.country.code if bimeh and bimeh.country else ""
+                    ),
+                }
+            )
+
+            # --- اضافه کردن وابستگان ---
+            for dep in emp.dependents.all():
+                # موبایل وابسته
+                dep_mobile = ""
+                dep_contact = dep.contact_infos.filter(
+                    phone_number__startswith="09"
+                ).first()
+                if dep_contact:
+                    dep_mobile = dep_contact.phone_number
+
+                # حساب بانکی وابسته
+                dep_bank_account = dep.bank_accounts.first()
+                dep_bank_code = (
+                    dep_bank_account.bank.code
+                    if dep_bank_account and dep_bank_account.bank
+                    else ""
+                )
+                dep_account_number = (
+                    dep_bank_account.account_number if dep_bank_account else ""
+                )
+                dep_sheba = dep_bank_account.sheba_number if dep_bank_account else ""
+                dep_account_type_code = (
+                    dep_bank_account.bank_account_type.code
+                    if dep_bank_account and dep_bank_account.bank_account_type
+                    else ""
+                )
+                dep_owner_name = f"{dep.first_name} {dep.last_name}"
+
+                data_rows.append(
+                    {
+                        "ردیف بیمه شده": "",
+                        "کد پرسنلی بیمه شده اصلی": main_personnel_code,
+                        "نام": dep.first_name,
+                        "نام خانوادگی": dep.last_name,
+                        "نام پدر": dep.father_name or "",
+                        "تاریخ تولد": (
+                            dep.birth_date.strftime("%Y/%m/%d")
+                            if dep.birth_date
+                            else ""
+                        ),
+                        "کد جنسیت": dep.gender.code if dep.gender else "",
+                        "کد وضعیت تأهل": (
+                            dep.marital_status.code if dep.marital_status else ""
+                        ),
+                        "کد ملی": dep.national_id,
+                        "شماره شناسنامه": dep.birth_certificate_number or "",
+                        "شماره تلفن": "",  # معمولاً وابسته تلفن ثابت نداره
+                        "موبایل": dep_mobile,
+                        "کد نسبت با بیمه شده اصلی": (
+                            dep.relative_type.code if dep.relative_type else ""
+                        ),
+                        "کد وضعیت تکفل": (
+                            dep.dependency_status.code if dep.dependency_status else ""
+                        ),
+                        "کد گروه": (
+                            bimeh.job_group.code if bimeh and bimeh.job_group else ""
+                        ),
+                        "تاریخ استخدام": "",  # وابسته استخدام نداره
+                        "کد نوع بیمه پایه": (
+                            bimeh.base_insurance.code
+                            if bimeh and bimeh.base_insurance
+                            else ""
+                        ),
+                        "کد بانک": dep_bank_code,
+                        "شماره حساب": dep_account_number,
+                        "IR": "IR",
+                        "شماره شبا": dep_sheba,
+                        "نوع حساب": dep_account_type_code,
+                        "صاحب حساب": dep_owner_name,
+                        "کد پرسنلی بیمه شده اصلی": main_personnel_code,
+                        "کد ملی بیمه شده اصلی": main_national_id,
+                        "علت درخواست": "",
+                        "نوع استخدام": "",
+                        "کد بیمه گر قبلی": "",
+                        "مدت پوشش(ماه)": "",
+                        "کد واحد سازمانی": organizational_unit,
+                        "کد کشور(فقط برای اتباع خارجی)": (
+                            dep.country.code if dep.country else ""
+                        ),
+                    }
+                )
+
+        # ساخت ستون‌ها برای تابع export_to_excel
+        columns = [
+            ("ردیف بیمه شده", [row["ردیف بیمه شده"] for row in data_rows]),
+            (
+                "کد پرسنلی بیمه شده اصلی",
+                [row["کد پرسنلی بیمه شده اصلی"] for row in data_rows],
+            ),
+            ("نام", [row["نام"] for row in data_rows]),
+            ("نام خانوادگی", [row["نام خانوادگی"] for row in data_rows]),
+            ("نام پدر", [row["نام پدر"] for row in data_rows]),
+            ("تاریخ تولد", [row["تاریخ تولد"] for row in data_rows]),
+            ("کد جنسیت", [row["کد جنسیت"] for row in data_rows]),
+            ("کد وضعیت تأهل", [row["کد وضعیت تأهل"] for row in data_rows]),
+            ("کد ملی", [row["کد ملی"] for row in data_rows]),
+            ("شماره شناسنامه", [row["شماره شناسنامه"] for row in data_rows]),
+            ("شماره تلفن", [row["شماره تلفن"] for row in data_rows]),
+            ("موبایل", [row["موبایل"] for row in data_rows]),
+            (
+                "کد نسبت با بیمه شده اصلی",
+                [row["کد نسبت با بیمه شده اصلی"] for row in data_rows],
+            ),
+            ("کد وضعیت تکفل", [row["کد وضعیت تکفل"] for row in data_rows]),
+            ("کد گروه", [row["کد گروه"] for row in data_rows]),
+            ("تاریخ استخدام", [row["تاریخ استخدام"] for row in data_rows]),
+            ("کد نوع بیمه پایه", [row["کد نوع بیمه پایه"] for row in data_rows]),
+            ("کد بانک", [row["کد بانک"] for row in data_rows]),
+            ("شماره حساب", [row["شماره حساب"] for row in data_rows]),
+            ("IR", [row["IR"] for row in data_rows]),
+            ("شماره شبا", [row["شماره شبا"] for row in data_rows]),
+            ("نوع حساب", [row["نوع حساب"] for row in data_rows]),
+            ("صاحب حساب", [row["صاحب حساب"] for row in data_rows]),
+            (
+                "کد پرسنلی بیمه شده اصلی",
+                [row["کد پرسنلی بیمه شده اصلی"] for row in data_rows],
+            ),
+            (
+                "کد ملی بیمه شده اصلی",
+                [row["کد ملی بیمه شده اصلی"] for row in data_rows],
+            ),
+            ("علت درخواست", [row["علت درخواست"] for row in data_rows]),
+            ("نوع استخدام", [row["نوع استخدام"] for row in data_rows]),
+            ("کد بیمه گر قبلی", [row["کد بیمه گر قبلی"] for row in data_rows]),
+            ("مدت پوشش(ماه)", [row["مدت پوشش(ماه)"] for row in data_rows]),
+            ("کد واحد سازمانی", [row["کد واحد سازمانی"] for row in data_rows]),
+            (
+                "کد کشور(فقط برای اتباع خارجی)",
+                [row["کد کشور(فقط برای اتباع خارجی)"] for row in data_rows],
+            ),
+        ]
+
+        # عنوان گزارش و نام فایل
+        today_jalali = jdatetime.date.today().strftime("%Y/%m/%d")
+        filename = f"Bimeh_Takmili_{today_jalali.replace('/', '-')}"
+        report_title = f"لیست بیمه‌شدگان تکمیلی - تولید شده در {today_jalali}"
+
+        return export_to_excel(
+            columns=columns, filename=filename, report_title=report_title
+        )
+
+    elif request.method == "POST" and "upload" in request.POST:
+        excel_file = request.FILES.get("excel_file")
+        print("AAA")
+        if excel_file:
+            try:
+                result = import_from_excel(excel_file)
+                messages.success(
+                    request,
+                    f"ایمپورت موفق: {result['employees']} کارمند و {result['dependents']} وابسته ایجاد شد.",
+                )
+                if result["errors"]:
+                    messages.warning(
+                        request, "برخی خطاها رخ داد: " + "; ".join(result["errors"])
+                    )
+            except Exception as e:
+                messages.error(request, f"خطا در ایمپورت فایل: {str(e)}")
+        else:
+            messages.error(request, "هیچ فایلی انتخاب نشده است.")
+
+    # نمایش صفحه معمولی
+    return render(request, "users/manage_bimeh.html", {})
+
+
+@login_required
+def insurance_info(request):
+    employee = request.user  # فرض: user به Employee لینک شده
+
+    # گرفتن اطلاعات موجود (اگر باشه)
+    bimeh = employee.bimeh.first()  # معمولاً یکی هست
+    bank_account = employee.bank_accounts.first()
+    phone_number = employee.contact_infos.first()
+
+    # تبدیل تاریخ میلادی به جلالی برای نمایش
+    birth_date_jalali = ""
+    employment_date_jalali = ""
+    if employee.birth_date:
+        birth_date_jalali = jdatetime.date.fromgregorian(
+            date=employee.birth_date
+        ).strftime("%Y/%m/%d")
+    if bimeh and bimeh.employment_date:
+        employment_date_jalali = jdatetime.date.fromgregorian(
+            date=bimeh.employment_date
+        ).strftime("%Y/%m/%d")
+
+    context = {
+        # لیست‌های کد برای سلکت‌ها
+        "genders": Gender.objects.all(),
+        "marital_statuses": MaritalStatus.objects.all(),
+        "job_groups": JobGroup.objects.all(),
+        "base_insurances": BaseInsurance.objects.all(),
+        "employment_types": EmploymentType.objects.all(),
+        "previous_insurers": PreviousInsurer.objects.all(),
+        "banks": Banks.objects.all(),
+        "bank_account_types": BankAccountType.objects.all(),
+        "countries": Country.objects.all(),
+        # اطلاعات فعلی برای پر کردن فرم
+        "current": {
+            "personnel_code": employee.personnel_code or "",
+            "first_name": employee.first_name or "",
+            "last_name": employee.last_name or "",
+            "national_id": employee.national_id or "",
+            "father_name": employee.father_name or "",
+            "birth_date_jalali": birth_date_jalali,
+            "gender_code": employee.gender.code if employee.gender else "",
+            "marital_status_code": (
+                employee.marital_status.code if employee.marital_status else ""
+            ),
+            "birth_certificate_number": employee.birth_certificate_number or "",
+            "job_group_code": bimeh.job_group.code if bimeh and bimeh.job_group else "",
+            "employment_date_jalali": employment_date_jalali,
+            "base_insurance_code": (
+                bimeh.base_insurance.code if bimeh and bimeh.base_insurance else ""
+            ),
+            "employment_type_code": (
+                bimeh.employment_type.code if bimeh and bimeh.employment_type else ""
+            ),
+            "previous_insurer_code": (
+                bimeh.previous_insurer.code if bimeh and bimeh.previous_insurer else ""
+            ),
+            "coverage_duration": bimeh.coverage_duration if bimeh else "",
+            "bank_code": (
+                bank_account.bank.code if bank_account and bank_account.bank else ""
+            ),
+            "bank_account_type_code": (
+                bank_account.bank_account_type.code
+                if bank_account and bank_account.bank_account_type
+                else ""
+            ),
+            "account_number": (
+                (bank_account.account_number or "") if bank_account else ""
+            ),
+            "card_number": (bank_account.card_number or "") if bank_account else "",
+            "sheba_number": (
+                bank_account.sheba_number  # .replace("IR", "")
+                if bank_account and bank_account.sheba_number
+                else ""
+            ),
+            "country_code": bimeh.country.code if bimeh and bimeh.country else "",
+            "phone_number": (
+                phone_number.phone_number
+                if phone_number and phone_number.phone_number
+                else ""
+            ),
+        },
+    }
+
+    if request.method == "POST":
+        # ذخیره اطلاعات شخصی در Employee
+        employee.father_name = request.POST.get("father_name", employee.father_name)
+        employee.birth_certificate_number = request.POST.get(
+            "birth_certificate_number", employee.birth_certificate_number
+        )
+        gender_code = request.POST.get("gender_code")
+        if gender_code:
+            try:
+                employee.gender = Gender.objects.get(code=gender_code)
+            except Gender.DoesNotExist:
+                pass  # یا error handling
+        marital_status_code = request.POST.get("marital_status_code")
+        if marital_status_code:
+            try:
+                employee.marital_status = MaritalStatus.objects.get(
+                    code=marital_status_code
+                )
+            except MaritalStatus.DoesNotExist:
+                pass
+        birth_date_str = request.POST.get("birth_date")
+        if birth_date_str:
+            try:
+                y, m, d = map(int, birth_date_str.split("/"))
+                employee.birth_date = jdatetime.date(y, m, d).togregorian()
+            except ValueError:
+                pass  # error handling if needed
+
+        phone_number = request.POST.get("phone_number", "").strip()
+
+        if phone_number:
+            # اعتبارسنجی ساده: باید با 09 شروع بشه و 11 رقمی باشه
+            if len(phone_number) != 11 or not phone_number.isdigit():
+                pass
+            else:
+                # اول همه شماره‌های موبایل قبلی این کارمند رو حذف کن
+                ContactInfo.objects.filter(employee=employee).delete()
+
+                # سپس شماره جدید رو بساز
+                ContactInfo.objects.create(
+                    employee=employee,
+                    phone_number=phone_number,
+                )
+        else:
+            # اگر کاربر شماره رو خالی گذاشت، همه شماره‌های موبایل رو حذف کن
+            ContactInfo.objects.filter(employee=employee).delete()
+
+        employee.save()
+
+        # ذخیره اطلاعات بیمه در Employee_Bimeh
+        if not bimeh:
+            bimeh = Employee_Bimeh(employee=employee)
+        job_group_code = request.POST.get("job_group_code")
+        if job_group_code:
+            try:
+                bimeh.job_group = JobGroup.objects.get(code=job_group_code)
+            except JobGroup.DoesNotExist:
+                pass
+        employment_date_str = request.POST.get("employment_date")
+        if employment_date_str:
+            try:
+                y, m, d = map(int, employment_date_str.split("/"))
+                bimeh.employment_date = jdatetime.date(y, m, d).togregorian()
+            except ValueError:
+                pass
+        base_insurance_code = request.POST.get("base_insurance_code")
+        if base_insurance_code:
+            try:
+                bimeh.base_insurance = BaseInsurance.objects.get(
+                    code=base_insurance_code
+                )
+            except BaseInsurance.DoesNotExist:
+                pass
+        employment_type_code = request.POST.get("employment_type_code")
+        if employment_type_code:
+            try:
+                bimeh.employment_type = EmploymentType.objects.get(
+                    code=employment_type_code
+                )
+            except EmploymentType.DoesNotExist:
+                pass
+        previous_insurer_code = request.POST.get("previous_insurer_code")
+        if previous_insurer_code:
+            try:
+                bimeh.previous_insurer = PreviousInsurer.objects.get(
+                    code=previous_insurer_code
+                )
+            except PreviousInsurer.DoesNotExist:
+                pass
+        coverage_duration = request.POST.get("coverage_duration")
+        if coverage_duration:
+            try:
+                bimeh.coverage_duration = int(coverage_duration)
+            except ValueError:
+                pass
+        country_code = request.POST.get("country_code")
+        if country_code:
+            try:
+                bimeh.country = Country.objects.get(code=country_code)
+            except Country.DoesNotExist:
+                pass
+        bimeh.save()
+
+        # ذخیره اطلاعات بانکی در BankAccount
+        if not bank_account:
+            bank_account = BankAccount(employee=employee)
+
+        bank_code = request.POST.get("bank_code")
+        if bank_code:
+            try:
+                bank_account.bank = Banks.objects.get(code=bank_code)
+            except Banks.DoesNotExist:
+                pass
+        bank_account_type_code = request.POST.get("bank_account_type_code")
+
+        if bank_account_type_code:
+            try:
+                bank_account.bank_account_type = BankAccountType.objects.get(
+                    code=bank_account_type_code
+                )
+            except BankAccountType.DoesNotExist:
+                pass
+        bank_account.account_number = request.POST.get(
+            "account_number", bank_account.account_number
+        )
+        bank_account.card_number = request.POST.get(
+            "card_number", bank_account.card_number
+        )
+        sheba_number = request.POST.get("sheba_number")
+        if sheba_number:
+            bank_account.sheba_number = sheba_number.strip()
+        bank_account.save()
+
+        # ریدایرکت به داشبورد
+        return redirect("users:dashboard")  # تغییر دهید اگر نام url متفاوت است
+
+    return render(request, "users/insurance_info.html", context)
+
+
+# def import_from_excel(excel_file):
+#     """
+#     فانکشن برای ایمپورت داده‌ها از فایل اکسل به مدل‌های Django.
+#     حالا excel_file یک file object هست (از request.FILES).
+#     فرض: داده‌های پایه مثل Gender, MaritalStatus و غیره قبلاً در دیتابیس وجود دارند.
+#     تاریخ‌ها شمسی هستند و با jdatetime تبدیل می‌شوند.
+#     """
+#     df = pd.read_excel(excel_file, sheet_name="لیست بیمه شدگان", header=0)
+#     created_count = {"employees": 0, "dependents": 0, "errors": []}
+
+#     with transaction.atomic():  # برای atomicity، اگر خطایی باشه rollback
+#         for index, row in df.iterrows():
+#             try:
+#                 # تبدیل تاریخ تولد شمسی به میلادی
+#                 birth_date_str = row.get("تاریخ تولد")
+#                 if pd.notna(birth_date_str):
+#                     try:
+#                         jalali_date = jdatetime.date.fromstring(
+#                             birth_date_str, "%Y/%m/%d"
+#                         )
+#                         birth_date = jalali_date.togregorian()
+#                     except ValueError:
+#                         raise ValueError(
+#                             f"فرمت تاریخ تولد نامعتبر در ردیف {index}: {birth_date_str}"
+#                         )
+#                 else:
+#                     birth_date = None
+
+#                 # تبدیل تاریخ استخدام اگر وجود داشته باشه
+#                 employment_date_str = row.get("تاریخ استخدام")
+#                 if pd.notna(employment_date_str):
+#                     try:
+#                         jalali_emp_date = jdatetime.date.fromstring(
+#                             employment_date_str, "%Y/%m/%d"
+#                         )
+#                         employment_date = jalali_emp_date.togregorian()
+#                     except ValueError:
+#                         employment_date = None
+#                 else:
+#                     employment_date = None
+
+#                 # گرفتن ForeignKeyها بر اساس کد
+#                 gender = (
+#                     Gender.objects.get(code=row["کد جنسیت"])
+#                     if pd.notna(row["کد جنسیت"])
+#                     else None
+#                 )
+#                 marital_status = (
+#                     MaritalStatus.objects.get(code=row["کد وضعیت تأهل"])
+#                     if pd.notna(row["کد وضعیت تأهل"])
+#                     else None
+#                 )
+#                 dependency_status = (
+#                     DependencyStatus.objects.get(code=row["کد وضعیت تکفل"])
+#                     if pd.notna(row["کد وضعیت تکفل"])
+#                     else None
+#                 )
+#                 country = (
+#                     Country.objects.get(code=row["کد کشور(فقط برای اتباع خارجی)"])
+#                     if pd.notna(row["کد کشور(فقط برای اتباع خارجی)"])
+#                     else Country.objects.get(code=1)
+#                 )  # فرض کد ایران=1
+#                 employment_type = (
+#                     EmploymentType.objects.get(code=row["نوع استخدام "])
+#                     if pd.notna(row["نوع استخدام "])
+#                     else None
+#                 )
+#                 job_group = (
+#                     JobGroup.objects.get(code=row["کد گروه"])
+#                     if pd.notna(row["کد گروه"])
+#                     else None
+#                 )
+#                 base_insurance = (
+#                     BaseInsurance.objects.get(code=row["کد نوع بیمه پایه"])
+#                     if pd.notna(row["کد نوع بیمه پایه"])
+#                     else None
+#                 )
+#                 previous_insurer = (
+#                     PreviousInsurer.objects.get(code=row["کد بیمه گر قبلی"])
+#                     if pd.notna(row["کد بیمه گر قبلی"])
+#                     else None
+#                 )
+#                 bank = (
+#                     Banks.objects.get(code=row["کد بانک"])
+#                     if pd.notna(row["کد بانک"])
+#                     else None
+#                 )
+#                 bank_account_type = (
+#                     BankAccountType.objects.get(code=row["نوع حساب"])
+#                     if pd.notna(row["نوع حساب"])
+#                     else None
+#                 )
+
+#                 national_id = (
+#                     str(int(row["کد ملی"])) if pd.notna(row["کد ملی"]) else None
+#                 )
+#                 personnel_code = (
+#                     str(int(row["کد پرسنلی بیمه شده اصلی"]))
+#                     if pd.notna(row["کد پرسنلی بیمه شده اصلی"])
+#                     else None
+#                 )
+
+#                 if row["کد نسبت با بیمه شده اصلی"] == 1:  # بیمه‌شده اصلی (Employee)
+#                     # چک وجود قبلی
+#                     if Employee.objects.filter(national_id=national_id).exists():
+#                         continue  # یا update اگر بخواید
+
+#                     employee = Employee.objects.create(
+#                         national_id=national_id,
+#                         first_name=row["نام"],
+#                         last_name=row["نام خانوادگی"],
+#                         father_name=row["نام پدر"],
+#                         birth_date=birth_date,
+#                         gender=gender,
+#                         marital_status=marital_status,
+#                         birth_certificate_number=(
+#                             str(int(row["شماره شناسنامه"]))
+#                             if pd.notna(row["شماره شناسنامه"])
+#                             else None
+#                         ),
+#                         phone_number=(
+#                             str(int(row["موبایل"])) if pd.notna(row["موبایل"]) else None
+#                         ),
+#                         personnel_code=personnel_code,
+#                         # address اگر باشه، در اکسل نیست
+#                         # roles: فرض پیش‌فرض employee
+#                         # employee.roles.add(Role.objects.get(name='employee'))  # uncomment اگر نیاز
+#                     )
+#                     created_count["employees"] += 1
+
+#                     # ایجاد Employee_Bimeh
+#                     if any(
+#                         [
+#                             employment_date,
+#                             employment_type,
+#                             job_group,
+#                             base_insurance,
+#                             previous_insurer,
+#                         ]
+#                     ):
+#                         Employee_Bimeh.objects.create(
+#                             employee=employee,
+#                             employment_date=employment_date,
+#                             employment_type=employment_type,
+#                             job_group=job_group,
+#                             base_insurance=base_insurance,
+#                             country=country,
+#                             previous_insurer=previous_insurer,
+#                             coverage_duration=(
+#                                 int(row["مدت پوشش(ماه)"])
+#                                 if pd.notna(row["مدت پوشش(ماه)"])
+#                                 else None
+#                             ),
+#                         )
+
+#                     # واحد سازمانی: parse و assign اگر نیاز باشه، مثلاً
+#                     org_unit = row.get("کد واحد سازمانی")
+#                     if org_unit:
+#                         # فرض: 'اصفهان مقدم- تولید' → factory='اصفهان مقدم', department='تولید'
+#                         parts = org_unit.split("-")
+#                         if len(parts) == 2:
+#                             factory_name = parts[0].strip()
+#                             dept_name = parts[1].strip()
+#                             factory, _ = Factory.objects.get_or_create(
+#                                 name=factory_name
+#                             )
+#                             dept, _ = Department.objects.get_or_create(
+#                                 name=dept_name, factory=factory
+#                             )
+#                             # assign به employee، اما در مدل Employee مستقیم نیست، شاید از طریق managed_ یا assigned_
+#                             # مثلاً employee.managed_departments.add(dept) اگر مدیر باشه، иначе customize کنید
+
+#                 else:  # وابسته (Dependent)
+#                     # پیدا کردن Employee اصلی
+#                     main_personnel_code = (
+#                         str(int(row["کد پرسنلی بیمه شده اصلی"]))
+#                         if pd.notna(row["کد پرسنلی بیمه شده اصلی"])
+#                         else None
+#                     )
+#                     main_national_id = (
+#                         str(int(row["کد ملی بیمه شده اصلی"]))
+#                         if pd.notna(row["کد ملی بیمه شده اصلی"])
+#                         else None
+#                     )
+#                     if main_personnel_code:
+#                         main_employee = Employee.objects.get(
+#                             personnel_code=main_personnel_code
+#                         )
+#                     elif main_national_id:
+#                         main_employee = Employee.objects.get(
+#                             national_id=main_national_id
+#                         )
+#                     else:
+#                         raise ValueError(f"Employee اصلی پیدا نشد در ردیف {index}")
+
+#                     relative_type = RelativeType.objects.get(
+#                         code=row["کد نسبت با بیمه شده اصلی"]
+#                     )
+
+#                     dependent = Dependent.objects.create(
+#                         employee=main_employee,
+#                         relative_type=relative_type,
+#                         national_id=national_id,
+#                         first_name=row["نام"],
+#                         last_name=row["نام خانوادگی"],
+#                         father_name=row["نام پدر"],
+#                         birth_certificate_number=(
+#                             str(int(row["شماره شناسنامه"]))
+#                             if pd.notna(row["شماره شناسنامه"])
+#                             else None
+#                         ),
+#                         birth_date=birth_date,
+#                         marital_status=marital_status,
+#                         dependency_status=dependency_status,
+#                         gender=gender,
+#                         country=country,
+#                     )
+#                     created_count["dependents"] += 1
+
+#                 # ایجاد BankAccount (برای employee یا dependent)
+#                 if pd.notna(row["شماره شبا"]) or pd.notna(row["شماره حساب"]):
+#                     owner = employee if "employee" in locals() else dependent
+#                     BankAccount.objects.create(
+#                         employee=owner if isinstance(owner, Employee) else None,
+#                         dependent=owner if isinstance(owner, Dependent) else None,
+#                         bank=bank,
+#                         bank_account_type=bank_account_type,
+#                         account_number=(
+#                             str(int(row["شماره حساب"]))
+#                             if pd.notna(row["شماره حساب"])
+#                             else None
+#                         ),
+#                         sheba_number=(
+#                             str(int(row["شماره شبا"]))
+#                             if pd.notna(row["شماره شبا"])
+#                             else None
+#                         ),
+#                         # card_number اگر باشه
+#                     )
+
+#                 # ایجاد ContactInfo (شماره تلفن جدا اگر باشه)
+#                 phone = (
+#                     str(int(row["شماره تلفن"])) if pd.notna(row["شماره تلفن"]) else None
+#                 )
+#                 if phone:
+#                     owner = employee if "employee" in locals() else dependent
+#                     ContactInfo.objects.create(
+#                         employee=owner if isinstance(owner, Employee) else None,
+#                         dependent=owner if isinstance(owner, Dependent) else None,
+#                         phone_number=phone,
+#                     )
+
+#             except Exception as e:
+#                 created_count["errors"].append(f"خطا در ردیف {index}: {str(e)}")
+#                 raise  # برای rollback transaction
+
+#     return created_count
+
+
+def import_from_excel(excel_file):
+
+    errors = []
+    employee_count = 0
+    dependent_count = 0
+
+    dtype_spec = {
+        "کد ملی": str,
+        "کد ملی بیمه شده اصلی": str,
+    }
+
+    # Read the Excel sheets
+    df_insured = pd.read_excel(
+        excel_file,
+        sheet_name="لیست بیمه شدگان",
+        header=0,
+        dtype=dtype_spec,
+        keep_default_na=False,
+    )
+
+    # Clean column names (remove any extra spaces)
+    df_insured.columns = [col.strip() for col in df_insured.columns]
+
+    required_columns = {
+        "کد ملی",
+        "نام",
+        "نام خانوادگی",
+        # "کد نسبت با بیمه شده اصلی",
+        # "کد ملی بیمه شده اصلی",
+    }
+    missing_cols = required_columns - set(df_insured.columns)
+    if missing_cols:
+        errors.append(f"فیلدهای اجباری: {', '.join(missing_cols)}")
+        return {
+            "employees": 0,
+            "dependents": 0,
+            "errors": errors,
+        }
+
+    # Function to parse Persian date to Gregorian date
+    def parse_persian_date(date_str):
+        if pd.isna(date_str) or not date_str:
+            return None
+        try:
+            year, month, day = map(int, date_str.split("/"))
+            from jdatetime import date as jdate
+
+            return jdate(year, month, day).togregorian()
+        except:
+            return None
+
+    #####################################
+    # Step 1: Import Employees (where relative_code == 1)
+    employees_df = df_insured
+    for _, row in employees_df.iterrows():
+        national_id = str(row.get("کد ملی", "")).strip()
+        if len(national_id) < 10:
+            print(national_id)
+
+        if not national_id:
+            errors.append(f"ردیف بدون کد ملی پرش شد.")
+            continue
+
+        first_name = row.get("نام", "").strip()
+        if not first_name:
+            errors.append(f"نام خالی برای {national_id}")
+            continue
+
+        last_name = row.get("نام خانوادگی", "").strip()
+        if not last_name:
+            errors.append(f"نام خانوادگی خالی برای {national_id}")
+            continue
+
+        # Prepare defaults for Employee
+        defaults = {
+            "first_name": first_name,
+            "last_name": last_name,
+        }
+
+        if "نام پدر" in df_insured.columns:
+            defaults["father_name"] = (
+                row["نام پدر"].strip() if pd.notna(row["نام پدر"]) else None
+            )
+
+        if "تاریخ تولد" in df_insured.columns:
+            defaults["birth_date"] = (
+                parse_persian_date(row["تاریخ تولد"])
+                if pd.notna(row["تاریخ تولد"])
+                else None
+            )
+
+        if "شماره شناسنامه" in df_insured.columns:
+            defaults["birth_certificate_number"] = (
+                str(row["شماره شناسنامه"]).strip()
+                if pd.notna(row["شماره شناسنامه"])
+                else None
+            )
+
+        if "موبایل" in df_insured.columns:
+            defaults["phone_number"] = (
+                str(row["موبایل"]).strip() if pd.notna(row["موبایل"]) else ""
+            )
+
+        if "کد پرسنلی بیمه شده اصلی" in df_insured.columns:
+            defaults["personnel_code"] = (
+                str(row["کد پرسنلی بیمه شده اصلی"]).strip()
+                if pd.notna(row["کد پرسنلی بیمه شده اصلی"])
+                else None
+            )
+
+        # Foreign keys - only if column exists
+        if "کد جنسیت" in df_insured.columns and pd.notna(row["کد جنسیت"]):
+            try:
+                defaults["gender"] = Gender.objects.get(code=int(row["کد جنسیت"]))
+            except ObjectDoesNotExist:
+                errors.append(
+                    f"جنسیت با کد {row['کد جنسیت']} پیدا نشد برای {national_id}"
+                )
+
+        if "کد وضعیت تکفل" in df_insured.columns and pd.notna(row["کد وضعیت تکفل"]):
+            try:
+                defaults["dependency_status"] = DependencyStatus.objects.get(
+                    code=int(row["کد وضعیت تکفل"])
+                )
+            except ObjectDoesNotExist:
+                errors.append(
+                    f"وضعیت تکفل با کد {row['کد وضعیت تکفل']} پیدا نشد برای {national_id}"
+                )
+
+        if "کد وضعیت تأهل" in df_insured.columns and pd.notna(row["کد وضعیت تأهل"]):
+            try:
+                defaults["marital_status"] = MaritalStatus.objects.get(
+                    code=int(row["کد وضعیت تأهل"])
+                )
+            except ObjectDoesNotExist:
+                errors.append(
+                    f"وضعیت تأهل با کد {row['کد وضعیت تأهل']} پیدا نشد برای {national_id}"
+                )
+
+        # Update or create Employee
+        try:
+            with transaction.atomic():
+                employee, created = Employee.objects.update_or_create(
+                    national_id=national_id, defaults=defaults
+                )
+                employee_count += 1
+
+                # Handle Employee_Bimeh - only include fields that exist
+                bimeh_defaults = {}
+
+                if "تاریخ استخدام" in df_insured.columns and pd.notna(
+                    row["تاریخ استخدام"]
+                ):
+                    bimeh_defaults["employment_date"] = parse_persian_date(
+                        row["تاریخ استخدام"]
+                    )
+
+                if (
+                    "نوع استخدام" in df_insured.columns
+                    and pd.notna(row["نوع استخدام"])
+                    and str(row["نوع استخدام"]).strip()
+                ):
+                    try:
+                        bimeh_defaults["employment_type"] = EmploymentType.objects.get(
+                            code=int(row["نوع استخدام"])
+                        )
+                    except (ObjectDoesNotExist, ValueError):
+                        errors.append(f"نوع استخدام نامعتبر برای {national_id}")
+
+                if (
+                    "کد گروه" in df_insured.columns
+                    and pd.notna(row["کد گروه"])
+                    and str(row["کد گروه"]).strip()
+                ):
+                    try:
+                        bimeh_defaults["job_group"] = JobGroup.objects.get(
+                            code=int(row["کد گروه"])
+                        )
+                    except (ObjectDoesNotExist, ValueError):
+                        errors.append(f"گروه شغلی نامعتبر برای {national_id}")
+
+                if (
+                    "کد نوع بیمه پایه" in df_insured.columns
+                    and pd.notna(row["کد نوع بیمه پایه"])
+                    and str(row["کد نوع بیمه پایه"]).strip()
+                ):
+                    try:
+                        bimeh_defaults["base_insurance"] = BaseInsurance.objects.get(
+                            code=int(row["کد نوع بیمه پایه"])
+                        )
+                    except (ObjectDoesNotExist, ValueError):
+                        errors.append(f"بیمه پایه نامعتبر برای {national_id}")
+
+                if (
+                    "کد کشور(فقط برای اتباع خارجی)" in df_insured.columns
+                    and pd.notna(row["کد کشور(فقط برای اتباع خارجی)"])
+                    and str(row["کد کشور(فقط برای اتباع خارجی)"]).strip()
+                ):
+                    try:
+                        bimeh_defaults["country"] = Country.objects.get(
+                            code=int(row["کد کشور(فقط برای اتباع خارجی)"])
+                        )
+                    except (ObjectDoesNotExist, ValueError):
+                        pass
+
+                if (
+                    "کد بیمه گر قبلی" in df_insured.columns
+                    and pd.notna(row["کد بیمه گر قبلی"])
+                    and str(row["کد بیمه گر قبلی"]).strip()
+                ):
+                    try:
+                        bimeh_defaults["previous_insurer"] = (
+                            PreviousInsurer.objects.get(
+                                code=int(row["کد بیمه گر قبلی"])
+                            )
+                        )
+                    except (ObjectDoesNotExist, ValueError):
+                        pass
+
+                if (
+                    "مدت پوشش(ماه)" in df_insured.columns
+                    and pd.notna(row["مدت پوشش(ماه)"])
+                    and str(row["مدت پوشش(ماه)"]).strip()
+                ):
+                    try:
+                        bimeh_defaults["coverage_duration"] = int(row["مدت پوشش(ماه)"])
+                    except ValueError:
+                        pass
+
+                if bimeh_defaults:
+                    Employee_Bimeh.objects.update_or_create(
+                        employee=employee, defaults=bimeh_defaults
+                    )
+
+                # Handle BankAccount for Employee - only include fields that exist
+                raw_sheba = (
+                    str(row["شماره شبا"]).strip()
+                    if "شماره شبا" in df_insured.columns and pd.notna(row["شماره شبا"])
+                    else None
+                )
+                if raw_sheba and raw_sheba.upper().startswith("IR"):
+                    sheba_number = raw_sheba[2:]
+                else:
+                    sheba_number = raw_sheba
+
+                raw_account = (
+                    str(row["شماره حساب"]).strip()
+                    if "شماره حساب" in df_insured.columns
+                    and pd.notna(row["شماره حساب"])
+                    else None
+                )
+
+                bank = None
+                if (
+                    "کد بانک" in df_insured.columns
+                    and pd.notna(row["کد بانک"])
+                    and str(row["کد بانک"]).strip()
+                ):
+                    try:
+                        bank = Banks.objects.get(code=int(row["کد بانک"]))
+                    except (ObjectDoesNotExist, ValueError):
+                        errors.append(f"بانک نامعتبر برای {national_id}")
+
+                bank_account_type = None
+                if (
+                    "نوع حساب" in df_insured.columns
+                    and pd.notna(row["نوع حساب"])
+                    and str(row["نوع حساب"]).strip()
+                ):
+                    try:
+                        bank_account_type = BankAccountType.objects.get(
+                            code=int(row["نوع حساب"])
+                        )
+                    except (ObjectDoesNotExist, ValueError):
+                        errors.append(f"نوع حساب نامعتبر برای {national_id}")
+
+                # فقط بر اساس مالک (employee یا dependent) آپدیت کن، نه شبا
+                if (
+                    raw_account is not None
+                    or sheba_number is not None
+                    or bank is not None
+                    or bank_account_type is not None
+                ):
+                    bank_defaults = {}
+                    if raw_account is not None:
+                        bank_defaults["account_number"] = raw_account
+                    if sheba_number is not None:
+                        bank_defaults["sheba_number"] = sheba_number
+                    if bank is not None:
+                        bank_defaults["bank"] = bank
+                    if bank_account_type is not None:
+                        bank_defaults["bank_account_type"] = bank_account_type
+
+                    try:
+                        BankAccount.objects.update_or_create(
+                            employee=employee, defaults=bank_defaults
+                        )
+                    except Exception as e:
+                        errors.append(
+                            f"خطا در ذخیره حساب بانکی برای {national_id}: {str(e)}"
+                        )
+
+                # Handle ContactInfo (if شماره تلفن exists, add as additional contact)
+                if (
+                    "شماره تلفن" in df_insured.columns
+                    and pd.notna(row["شماره تلفن"])
+                    and str(row["شماره تلفن"]).strip()
+                ):
+                    try:
+                        ContactInfo.objects.get_or_create(
+                            employee=employee,
+                            phone_number=str(row["شماره تلفن"]).strip(),
+                        )
+                    except ValidationError as ve:
+                        errors.append(
+                            f"خطا در افزودن شماره تلفن برای {national_id}: {ve}"
+                        )
+
+        except Exception as e:
+            errors.append(f"خطا در پردازش کارمند {national_id}: {str(e)}")
+
+    # Step 2: Import Dependents (relative_code != 1)
+    # dependents_df = df_insured[df_insured["کد نسبت با بیمه شده اصلی"] != 1]
+    # missing_employees_count = 0
+    # for _, row in dependents_df.iterrows():
+    #     national_id = str(row.get("کد ملی", "")).strip()
+
+    #     if not national_id:
+    #         errors.append(f"ردیف بدون کد ملی پرش شد.")
+    #         continue
+
+    #     first_name = row.get("نام", "").strip()
+    #     if not first_name:
+    #         errors.append(f"نام خالی برای {national_id}")
+    #         continue
+
+    #     last_name = row.get("نام خانوادگی", "").strip()
+    #     if not last_name:
+    #         errors.append(f"نام خانوادگی خالی برای {national_id}")
+    #         continue
+
+    #     employee_national_id = str(row.get("کد ملی بیمه شده اصلی", "")).strip()
+
+    #     if not employee_national_id:
+    #         errors.append(f"کد ملی بیمه شده اصلی خالی برای وابسته {national_id}")
+    #         continue
+    #     try:
+    #         employee = Employee.objects.get(national_id=employee_national_id)
+    #     except ObjectDoesNotExist:
+    #         missing_employees_count += 1
+    #         errors.append(
+    #             f"کارمند با کد ملی {employee_national_id} برای وابسته {national_id} پیدا نشد."
+    #         )
+    #         continue  # Skip and count missing
+
+    #     # Prepare defaults for Dependent - only include fields that exist in the Excel
+    #     defaults = {
+    #         "first_name": first_name,
+    #         "last_name": last_name,
+    #     }
+
+    #     if "نام پدر" in df_insured.columns:
+    #         defaults["father_name"] = (
+    #             row["نام پدر"].strip() if pd.notna(row["نام پدر"]) else ""
+    #         )
+
+    #     if "تاریخ تولد" in df_insured.columns:
+    #         defaults["birth_date"] = (
+    #             parse_persian_date(row["تاریخ تولد"])
+    #             if pd.notna(row["تاریخ تولد"])
+    #             else None
+    #         )
+
+    #     if "شماره شناسنامه" in df_insured.columns:
+    #         defaults["birth_certificate_number"] = (
+    #             str(row["شماره شناسنامه"]).strip()
+    #             if pd.notna(row["شماره شناسنامه"])
+    #             else ""
+    #         )
+
+    #     # Foreign keys - only if column exists
+    #     try:
+    #         defaults["relative_type"] = RelativeType.objects.get(
+    #             code=int(row["کد نسبت با بیمه شده اصلی"])
+    #         )
+    #     except ObjectDoesNotExist:
+    #         errors.append(
+    #             f"نسبت با کد {row.get('کد نسبت با بیمه شده اصلی')} پیدا نشد برای {national_id}"
+    #         )
+    #         continue  # Required, skip if not found
+    #     except ValueError:
+    #         errors.append(f"کد نسبت نامعتبر برای {national_id}")
+    #         continue
+
+    #     if "کد جنسیت" in df_insured.columns and pd.notna(row["کد جنسیت"]):
+    #         try:
+    #             defaults["gender"] = Gender.objects.get(code=int(row["کد جنسیت"]))
+    #         except ObjectDoesNotExist:
+    #             errors.append(
+    #                 f"جنسیت با کد {row['کد جنسیت']} پیدا نشد برای {national_id}"
+    #             )
+
+    #     if "کد وضعیت تکفل" in df_insured.columns and pd.notna(row["کد وضعیت تکفل"]):
+    #         try:
+    #             defaults["dependency_status"] = DependencyStatus.objects.get(
+    #                 code=int(row["کد وضعیت تکفل"])
+    #             )
+    #         except ObjectDoesNotExist:
+    #             errors.append(
+    #                 f"وضعیت تکفل با کد {row['کد وضعیت تکفل']} پیدا نشد برای {national_id}"
+    #             )
+
+    #     if "کد وضعیت تأهل" in df_insured.columns and pd.notna(row["کد وضعیت تأهل"]):
+    #         try:
+    #             defaults["marital_status"] = MaritalStatus.objects.get(
+    #                 code=int(row["کد وضعیت تأهل"])
+    #             )
+    #         except ObjectDoesNotExist:
+    #             errors.append(
+    #                 f"وضعیت تأهل با کد {row['کد وضعیت تأهل']} پیدا نشد برای {national_id}"
+    #             )
+
+    #     if "کد کشور(فقط برای اتباع خارجی)" in df_insured.columns:
+    #         try:
+    #             if pd.notna(row["کد کشور(فقط برای اتباع خارجی)"]):
+    #                 defaults["country"] = Country.objects.get(
+    #                     code=int(row["کد کشور(فقط برای اتباع خارجی)"])
+    #                 )
+    #             else:
+    #                 defaults["country"] = (
+    #                     None  # If column exists but value is empty, set to None
+    #                 )
+    #         except ObjectDoesNotExist:
+    #             errors.append(
+    #                 f"کشور با کد {row.get('کد کشور(فقط برای اتباع خارجی)', '999')} پیدا نشد برای {national_id}"
+    #             )
+    #     else:
+    #         # If column doesn't exist, don't touch country (use existing or default if new)
+    #         pass
+
+    #     # Update or create Dependent
+    #     try:
+    #         with transaction.atomic():
+    #             dependent, created = Dependent.objects.update_or_create(
+    #                 employee=employee, national_id=national_id, defaults=defaults
+    #             )
+    #             dependent_count += 1
+
+    #             # Handle BankAccount for Dependent - only include fields that exist
+    #             raw_sheba = (
+    #                 str(row["شماره شبا"]).strip()
+    #                 if "شماره شبا" in df_insured.columns and pd.notna(row["شماره شبا"])
+    #                 else None
+    #             )
+    #             if raw_sheba and raw_sheba.upper().startswith("IR"):
+    #                 sheba_number = raw_sheba[2:]
+    #             else:
+    #                 sheba_number = raw_sheba
+
+    #             raw_account = (
+    #                 str(row["شماره حساب"]).strip()
+    #                 if "شماره حساب" in df_insured.columns
+    #                 and pd.notna(row["شماره حساب"])
+    #                 else None
+    #             )
+
+    #             bank = None
+    #             if (
+    #                 "کد بانک" in df_insured.columns
+    #                 and pd.notna(row["کد بانک"])
+    #                 and str(row["کد بانک"]).strip()
+    #             ):
+    #                 try:
+    #                     bank = Banks.objects.get(code=int(row["کد بانک"]))
+    #                 except (ObjectDoesNotExist, ValueError):
+    #                     errors.append(f"بانک نامعتبر برای {national_id}")
+
+    #             bank_account_type = None
+    #             if (
+    #                 "نوع حساب" in df_insured.columns
+    #                 and pd.notna(row["نوع حساب"])
+    #                 and str(row["نوع حساب"]).strip()
+    #             ):
+    #                 try:
+    #                     bank_account_type = BankAccountType.objects.get(
+    #                         code=int(row["نوع حساب"])
+    #                     )
+    #                 except (ObjectDoesNotExist, ValueError):
+    #                     errors.append(f"نوع حساب نامعتبر برای {national_id}")
+
+    #             # فقط بر اساس مالک (employee یا dependent) آپدیت کن، نه شبا
+    #             if (
+    #                 raw_account is not None
+    #                 or sheba_number is not None
+    #                 or bank is not None
+    #                 or bank_account_type is not None
+    #             ):
+    #                 bank_defaults = {}
+    #                 if raw_account is not None:
+    #                     bank_defaults["account_number"] = raw_account
+    #                 if sheba_number is not None:
+    #                     bank_defaults["sheba_number"] = sheba_number
+    #                 if bank is not None:
+    #                     bank_defaults["bank"] = bank
+    #                 if bank_account_type is not None:
+    #                     bank_defaults["bank_account_type"] = bank_account_type
+
+    #                 try:
+    #                     BankAccount.objects.update_or_create(
+    #                         dependent=dependent, defaults=bank_defaults
+    #                     )
+    #                 except Exception as e:
+    #                     errors.append(
+    #                         f"خطا در ذخیره حساب بانکی برای {national_id}: {str(e)}"
+    #                     )
+
+    #             # Handle ContactInfo for Dependent (mobile as primary, تلفن as additional)
+    #             if (
+    #                 "موبایل" in df_insured.columns
+    #                 and pd.notna(row["موبایل"])
+    #                 and str(row["موبایل"]).strip()
+    #             ):
+    #                 try:
+    #                     ContactInfo.objects.get_or_create(
+    #                         dependent=dependent,
+    #                         phone_number=str(row["موبایل"]).strip(),
+    #                     )
+    #                 except ValidationError as ve:
+    #                     errors.append(f"خطا در افزودن موبایل برای {national_id}: {ve}")
+
+    #             if (
+    #                 "شماره تلفن" in df_insured.columns
+    #                 and pd.notna(row["شماره تلفن"])
+    #                 and str(row["شماره تلفن"]).strip()
+    #             ):
+    #                 try:
+    #                     ContactInfo.objects.get_or_create(
+    #                         dependent=dependent,
+    #                         phone_number=str(row["شماره تلفن"]).strip(),
+    #                     )
+    #                 except ValidationError as ve:
+    #                     errors.append(
+    #                         f"خطا در افزودن شماره تلفن برای {national_id}: {ve}"
+    #                     )
+    #     except Exception as e:
+    #         errors.append(f"خطا در پردازش وابسته {national_id}: {str(e)}")
+
+    # if missing_employees_count > 0:
+    #     errors.append(
+    #         f"{missing_employees_count} خانواده برای کارمندان پیدا نشدند (کارمند اصلی موجود نبود)."
+    #     )
+
+    return {
+        "employees": employee_count,
+        "dependents": dependent_count,
+        "errors": errors,
+    }

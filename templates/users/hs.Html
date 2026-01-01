@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فرم ورود اطلاعات بیمه</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .wizard {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h2 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            animation: slideIn 0.5s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .form-group {
+            position: relative;
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        .form-group:hover {
+            transform: translateY(-2px);
+        }
+        .form-group i {
+            position: absolute;
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 1.2em;
+            z-index: 1;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            margin: 0;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+        }
+        input:focus, select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+            transform: scale(1.02);
+            outline: none;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        button {
+            width: 48%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
+        }
+        button:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 6px 15px rgba(0, 123, 255, 0.3);
+        }
+        button.prev {
+            background-color: #6c757d;
+            color: white;
+        }
+        button.next, button.submit {
+            background-color: #007bff;
+            color: white;
+        }
+        button.prev:hover {
+            background-color: #5a6268;
+        }
+        button.next:hover, button.submit:hover {
+            background-color: #0056b3;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        @media (max-width: 600px) {
+            .wizard {
+                padding: 15px;
+                border-radius: 0;
+            }
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wizard">
+        <form id="insuranceForm">
+            <!-- Step 1: اطلاعات شخصی -->
+            <div id="step1" class="step active">
+                <h2>مرحله 1: اطلاعات شخصی</h2>
+                <!-- <div class="form-group">
+                    <label>ردیف بیمه شده:</label>
+                    <i class="fas fa-list-ol"></i>
+                    <input type="text" name="row_insured">
+                </div> -->
+                <div class="form-group">
+                    <label>کد پرسنلی بیمه شده اصلی:</label>
+                    <i class="fas fa-id-badge"></i>
+                    <input type="text" name="personnel_code">
+                </div>
+                <div class="form-group">
+                    <label>نام:</label>
+                    <i class="fas fa-user"></i>
+                    <input type="text" name="first_name">
+                </div>
+                <div class="form-group">
+                    <label>نام خانوادگی:</label>
+                    <i class="fas fa-user"></i>
+                    <input type="text" name="last_name">
+                </div>
+                <div class="form-group">
+                    <label>نام پدر:</label>
+                    <i class="fas fa-user-tie"></i>
+                    <input type="text" name="father_name">
+                </div>
+                <div class="form-group">
+                    <label>تاریخ تولد (شمسی):</label>
+                    <i class="fas fa-calendar-alt"></i>
+                    <input type="text" name="birth_date" class="pdp-default" placeholder="YYYY/MM/DD">
+                </div>
+                <div class="form-group">
+                    <label>کد جنسیت:</label>
+                    <i class="fas fa-venus-mars"></i>
+                    <select name="gender_code">
+                        <option value="">انتخاب کنید</option>
+                        <option value="1">مرد (1)</option>
+                        <option value="2">زن (2)</option>
+                        <option value="3">دوجنسی/نامشخص (3)</option>
+                        <option value="4">تعیین نشده (4)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>کد وضعیت تأهل:</label>
+                    <i class="fas fa-ring"></i>
+                    <select name="marital_status_code">
+                        <option value="">انتخاب کنید</option>
+                        <option value="2">مجرد (2)</option>
+                        <option value="3">متاهل (3)</option>
+                        <option value="5">ساير (5)</option>
+                    </select>
+                </div>
+                <div class="buttons">
+                    <button type="button" class="next" onclick="nextStep(2)">بعدی <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Step 2: اطلاعات تماس و شناسایی -->
+            <div id="step2" class="step">
+                <h2>مرحله 2: اطلاعات تماس و شناسایی</h2>
+                <div class="form-group">
+                    <label>کد ملی:</label>
+                    <i class="fas fa-id-card"></i>
+                    <input type="text" name="national_id">
+                </div>
+                <div class="form-group">
+                    <label>شماره شناسنامه:</label>
+                    <i class="fas fa-book"></i>
+                    <input type="text" name="id_number">
+                </div>
+                <div class="form-group">
+                    <label>شماره تلفن:</label>
+                    <i class="fas fa-phone"></i>
+                    <input type="tel" name="phone">
+                </div>
+                <div class="form-group">
+                    <label>موبایل:</label>
+                    <i class="fas fa-mobile-alt"></i>
+                    <input type="tel" name="mobile">
+                </div>
+                <div class="form-group">
+                    <label>کد نسبت با بیمه شده اصلی:</label>
+                    <i class="fas fa-users"></i>
+                    <select name="relation_code">
+                        <option value="">انتخاب کنید</option>
+                        <option value="1">بيمه شده اصلي (1)</option>
+                        <option value="2">همسر (2)</option>
+                        <option value="3">پدر (3)</option>
+                        <option value="4">مادر (4)</option>
+                        <option value="5">خواهر (5)</option>
+                        <option value="6">برادر (6)</option>
+                        <option value="7">پسر (7)</option>
+                        <option value="8">دختر (8)</option>
+                        <option value="9">عروس (9)</option>
+                        <option value="10">داماد (10)</option>
+                        <option value="11">نوه پسر (11)</option>
+                        <option value="12">نوه دختر (12)</option>
+                        <option value="13">پسر متاهل (13)</option>
+                        <option value="14">دختر متاهل (14)</option>
+                        <option value="15">ساير (15)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>کد وضعیت تکفل:</label>
+                    <i class="fas fa-shield-alt"></i>
+                    <select name="dependency_code">
+                        <option value="">انتخاب کنید</option>
+                        <option value="1">تحت تکفل (1)</option>
+                        <option value="2">غير تحت تکفل (2)</option>
+                        <option value="3">بیمه شده اصلی (3)</option>
+                        <option value="5">ساير (5)</option>
+                    </select>
+                </div>
+                <div class="buttons">
+                    <button type="button" class="prev" onclick="prevStep(1)"><i class="fas fa-arrow-left"></i> قبلی</button>
+                    <button type="button" class="next" onclick="nextStep(3)">بعدی <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Step 3: اطلاعات بانکی -->
+            <div id="step3" class="step">
+                <h2>مرحله 3: اطلاعات بانکی</h2>
+                <div class="form-group">
+                    <label>کد گروه:</label>
+                    <i class="fas fa-users-cog"></i>
+                    <select name="group_code">
+                        <option value="">انتخاب کنید</option>
+                        <option value="1">جانبازان معزز 70درصد (1)</option>
+                        <option value="3">شاغلين (3)</option>
+                        <option value="4">بازنشستگان (4)</option>
+                        <option value="5">مستمري بگيران (5)</option>
+                        <option value="6">وظيفه بگيران (6)</option>
+                        <option value="7">روحانيون و کادر پزشکي و عوامل اجرايي حج (7)</option>
+                        <option value="8">زائرين (8)</option>
+                        <option value="9">عوامل ستادي و اجرائي حج (9)</option>
+                        <option value="10">شهيد (10)</option>
+                        <option value="11">خانواده شهيد (11)</option>
+                        <option value="13">اتباع خارجه (13)</option>
+                        <option value="14">خانواده جانباز (14)</option>
+                        <option value="15">کارکنان اناث (15)</option>
+                        <option value="16">خانواده فوتي (16)</option>
+                        <option value="17">جانباز (17)</option>
+                        <option value="18">درمان خانواده (18)</option>
+                        <option value="22">ساير (22)</option>
+                        <option value="23">جانبازان معزز شیمیایی شدید (23)</option>
+                        <option value="24">جانبازان معزز شیمیایی متوسط (24)</option>
+                        <option value="25">بیمه شدگان هما (25)</option>
+                        <option value="26">گروه اشخاص والدین شهدا (26)</option>
+                        <option value="27">همسران شهدای بالای 60 سال (27)</option>
+                        <option value="28">یاس (28)</option>
+                        <option value="29">صندوق آینده ساز شرکت سایپا (29)</option>
+                        <option value="30">مدیران ارشد (30)</option>
+                        <option value="31">بیماران خاص (31)</option>
+                        <option value="32">بیماران صعب العلاج (32)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>کد بانک:</label>
+                    <i class="fas fa-building"></i>
+                    <select name="bank_code">
+                        <option value="">انتخاب کنید</option>
+                        <option value="1">آینده (1)</option>
+                        <option value="2">اقتصاد نوین (2)</option>
+                        <option value="3">ایران زمین (3)</option>
+                        <option value="4">تجارت (4)</option>
+                        <option value="5">توسعه صادرات (5)</option>
+                        <option value="6">رفاه کارگران (6)</option>
+                        <option value="7">سپه (7)</option>
+                        <option value="8">صادرات (8)</option>
+                        <option value="9">کشاورزی (9)</option>
+                        <option value="10">مسکن (10)</option>
+                        <option value="11">ملی (11)</option>
+                        <option value="12">انصار (12)</option>
+                        <option value="13">رسالت (13)</option>
+                        <option value="14">شهر (14)</option>
+                        <option value="15">صنعت و معدن (15)</option>
+                        <option value="16">ملت (16)</option>
+                        <option value="17">پاسارگاد (17)</option>
+                        <option value="18">توسعه تعاون (18)</option>
+                        <option value="19">name (19)</option>
+                        <option value="20">دی (20)</option>
+                        <option value="21">سامان (21)</option>
+                        <option value="22">سرمایه (22)</option>
+                        <option value="23">سینا (23)</option>
+                        <option value="24">قرض الحسنه مهر ایران (24)</option>
+                        <option value="25">مالی اعتباری بنیاد (25)</option>
+                        <option value="26">موسسه مالی و اعتباری عسگریه (26)</option>
+                        <option value="27">پارسیان (27)</option>
+                        <option value="28">پست بانک (28)</option>
+                        <option value="29">کارآفرین (29)</option>
+                        <option value="30">سایر (30)</option>
+                        <option value="31">قوامین (31)</option>
+                        <option value="32">حکمت ایرانیان (32)</option>
+                        <option value="33">کوثر (33)</option>
+                        <option value="34">گردشگری (34)</option>
+                        <option value="35">انصارالمجاهدین (35)</option>
+                        <option value="36">مهراقتصاد (36)</option>
+                        <option value="37">مرکزی (37)</option>
+                        <option value="38">موسسه مالي و اعتباري ملل (38)</option>
+                        <option value="39">موسسه نور (39)</option>
+                        <option value="40">نامشخص (40)</option>
+                        <option value="41">بانک خاورمیانه (41)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>شماره حساب:</label>
+                    <i class="fas fa-credit-card"></i>
+                    <input type="text" name="account_number">
+                </div>
+                <div class="form-group">
+                    <label>IR:</label>
+                    <i class="fas fa-globe"></i>
+                    <input type="text" name="ir" value="IR" readonly>
+                </div>
+                <div class="form-group">
+                    <label>شماره شبا:</label>
+                    <i class="fas fa-barcode"></i>
+                    <input type="text" name="sheba">
+                </div>
+                <div class="buttons">
+                    <button type="button" class="prev" onclick="prevStep(2)"><i class="fas fa-arrow-left"></i> قبلی</button>
+                    <button type="button" class="next" onclick="nextStep(4)">بعدی <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Step 4: اطلاعات بیمه اضافی -->
+            <div id="step4" class="step">
+                <h2>مرحله 4: اطلاعات بیمه اضافی</h2>
+                <div class="form-group">
+                    <label>کد ملی بیمه شده اصلی:</label>
+                    <i class="fas fa-id-card-alt"></i>
+                    <input type="text" name="main_national_id">
+                </div>
+                <div class="form-group">
+                    <label>نوع استخدام:</label>
+                    <i class="fas fa-briefcase"></i>
+                    <select name="employment_type">
+                        <option value="">انتخاب کنید</option>
+                        <option value="1">قراردادي (1)</option>
+                        <option value="2">رسمي بازنشسته (2)</option>
+                        <option value="3">پيماني (3)</option>
+                        <option value="4">رسمي شاغل (4)</option>
+                        <option value="5">روزمزد (5)</option>
+                        <option value="6">كارمند نمايندگي (6)</option>
+                        <option value="7">كارمند كارگزاري (7)</option>
+                        <option value="8">كارشناس آزاد (8)</option>
+                        <option value="9">ساير (9)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>کد بیمه گر قبلی:</label>
+                    <i class="fas fa-shield"></i>
+                    <select name="previous_insurer_code">
+                        <option value="">انتخاب کنید</option>
+                        <option value="1">بیمه تجارت نو (1)</option>
+                        <option value="2">سهامی بیمه ایران - معین (2)</option>
+                        <option value="3">بیمه آسیا (3)</option>
+                        <option value="5">بیمه ايران (5)</option>
+                        <option value="6">بیمه توسعه (6)</option>
+                        <option value="7">بیمه دانا (7)</option>
+                        <option value="8">بیمه رازی (8)</option>
+                        <option value="9">بیمه سينا (9)</option>
+                        <option value="10">بیمه ما (10)</option>
+                        <option value="11">بیمه ملت (11)</option>
+                        <option value="12">بیمه پارسیان (12)</option>
+                        <option value="13">بیمه کارآفرین (13)</option>
+                        <option value="14">بیمه آتیه سازان حافظ (14)</option>
+                        <option value="15">بیمه آرمان (15)</option>
+                        <option value="16">بیمه آسماری (16)</option>
+                        <option value="17">بیمه تعاون (17)</option>
+                        <option value="18">بیمه حافظ (18)</option>
+                        <option value="19">بیمه دی (19)</option>
+                        <option value="20">بیمه سامان (20)</option>
+                        <option value="21">بیمه معلم (21)</option>
+                        <option value="22">بیمه میهن (22)</option>
+                        <option value="23">بیمه نوین (23)</option>
+                        <option value="24">بیمه سرمد (24)</option>
+                        <option value="25">بیمه شهرداری (25)</option>
+                        <option value="26">بیمه پاسارگاد (26)</option>
+                        <option value="27">بیمه کوثر (27)</option>
+                        <option value="15883">شرکت نگین گهر زمین (درمان جهاد نصر) (15883)</option>
+                        <option value="33627">حکمت صبا (33627)</option>
+                        <option value="33759">ملی صنايع مس ايران (33759)</option>
+                        <option value="33770">خیریه امدادگران عاشورا کاشان (33770)</option>
+                        <option value="33773">خیریه ای ال اس (33773)</option>
+                        <option value="33956">دمیس (33956)</option>
+                        <option value="34263">بیمه امید (34263)</option>
+                        <option value="34669">شرکت  تسهیل گری درمان دمیس (34669)</option>
+                        <option value="34671">مرکز بهداشت و درمان صدا و سیمای جمهوری اسلامی ایران (34671)</option>
+                        <option value="34886">شرکت معدنی و صنعتی گل گهر (34886)</option>
+                        <option value="35008">بانک مرکزی جمهوری اسلامی ایران (35008)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>مدت پوشش(ماه):</label>
+                    <i class="fas fa-clock"></i>
+                    <input type="number" name="coverage_months">
+                </div>
+                <div class="form-group">
+                    <label>کد واحد سازمانی:</label>
+                    <i class="fas fa-sitemap"></i>
+                    <input type="text" name="org_unit_code" value="اصفهان مقدم">
+                </div>
+                <div class="buttons">
+                    <button type="button" class="prev" onclick="prevStep(3)"><i class="fas fa-arrow-left"></i> قبلی</button>
+                    <button type="submit" class="submit">ارسال <i class="fas fa-check"></i></button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
+    <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInputs = document.querySelectorAll('.pdp-default');
+            dateInputs.forEach(input => {
+                $(input).persianDatepicker({
+                    format: 'YYYY/MM/DD',
+                    toolbox: {
+                        calendarSwitch: {
+                            enabled: true
+                        }
+                    },
+                    initialValue: false,
+                    autoClose: true,
+                    altField: input,
+                    altFormat: 'YYYY/MM/DD'
+                });
+            });
+        });
+
+        function nextStep(step) {
+            document.querySelector('.step.active').classList.remove('active');
+            document.getElementById('step' + step).classList.add('active');
+        }
+        function prevStep(step) {
+            document.querySelector('.step.active').classList.remove('active');
+            document.getElementById('step' + step).classList.add('active');
+        }
+        document.getElementById('insuranceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            console.log(data); // برای حالا، لاگ به کنسول. در تولید، به سرور ارسال شود.
+            alert('اطلاعات ارسال شد!');
+        });
+    </script>
+</body>
+</html>
