@@ -83,8 +83,16 @@
 
                         <div class="row mt-4">
                             <div class="col-12 text-center">
+                                
+
+                                {% if can_manage_bimeh %}
+                                    <a href="{% url 'users:manage_bimeh' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای کارمندان</a>
+                                {% endif %}
 
                                 <a href="{% url 'users:referrals_inbox' %}" class="btn btn-warning mb-3 w-100 w-md-auto">ارجاعات دریافتی</a>
+
+
+                                <a href="https://cloud.karimax.ir/" class="btn btn-info mb-3 w-100 w-md-auto">سامانه ابری</a>
                                 
                                 
                                 <a href="{% url 'users:insurance_info' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای</a>
@@ -235,8 +243,8 @@
     </div>
 {% endblock %}
 {% block extra_js %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script> -->
     <script type="text/javascript">
 
 

@@ -3,6 +3,7 @@
 {% block title %} افزودن عضو خانواده {% endblock %}
 {% block breadcrumb_title %} افزودن عضو خانواده {% endblock %}
 {% block content %}
+    {% load static %}
     <div class="container-fluid">
         <div class="row">
             <div class="col-12">
@@ -183,8 +184,11 @@
 
 {% block extra_js %}
     <!-- استفاده از همان کتابخانه جلالی که در manage_self_menu.html کار می‌کند -->
-    <link rel="stylesheet" href="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css">
-    <script type="text/javascript" src="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js"></script>
+    {% static 'cdn/lamejs/1.2.1/lame.min.js' %}
+    <!-- <link rel="stylesheet" href="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css">
+    <script type="text/javascript" src="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js"></script> -->
+    <link rel="stylesheet" href="{% static 'cdn/jalalidatepicker/dist/jalalidatepicker.min.css' %}">
+    <script type="text/javascript" src="{% static 'cdn/jalalidatepicker/dist/jalalidatepicker.min.js' %}"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -241,7 +245,6 @@
 {% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .text-danger { color: red; font-size: 0.9em; }
 

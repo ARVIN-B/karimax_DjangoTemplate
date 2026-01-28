@@ -297,7 +297,9 @@ class Employee(AbstractUser):
     )
 
     national_id = models.CharField(max_length=10, unique=True, verbose_name="کد ملی")
-    phone_number = models.CharField(max_length=15, verbose_name="شماره تماس")
+    phone_number = models.CharField(
+        max_length=15, null=True, blank=True, verbose_name="شماره تماس"
+    )
     personnel_code = models.CharField(
         max_length=15, null=True, blank=True, verbose_name="کد پرسنلی"
     )
@@ -374,6 +376,13 @@ class Employee(AbstractUser):
     birth_date = models.DateField(null=True, blank=True, verbose_name="تاریخ تولد")
     father_name = models.CharField(
         max_length=50, blank=True, null=True, verbose_name="نام پدر"
+    )
+
+    factory_bimeh = models.BooleanField(
+        default=False, verbose_name="اجازه دانلود اطلاعات بیمه ای پرسنل کارخانه"
+    )
+    holding_bimeh = models.BooleanField(
+        default=False, verbose_name="اجازه دانلود اطلاعات بیمه ای پرسنل هلدینگ"
     )
 
     USERNAME_FIELD = "national_id"
@@ -1599,11 +1608,13 @@ class Dependent(models.Model):
     national_id = models.CharField(max_length=10, unique=True, verbose_name="کد ملی")
     first_name = models.CharField(max_length=50, verbose_name="نام")
     last_name = models.CharField(max_length=50, verbose_name="نام خانوادگی")
-    father_name = models.CharField(max_length=50, verbose_name="نام پدر")
-    birth_certificate_number = models.CharField(
-        max_length=50, verbose_name="شماره شناسنامه"
+    father_name = models.CharField(
+        max_length=50, null=True, blank=True, verbose_name="نام پدر"
     )
-    birth_date = models.DateField(verbose_name="تاریخ تولد")
+    birth_certificate_number = models.CharField(
+        max_length=50, null=True, blank=True, verbose_name="شماره شناسنامه"
+    )
+    birth_date = models.DateField(null=True, blank=True, verbose_name="تاریخ تولد")
     marital_status = models.ForeignKey(
         "MaritalStatus",
         on_delete=models.PROTECT,
@@ -1618,9 +1629,11 @@ class Dependent(models.Model):
         on_delete=models.PROTECT,
         verbose_name="وضعیت تکفل",
     )
-    gender = models.ForeignKey("Gender", on_delete=models.PROTECT, verbose_name="جنسیت")
+    gender = models.ForeignKey(
+        "Gender", on_delete=models.PROTECT, null=True, blank=True, verbose_name="جنسیت"
+    )
     country = models.ForeignKey(
-        "Country", on_delete=models.PROTECT, verbose_name="کشور"
+        "Country", on_delete=models.PROTECT, null=True, blank=True, verbose_name="کشور"
     )
 
     class Meta:

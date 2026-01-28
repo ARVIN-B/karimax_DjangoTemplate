@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.hashers import make_password
 from django import forms
 from django.conf import settings
 
@@ -642,6 +643,18 @@ def dashboard(request):
 
     food_receiver_role = user.food_receiver_role
 
+    can_manage_bimeh = role_name in [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+    ]
+
+    factory_bimeh = user.factory_bimeh
+    holding_bimeh = user.holding_bimeh
+
+    can_manage_bimeh = factory_bimeh or holding_bimeh
+
     return render(
         request,
         "users/dashboard.html",
@@ -657,10 +670,9 @@ def dashboard(request):
             "current_role": current_role,
             "current_role_name": current_role_name,
             "can_access_evaluation_panel": can_access_evaluation_panel,
-            # 🌟 جدید: اضافه کردن متغیرهای مالی به Context
             "base_cost": BASE_COST_PER_PARTICIPATION,
             "total_overtime_cost": total_overtime_cost,
-            "today_count": today_count,  # ۲. تعداد مشارکت های امروز
+            "today_count": today_count,
             "today_overtime_cost": today_overtime_cost,
             "total_count": total_count,
             "participation_status_choices": Participation.STATUS_CHOICES,
@@ -668,6 +680,9 @@ def dashboard(request):
             "selected_status": selected_status,
             "selected_item_type": selected_item_type,
             "food_receiver_role": food_receiver_role,
+            "can_manage_bimeh": can_manage_bimeh,
+            "factory_bimeh": factory_bimeh,
+            "holding_bimeh": holding_bimeh,
         },
     )
 
@@ -1399,8 +1414,13 @@ def management_dashboard(request):
         "super_admin",
         "holding_manager",
         "factory_manager",
-        "departmant_manager",
+        "department_manager",
     ]
+
+    # factory_bimeh = user.factory_bimeh
+    # holding_bimeh = user.holding_bimeh
+
+    # can_manage_bimeh = factory_bimeh or holding_bimeh
 
     return render(
         request,
@@ -1457,7 +1477,7 @@ def management_dashboard(request):
             "user_is_self_manager": user_is_self_manager,
             "user_is_restaurant": user_is_restaurant,
             "can_import_excel": can_import_excel,
-            "can_manage_bimeh": can_manage_bimeh,
+            # "can_manage_bimeh": can_manage_bimeh,
         },
     )
 
@@ -1608,6 +1628,21 @@ def manage_self_menu(request):
         "save_week_start_persian": save_week_start_persian,
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     if request.GET.get("export") == "full":
         start_date = request.GET.get("start_date")
         end_date = request.GET.get("end_date")
@@ -1622,7 +1657,49 @@ def manage_self_menu(request):
         y, m, d = map(int, jalali_str.split("/"))
         end_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
 
+
+
+
+        # دریافت تمام رستوران‌های مربوط به این کارخانه
+        restaurants = Subdepartment.objects.filter(
+            is_restaurant=True,
+            department__factory_id=factory_id
+        ).order_by('name')
+
+
+
+
+
+
         employees = Employee.objects.filter(is_active=True)
+
+
+
+
+
+
+        restaurant_stats = {}
+        
+        # برای هر رستوران، تعداد سفارشات در بازه تاریخ را محاسبه می‌کنیم
+        for restaurant in restaurants:
+            total_orders = FoodReservation.objects.filter(
+                menu_item__weekly_menu__restaurant=restaurant,
+                reservation_date__gte=strt_gregorian_date,
+                reservation_date__lte=end_gregorian_date,
+                related_factory_id=factory_id,
+                is_canceled=0
+            ).aggregate(
+                total=Sum('factory_quantity') + Sum('free_quantity') + Sum('guest_quantity')
+            )['total'] or 0
+            
+            restaurant_stats[restaurant.id] = {
+                'name': restaurant.name,
+                'total_orders': total_orders
+            }
+
+
+
+
 
         # لیست داده‌ها برای اکسل
         rows_full_name = []
@@ -1636,46 +1713,27 @@ def manage_self_menu(request):
         rows_total_free_qty = []
         rows_total_guest_qty = []
 
+
+        # ستون‌های جدید برای آمار رستوران‌ها
+        restaurant_columns = {}
+        for restaurant in restaurants:
+            restaurant_columns[restaurant.id] = []
+
+
+
         for emp in employees:
-            total_debt = (
-                FoodReservation.objects.filter(
-                    employee=emp,
-                    related_factory_id=factory_id,
-                    reservation_date__gte=strt_gregorian_date,
-                    reservation_date__lte=end_gregorian_date,
-                ).aggregate(total=Sum("total_price"))["total"]
-                or 0
+            reservations = FoodReservation.objects.filter(
+                employee=emp,
+                related_factory_id=factory_id,
+                reservation_date__gte=strt_gregorian_date,
+                reservation_date__lte=end_gregorian_date,
+                is_canceled=0,
             )
 
-            factory_quantity = (
-                FoodReservation.objects.filter(
-                    employee=emp,
-                    related_factory_id=factory_id,
-                    reservation_date__gte=strt_gregorian_date,
-                    reservation_date__lte=end_gregorian_date,
-                ).aggregate(total=Sum("factory_quantity"))["total"]
-                or 0
-            )
-
-            free_quantity = (
-                FoodReservation.objects.filter(
-                    employee=emp,
-                    related_factory_id=factory_id,
-                    reservation_date__gte=strt_gregorian_date,
-                    reservation_date__lte=end_gregorian_date,
-                ).aggregate(total=Sum("free_quantity"))["total"]
-                or 0
-            )
-
-            guest_quantity = (
-                FoodReservation.objects.filter(
-                    employee=emp,
-                    related_factory_id=factory_id,
-                    reservation_date__gte=strt_gregorian_date,
-                    reservation_date__lte=end_gregorian_date,
-                ).aggregate(total=Sum("guest_quantity"))["total"]
-                or 0
-            )
+            total_debt = reservations.aggregate(total=Sum("total_price"))["total"] or 0
+            factory_quantity = reservations.aggregate(total=Sum("factory_quantity"))["total"] or 0
+            free_quantity = reservations.aggregate(total=Sum("free_quantity"))["total"] or 0
+            guest_quantity = reservations.aggregate(total=Sum("guest_quantity"))["total"] or 0
 
             if (
                 total_debt == 0
@@ -1684,6 +1742,16 @@ def manage_self_menu(request):
                 and guest_quantity == 0
             ):
                 continue
+
+            # محاسبه تعداد سفارشات برای هر رستوران
+            for restaurant in restaurants:
+                restaurant_orders_count = reservations.filter(
+                    menu_item__weekly_menu__restaurant=restaurant, is_canceled=0
+                ).aggregate(
+                    total=Sum('factory_quantity') + Sum('free_quantity') + Sum('guest_quantity')
+                )['total'] or 0
+                
+                restaurant_columns[restaurant.id].append(restaurant_orders_count)
 
             rows_full_name.append(emp.full_name or "نامشخص")
             rows_national_id.append(emp.national_id)
@@ -1702,7 +1770,7 @@ def manage_self_menu(request):
         # مرتب‌سازی بر اساس مبلغ بدهی (نزولی)
 
         try:
-            combined = list(
+            combined_list  = list(
                 zip(
                     rows_full_name,
                     rows_national_id,
@@ -1713,23 +1781,30 @@ def manage_self_menu(request):
                     rows_total_free_qty,
                     rows_total_guest_qty,
                     rows_total_debt_formatted,
+                    *[restaurant_columns[restaurant.id] for restaurant in restaurants]
                 )
             )
 
-            combined.sort(key=lambda x: x[4], reverse=True)  # بر اساس total_debt_raw
+            combined_list.sort(key=lambda x: x[4], reverse=True)  # بر اساس total_debt_raw
 
             # جدا کردن دوباره بعد از سورت
-            (
-                rows_full_name,
-                rows_national_id,
-                rows_personnel_code,
-                rows_phone,
-                _,
-                rows_total_factory_qty,
-                rows_total_free_qty,
-                rows_total_guest_qty,
-                rows_total_debt_formatted,
-            ) = zip(*combined)
+            sorted_data = list(zip(*combined_list))
+            
+            # ستون‌های اصلی
+            rows_full_name = sorted_data[0]
+            rows_national_id = sorted_data[1]
+            rows_personnel_code = sorted_data[2]
+            rows_phone = sorted_data[3]
+            rows_total_debt_raw = sorted_data[4]
+            rows_total_factory_qty = sorted_data[5]
+            rows_total_free_qty = sorted_data[6]
+            rows_total_guest_qty = sorted_data[7]
+            rows_total_debt_formatted = sorted_data[8]
+
+
+            restaurant_sorted_columns = {}
+            for i, restaurant in enumerate(restaurants, start=9):
+                restaurant_sorted_columns[restaurant.id] = sorted_data[i]
 
             # ستون‌های نهایی
             data_columns = [
@@ -1743,17 +1818,45 @@ def manage_self_menu(request):
                 ("مبلغ بدهی", list(rows_total_debt_formatted)),
             ]
 
+            for restaurant in restaurants:
+                column_name = f"{restaurant.name} (تعداد سفارش)"
+                data_columns.append((column_name, list(restaurant_sorted_columns[restaurant.id])))
+
+            # اضافه کردن یک ردیف خلاصه برای کل سفارشات هر رستوران
+            summary_row = []
+            for restaurant in restaurants:
+                summary_row.append(restaurant_stats[restaurant.id]['total_orders'])
+
             # نام فایل و عنوان گزارش
             today_jalali = jdatetime.date.today().strftime("%Y/%m/%d")
             filename = f"Bedehi_Kol_Self_{today_jalali.replace('/', '-')}"
             report_title = f"گزارش کامل بدهی پرسنل به سلف - تولید شده در {today_jalali}"
 
             return export_to_excel(
-                columns=data_columns, filename=filename, report_title=report_title
+                columns=data_columns,
+                filename=filename,
+                report_title=report_title,
+                restaurant_stats=restaurant_stats,
+                summary_row=summary_row
             )
-        except:
-            messages.error(request, "در این بازه زمانی اطلاعاتی در دسترس نیست!!!")
+        except Exception as e:
+            messages.error(request, f"در این بازه زمانی اطلاعاتی در دسترس نیست!!! {e}")
             return redirect("users:manage_self_menu")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     elif request.GET.get("export") == "single" and request.GET.get("employee_id"):
         start_date = request.GET.get("start_date")
@@ -2376,7 +2479,10 @@ def food_reservation_view(request):
 
         parsed_reservations = []
 
+        print("bbbbbbbbbbbbb", request.POST)
+
         for key, value in request.POST.items():
+            print("key : ", key, "value : ", value)
             if not key.startswith("reservations["):
                 continue
 
@@ -2391,6 +2497,7 @@ def food_reservation_view(request):
 
             # یک دیکشنری پیدا کن (یا بساز)
             target_key = f"{date_str}-{index}"
+            # print(f"aaaaaaaaa{parsed_reservations}")
 
             if target_key not in [r.get("key") for r in parsed_reservations]:
                 parsed_reservations.append(
@@ -2402,6 +2509,8 @@ def food_reservation_view(request):
                         "price_type": None,
                     }
                 )
+
+            # print(f"bbbbbbbbb{parsed_reservations}")
 
             # دیکشنری مربوطه را بگیر
             target = next(r for r in parsed_reservations if r["key"] == target_key)
@@ -4687,8 +4796,87 @@ def add_dependent(request):
 
 @login_required
 def manage_bimeh(request):
+
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    management_tree = request.session.get("management_tree", [])
+    management_roles = [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+    ]
+    is_committee = request.session["current_is_committee"]
+    real_role = request.session["current_real_role"]
+
+    user = request.user
+
+    has_management_access = role_name in management_roles
+
+    factory_bimeh = user.factory_bimeh
+    holding_bimeh = user.holding_bimeh
+
+    can_manage_bimeh = factory_bimeh or holding_bimeh
+    can_export_bimeh_excel = factory_bimeh or holding_bimeh
+    can_import_bimeh_excel = holding_bimeh
+
+    print(Factory.objects.filter(id=factory_id))
+
+    if not can_manage_bimeh:
+        messages.error(request, "شما اجازه دسترسی به این صفحه را ندارید..")
+        return redirect("users:dashboard")
+
     if request.GET.get("export") == "full":
-        # لیست تمام کارمندان فعال
+
+        # print(can_manage_bimeh)
+        # if can_export_bimeh_excel:
+        #     print("aaa")
+        #     if holding_bimeh:
+        #         employees = (
+        #             Employee.objects.filter(is_active=True)
+        #             .select_related("gender", "marital_status", "dependency_status")
+        #             .prefetch_related(
+        #                 "dependents__gender",
+        #                 "dependents__marital_status",
+        #                 "dependents__dependency_status",
+        #                 "dependents__relative_type",
+        #                 "dependents__country",
+        #                 "bimeh",
+        #                 "bimeh__employment_type",
+        #                 "bimeh__job_group",
+        #                 "bimeh__base_insurance",
+        #                 "bimeh__country",
+        #                 "bank_accounts__bank",
+        #                 "bank_accounts__bank_account_type",
+        #                 "contact_infos",
+        #             )
+        #         )
+
+        #     elif factory_bimeh:
+        #         employees = (
+        #             Employee.objects.filter(is_active=True)
+        #             .select_related("gender", "marital_status", "dependency_status")
+        #             .prefetch_related(
+        #                 "dependents__gender",
+        #                 "dependents__marital_status",
+        #                 "dependents__dependency_status",
+        #                 "dependents__relative_type",
+        #                 "dependents__country",
+        #                 "bimeh",
+        #                 "bimeh__employment_type",
+        #                 "bimeh__job_group",
+        #                 "bimeh__base_insurance",
+        #                 "bimeh__country",
+        #                 "bank_accounts__bank",
+        #                 "bank_accounts__bank_account_type",
+        #                 "contact_infos",
+        #             )
+        #         )
+
         employees = (
             Employee.objects.filter(is_active=True)
             .select_related("gender", "marital_status", "dependency_status")
@@ -4713,6 +4901,21 @@ def manage_bimeh(request):
         data_rows = []
 
         for emp in employees:
+
+            user_factory = ""
+            if factory_bimeh:
+                related_factories = Factory.objects.filter(id=factory_id).filter(
+                    Q(manager=emp)
+                    | Q(departments__manager=emp)
+                    | Q(departments__manager_2=emp)
+                    | Q(departments__manager_3=emp)
+                    | Q(departments__subdepartments__supervisor=emp)
+                    | Q(departments__subdepartments__assigned_employees=emp)
+                )
+                # print(f"aaa{related_factories}")
+                if not related_factories:
+                    continue
+
             # --- اطلاعات مشترک ---
             bimeh = (
                 emp.bimeh.first()
@@ -4840,7 +5043,26 @@ def manage_bimeh(request):
                 dep_account_number = (
                     dep_bank_account.account_number if dep_bank_account else ""
                 )
-                dep_sheba = dep_bank_account.sheba_number if dep_bank_account else ""
+                if dep.relative_type.code and str(dep.relative_type.code) in [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "7",
+                    "8",
+                ]:
+                    dep_sheba = sheba
+                    # print(
+                    #     f"aaaaaaaaaaaaaaa{dep_sheba} , aaaaaa {dep.relative_type} , vvvvvvvvvvvvvvv {dep_bank_account.sheba_number if dep_bank_account else ""}"
+                    # )
+                else:
+                    dep_sheba = (
+                        dep_bank_account.sheba_number if dep_bank_account else ""
+                    )
+                    # print(f"bbbbbbbbbbbbbbbbb{dep_sheba} , aaaaaa  {dep.relative_type}")
+
+                # dep_sheba = dep_bank_account.sheba_number if dep_bank_account else ""
+
                 dep_account_type_code = (
                     dep_bank_account.bank_account_type.code
                     if dep_bank_account and dep_bank_account.bank_account_type
@@ -4980,8 +5202,15 @@ def manage_bimeh(request):
         else:
             messages.error(request, "هیچ فایلی انتخاب نشده است.")
 
-    # نمایش صفحه معمولی
-    return render(request, "users/manage_bimeh.html", {})
+    context = {
+        "factory_bimeh": factory_bimeh,
+        "holding_bimeh": holding_bimeh,
+        "can_manage_bimeh": can_manage_bimeh,
+        "can_export_bimeh_excel": can_export_bimeh_excel,
+        "can_import_bimeh_excel": can_import_bimeh_excel,
+    }
+
+    return render(request, "users/manage_bimeh.html", context)
 
 
 @login_required
@@ -5492,8 +5721,8 @@ def import_from_excel(excel_file):
         "کد ملی",
         "نام",
         "نام خانوادگی",
-        # "کد نسبت با بیمه شده اصلی",
-        # "کد ملی بیمه شده اصلی",
+        "کد نسبت با بیمه شده اصلی",
+        "کد ملی بیمه شده اصلی",
     }
     missing_cols = required_columns - set(df_insured.columns)
     if missing_cols:
@@ -5518,7 +5747,7 @@ def import_from_excel(excel_file):
 
     #####################################
     # Step 1: Import Employees (where relative_code == 1)
-    employees_df = df_insured
+    employees_df = df_insured[df_insured["کد نسبت با بیمه شده اصلی"] == 1]
     for _, row in employees_df.iterrows():
         national_id = str(row.get("کد ملی", "")).strip()
         if len(national_id) < 10:
@@ -5611,6 +5840,81 @@ def import_from_excel(excel_file):
                     national_id=national_id, defaults=defaults
                 )
                 employee_count += 1
+
+                if created or not (employee.password):
+
+                    print("aaaaaaaaaaaaaaaaaa")
+
+                    def parse_id_list(id_str):
+                        """
+                        تبدیل رشته آیدی‌ها (مثل '1,2;3' یا ' 4 , 5 ') به لیست اعداد صحیح
+                        """
+                        if not id_str:
+                            return []
+                        # جایگزینی نقطه‌ویرگول با کاما و تقسیم
+                        parts = [
+                            p.strip()
+                            for p in id_str.replace(";", ",").split(",")
+                            if p.strip()
+                        ]
+                        ids = []
+                        for p in parts:
+                            try:
+                                ids.append(int(p))
+                            except ValueError:
+                                return None, f"آیدی نامعتبر: '{p}' (باید عدد صحیح باشد)"
+                        return ids, None
+
+                    role_id = str(row["کد نقش"]).strip()
+                    if not role_id:
+                        errors.append(
+                            f"این شخص در سیستم اکانت ندارد و کد نقش هم برای ایشان تعریف نشده {national_id}"
+                        )
+                        continue
+
+                    role_objs = []
+                    role_ids, err = parse_id_list(role_id)
+                    if err:
+                        errors.append(f"{err}")
+                    else:
+                        for rid in role_ids:
+                            try:
+                                role = Role.objects.get(id=rid)
+                                role_objs.append(role)
+                            except Role.DoesNotExist:
+                                errors.append(f"نقش با آیدی {rid} وجود ندارد.")
+                            except ValueError:
+                                errors.append(f"آیدی نقش {rid} نامعتبر است.")
+
+                    employee.roles.set(role_objs)
+
+                    subdept_objs = []
+                    subdepartment_id = str(row["کد زیربخش"]).strip()
+                    if not subdepartment_id:
+                        errors.append(
+                            f"این شخص در سیستم اکانت ندارد و کد زیربخش هم برای ایشان تعریف نشده {national_id}"
+                        )
+                        continue
+
+                    subdept_ids, err = parse_id_list(subdepartment_id)
+                    if err:
+                        errors.append(err)
+                    else:
+                        for sid in subdept_ids:
+                            try:
+                                subdept = Subdepartment.objects.get(id=sid)
+                                subdept_objs.append(subdept)
+                            except Subdepartment.DoesNotExist:
+                                errors.append(f"زیربخش با آیدی {sid} وجود ندارد.")
+                            except ValueError:
+                                errors.append(f"آیدی زیربخش {sid} نامعتبر است.")
+
+                    employee.assigned_subdepartments.set(subdept_objs)
+
+                    hashed_password = make_password("123456")
+
+                    employee.password = hashed_password
+                    employee.save()
 
                 # Handle Employee_Bimeh - only include fields that exist
                 bimeh_defaults = {}
@@ -5787,238 +6091,253 @@ def import_from_excel(excel_file):
             errors.append(f"خطا در پردازش کارمند {national_id}: {str(e)}")
 
     # Step 2: Import Dependents (relative_code != 1)
-    # dependents_df = df_insured[df_insured["کد نسبت با بیمه شده اصلی"] != 1]
-    # missing_employees_count = 0
-    # for _, row in dependents_df.iterrows():
-    #     national_id = str(row.get("کد ملی", "")).strip()
+    dependents_df = df_insured[df_insured["کد نسبت با بیمه شده اصلی"] != 1]
+    missing_employees_count = 0
+    for _, row in dependents_df.iterrows():
+        national_id = str(row.get("کد ملی", "")).strip()
 
-    #     if not national_id:
-    #         errors.append(f"ردیف بدون کد ملی پرش شد.")
-    #         continue
+        if not national_id:
+            errors.append(f"ردیف بدون کد ملی پرش شد.")
+            continue
 
-    #     first_name = row.get("نام", "").strip()
-    #     if not first_name:
-    #         errors.append(f"نام خالی برای {national_id}")
-    #         continue
+        first_name = row.get("نام", "").strip()
+        if not first_name:
+            errors.append(f"نام خالی برای {national_id}")
+            continue
 
-    #     last_name = row.get("نام خانوادگی", "").strip()
-    #     if not last_name:
-    #         errors.append(f"نام خانوادگی خالی برای {national_id}")
-    #         continue
+        last_name = row.get("نام خانوادگی", "").strip()
+        if not last_name:
+            errors.append(f"نام خانوادگی خالی برای {national_id}")
+            continue
 
-    #     employee_national_id = str(row.get("کد ملی بیمه شده اصلی", "")).strip()
+        employee_national_id = str(row.get("کد ملی بیمه شده اصلی", "")).strip()
 
-    #     if not employee_national_id:
-    #         errors.append(f"کد ملی بیمه شده اصلی خالی برای وابسته {national_id}")
-    #         continue
-    #     try:
-    #         employee = Employee.objects.get(national_id=employee_national_id)
-    #     except ObjectDoesNotExist:
-    #         missing_employees_count += 1
-    #         errors.append(
-    #             f"کارمند با کد ملی {employee_national_id} برای وابسته {national_id} پیدا نشد."
-    #         )
-    #         continue  # Skip and count missing
+        if not employee_national_id:
+            errors.append(f"کد ملی بیمه شده اصلی خالی برای وابسته {national_id}")
+            continue
+        try:
+            employee = Employee.objects.get(national_id=employee_national_id)
+        except ObjectDoesNotExist:
+            missing_employees_count += 1
+            errors.append(
+                f"کارمند با کد ملی {employee_national_id} برای وابسته {national_id} پیدا نشد."
+            )
+            continue  # Skip and count missing
 
-    #     # Prepare defaults for Dependent - only include fields that exist in the Excel
-    #     defaults = {
-    #         "first_name": first_name,
-    #         "last_name": last_name,
-    #     }
+        # Prepare defaults for Dependent - only include fields that exist in the Excel
+        defaults = {
+            "first_name": first_name,
+            "last_name": last_name,
+        }
 
-    #     if "نام پدر" in df_insured.columns:
-    #         defaults["father_name"] = (
-    #             row["نام پدر"].strip() if pd.notna(row["نام پدر"]) else ""
-    #         )
+        if "نام پدر" in df_insured.columns:
+            defaults["father_name"] = (
+                row["نام پدر"].strip() if pd.notna(row["نام پدر"]) else ""
+            )
 
-    #     if "تاریخ تولد" in df_insured.columns:
-    #         defaults["birth_date"] = (
-    #             parse_persian_date(row["تاریخ تولد"])
-    #             if pd.notna(row["تاریخ تولد"])
-    #             else None
-    #         )
+        if "تاریخ تولد" in df_insured.columns:
+            defaults["birth_date"] = (
+                parse_persian_date(row["تاریخ تولد"])
+                if pd.notna(row["تاریخ تولد"])
+                else None
+            )
 
-    #     if "شماره شناسنامه" in df_insured.columns:
-    #         defaults["birth_certificate_number"] = (
-    #             str(row["شماره شناسنامه"]).strip()
-    #             if pd.notna(row["شماره شناسنامه"])
-    #             else ""
-    #         )
+        if "شماره شناسنامه" in df_insured.columns:
+            defaults["birth_certificate_number"] = (
+                str(row["شماره شناسنامه"]).strip()
+                if pd.notna(row["شماره شناسنامه"])
+                else ""
+            )
 
-    #     # Foreign keys - only if column exists
-    #     try:
-    #         defaults["relative_type"] = RelativeType.objects.get(
-    #             code=int(row["کد نسبت با بیمه شده اصلی"])
-    #         )
-    #     except ObjectDoesNotExist:
-    #         errors.append(
-    #             f"نسبت با کد {row.get('کد نسبت با بیمه شده اصلی')} پیدا نشد برای {national_id}"
-    #         )
-    #         continue  # Required, skip if not found
-    #     except ValueError:
-    #         errors.append(f"کد نسبت نامعتبر برای {national_id}")
-    #         continue
+        # Foreign keys - only if column exists
+        try:
+            defaults["relative_type"] = RelativeType.objects.get(
+                code=int(row["کد نسبت با بیمه شده اصلی"])
+            )
+        except ObjectDoesNotExist:
+            errors.append(
+                f"نسبت با کد {row.get('کد نسبت با بیمه شده اصلی')} پیدا نشد برای {national_id}"
+            )
+            continue  # Required, skip if not found
+        except ValueError:
+            errors.append(f"کد نسبت نامعتبر برای {national_id}")
+            continue
 
-    #     if "کد جنسیت" in df_insured.columns and pd.notna(row["کد جنسیت"]):
-    #         try:
-    #             defaults["gender"] = Gender.objects.get(code=int(row["کد جنسیت"]))
-    #         except ObjectDoesNotExist:
-    #             errors.append(
-    #                 f"جنسیت با کد {row['کد جنسیت']} پیدا نشد برای {national_id}"
-    #             )
+        if "کد جنسیت" in df_insured.columns and pd.notna(row["کد جنسیت"]):
+            try:
+                defaults["gender"] = Gender.objects.get(code=int(row["کد جنسیت"]))
+            except ObjectDoesNotExist:
+                errors.append(
+                    f"جنسیت با کد {row['کد جنسیت']} پیدا نشد برای {national_id}"
+                )
 
-    #     if "کد وضعیت تکفل" in df_insured.columns and pd.notna(row["کد وضعیت تکفل"]):
-    #         try:
-    #             defaults["dependency_status"] = DependencyStatus.objects.get(
-    #                 code=int(row["کد وضعیت تکفل"])
-    #             )
-    #         except ObjectDoesNotExist:
-    #             errors.append(
-    #                 f"وضعیت تکفل با کد {row['کد وضعیت تکفل']} پیدا نشد برای {national_id}"
-    #             )
+        if "کد وضعیت تکفل" in df_insured.columns and pd.notna(row["کد وضعیت تکفل"]):
+            try:
+                defaults["dependency_status"] = DependencyStatus.objects.get(
+                    code=int(row["کد وضعیت تکفل"])
+                )
+            except ObjectDoesNotExist:
+                errors.append(
+                    f"وضعیت تکفل با کد {row['کد وضعیت تکفل']} پیدا نشد برای {national_id}"
+                )
 
-    #     if "کد وضعیت تأهل" in df_insured.columns and pd.notna(row["کد وضعیت تأهل"]):
-    #         try:
-    #             defaults["marital_status"] = MaritalStatus.objects.get(
-    #                 code=int(row["کد وضعیت تأهل"])
-    #             )
-    #         except ObjectDoesNotExist:
-    #             errors.append(
-    #                 f"وضعیت تأهل با کد {row['کد وضعیت تأهل']} پیدا نشد برای {national_id}"
-    #             )
+        if "کد وضعیت تأهل" in df_insured.columns and pd.notna(row["کد وضعیت تأهل"]):
+            try:
+                defaults["marital_status"] = MaritalStatus.objects.get(
+                    code=int(row["کد وضعیت تأهل"])
+                )
+            except ObjectDoesNotExist:
+                errors.append(
+                    f"وضعیت تأهل با کد {row['کد وضعیت تأهل']} پیدا نشد برای {national_id}"
+                )
 
-    #     if "کد کشور(فقط برای اتباع خارجی)" in df_insured.columns:
-    #         try:
-    #             if pd.notna(row["کد کشور(فقط برای اتباع خارجی)"]):
-    #                 defaults["country"] = Country.objects.get(
-    #                     code=int(row["کد کشور(فقط برای اتباع خارجی)"])
-    #                 )
-    #             else:
-    #                 defaults["country"] = (
-    #                     None  # If column exists but value is empty, set to None
-    #                 )
-    #         except ObjectDoesNotExist:
-    #             errors.append(
-    #                 f"کشور با کد {row.get('کد کشور(فقط برای اتباع خارجی)', '999')} پیدا نشد برای {national_id}"
-    #             )
-    #     else:
-    #         # If column doesn't exist, don't touch country (use existing or default if new)
-    #         pass
+        if (
+            "کد کشور(فقط برای اتباع خارجی)" in df_insured.columns
+            and pd.notna(row["کد کشور(فقط برای اتباع خارجی)"])
+            and str(row["کد کشور(فقط برای اتباع خارجی)"]).strip()
+        ):
+            try:
+                defaults["country"] = Country.objects.get(
+                    code=int(row["کد کشور(فقط برای اتباع خارجی)"])
+                )
 
-    #     # Update or create Dependent
-    #     try:
-    #         with transaction.atomic():
-    #             dependent, created = Dependent.objects.update_or_create(
-    #                 employee=employee, national_id=national_id, defaults=defaults
-    #             )
-    #             dependent_count += 1
+            except (ObjectDoesNotExist, ValueError):
+                pass
 
-    #             # Handle BankAccount for Dependent - only include fields that exist
-    #             raw_sheba = (
-    #                 str(row["شماره شبا"]).strip()
-    #                 if "شماره شبا" in df_insured.columns and pd.notna(row["شماره شبا"])
-    #                 else None
-    #             )
-    #             if raw_sheba and raw_sheba.upper().startswith("IR"):
-    #                 sheba_number = raw_sheba[2:]
-    #             else:
-    #                 sheba_number = raw_sheba
+        # Update or create Dependent
+        try:
+            with transaction.atomic():
+                dependent, created = Dependent.objects.update_or_create(
+                    employee=employee, national_id=national_id, defaults=defaults
+                )
+                dependent_count += 1
 
-    #             raw_account = (
-    #                 str(row["شماره حساب"]).strip()
-    #                 if "شماره حساب" in df_insured.columns
-    #                 and pd.notna(row["شماره حساب"])
-    #                 else None
-    #             )
+                # Handle BankAccount for Dependent - only include fields that exist
+                raw_sheba = (
+                    str(row["شماره شبا"]).strip()
+                    if "شماره شبا" in df_insured.columns and pd.notna(row["شماره شبا"])
+                    else None
+                )
+                if raw_sheba and raw_sheba.upper().startswith("IR"):
+                    sheba_number = raw_sheba[2:]
+                else:
+                    sheba_number = raw_sheba
 
-    #             bank = None
-    #             if (
-    #                 "کد بانک" in df_insured.columns
-    #                 and pd.notna(row["کد بانک"])
-    #                 and str(row["کد بانک"]).strip()
-    #             ):
-    #                 try:
-    #                     bank = Banks.objects.get(code=int(row["کد بانک"]))
-    #                 except (ObjectDoesNotExist, ValueError):
-    #                     errors.append(f"بانک نامعتبر برای {national_id}")
+                raw_account = (
+                    str(row["شماره حساب"]).strip()
+                    if "شماره حساب" in df_insured.columns
+                    and pd.notna(row["شماره حساب"])
+                    else None
+                )
 
-    #             bank_account_type = None
-    #             if (
-    #                 "نوع حساب" in df_insured.columns
-    #                 and pd.notna(row["نوع حساب"])
-    #                 and str(row["نوع حساب"]).strip()
-    #             ):
-    #                 try:
-    #                     bank_account_type = BankAccountType.objects.get(
-    #                         code=int(row["نوع حساب"])
-    #                     )
-    #                 except (ObjectDoesNotExist, ValueError):
-    #                     errors.append(f"نوع حساب نامعتبر برای {national_id}")
+                bank = None
+                if (
+                    "کد بانک" in df_insured.columns
+                    and pd.notna(row["کد بانک"])
+                    and str(row["کد بانک"]).strip()
+                ):
+                    try:
+                        bank = Banks.objects.get(code=int(row["کد بانک"]))
+                    except (ObjectDoesNotExist, ValueError):
+                        errors.append(f"بانک نامعتبر برای {national_id}")
 
-    #             # فقط بر اساس مالک (employee یا dependent) آپدیت کن، نه شبا
-    #             if (
-    #                 raw_account is not None
-    #                 or sheba_number is not None
-    #                 or bank is not None
-    #                 or bank_account_type is not None
-    #             ):
-    #                 bank_defaults = {}
-    #                 if raw_account is not None:
-    #                     bank_defaults["account_number"] = raw_account
-    #                 if sheba_number is not None:
-    #                     bank_defaults["sheba_number"] = sheba_number
-    #                 if bank is not None:
-    #                     bank_defaults["bank"] = bank
-    #                 if bank_account_type is not None:
-    #                     bank_defaults["bank_account_type"] = bank_account_type
+                bank_account_type = None
+                if (
+                    "نوع حساب" in df_insured.columns
+                    and pd.notna(row["نوع حساب"])
+                    and str(row["نوع حساب"]).strip()
+                ):
+                    try:
+                        bank_account_type = BankAccountType.objects.get(
+                            code=int(row["نوع حساب"])
+                        )
+                    except (ObjectDoesNotExist, ValueError):
+                        errors.append(f"نوع حساب نامعتبر برای {national_id}")
 
-    #                 try:
-    #                     BankAccount.objects.update_or_create(
-    #                         dependent=dependent, defaults=bank_defaults
-    #                     )
-    #                 except Exception as e:
-    #                     errors.append(
-    #                         f"خطا در ذخیره حساب بانکی برای {national_id}: {str(e)}"
-    #                     )
+                # فقط بر اساس مالک (employee یا dependent) آپدیت کن، نه شبا
+                if (
+                    raw_account is not None
+                    or sheba_number is not None
+                    or bank is not None
+                    or bank_account_type is not None
+                ):
+                    bank_defaults = {}
+                    if raw_account is not None:
+                        bank_defaults["account_number"] = raw_account
+                    if sheba_number is not None:
+                        bank_defaults["sheba_number"] = sheba_number
+                    if bank is not None:
+                        bank_defaults["bank"] = bank
+                    if bank_account_type is not None:
+                        bank_defaults["bank_account_type"] = bank_account_type
 
-    #             # Handle ContactInfo for Dependent (mobile as primary, تلفن as additional)
-    #             if (
-    #                 "موبایل" in df_insured.columns
-    #                 and pd.notna(row["موبایل"])
-    #                 and str(row["موبایل"]).strip()
-    #             ):
-    #                 try:
-    #                     ContactInfo.objects.get_or_create(
-    #                         dependent=dependent,
-    #                         phone_number=str(row["موبایل"]).strip(),
-    #                     )
-    #                 except ValidationError as ve:
-    #                     errors.append(f"خطا در افزودن موبایل برای {national_id}: {ve}")
+                    try:
+                        BankAccount.objects.update_or_create(
+                            dependent=dependent, defaults=bank_defaults
+                        )
+                    except Exception as e:
+                        errors.append(
+                            f"خطا در ذخیره حساب بانکی برای {national_id}: {str(e)}"
+                        )
 
-    #             if (
-    #                 "شماره تلفن" in df_insured.columns
-    #                 and pd.notna(row["شماره تلفن"])
-    #                 and str(row["شماره تلفن"]).strip()
-    #             ):
-    #                 try:
-    #                     ContactInfo.objects.get_or_create(
-    #                         dependent=dependent,
-    #                         phone_number=str(row["شماره تلفن"]).strip(),
-    #                     )
-    #                 except ValidationError as ve:
-    #                     errors.append(
-    #                         f"خطا در افزودن شماره تلفن برای {national_id}: {ve}"
-    #                     )
-    #     except Exception as e:
-    #         errors.append(f"خطا در پردازش وابسته {national_id}: {str(e)}")
+                # Handle ContactInfo for Dependent (mobile as primary, تلفن as additional)
+                if (
+                    "موبایل" in df_insured.columns
+                    and pd.notna(row["موبایل"])
+                    and str(row["موبایل"]).strip()
+                ):
+                    try:
+                        ContactInfo.objects.get_or_create(
+                            dependent=dependent,
+                            phone_number=str(row["موبایل"]).strip(),
+                        )
+                    except ValidationError as ve:
+                        errors.append(f"خطا در افزودن موبایل برای {national_id}: {ve}")
 
-    # if missing_employees_count > 0:
-    #     errors.append(
-    #         f"{missing_employees_count} خانواده برای کارمندان پیدا نشدند (کارمند اصلی موجود نبود)."
-    #     )
+                if (
+                    "شماره تلفن" in df_insured.columns
+                    and pd.notna(row["شماره تلفن"])
+                    and str(row["شماره تلفن"]).strip()
+                ):
+                    try:
+                        ContactInfo.objects.get_or_create(
+                            dependent=dependent,
+                            phone_number=str(row["شماره تلفن"]).strip(),
+                        )
+                    except ValidationError as ve:
+                        errors.append(
+                            f"خطا در افزودن شماره تلفن برای {national_id}: {ve}"
+                        )
+        except Exception as e:
+            errors.append(f"خطا در پردازش وابسته {national_id}: {str(e)}")
+
+    if missing_employees_count > 0:
+        errors.append(
+            f"{missing_employees_count} خانواده برای کارمندان پیدا نشدند (کارمند اصلی موجود نبود)."
+        )
 
     return {
         "employees": employee_count,
         "dependents": dependent_count,
         "errors": errors,
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# SELECT * FROM `users_foodreservation` WHERE `menu_item_id`=321 OR `menu_item_id`=315 OR `menu_item_id`=319 OR `menu_item_id`=318 OR `menu_item_id`=317 OR `menu_item_id`=316 OR `menu_item_id`=320 OR `menu_item_id`=308 OR `menu_item_id`=302 OR `menu_item_id`=306 OR `menu_item_id`=305 OR `menu_item_id`=304 OR `menu_item_id`=303 OR `menu_item_id`=307 OR `menu_item_id`=282 OR `menu_item_id`=276 OR `menu_item_id`=280 OR `menu_item_id`=279 OR `menu_item_id`=278 OR `menu_item_id`=277 OR `menu_item_id`=281 OR `menu_item_id`=269 OR `menu_item_id`=263 OR `menu_item_id`=267 OR `menu_item_id`=266 OR `menu_item_id`=265 OR `menu_item_id`=264 OR `menu_item_id`=268
+# !!! export_to_excel() got an unexpected keyword argument 'restaurant_stats'

@@ -131,10 +131,6 @@
                                 <i class="bi bi-megaphone-fill"></i> ایجاد اعلان
                             </a>
 
-                            {% if can_manage_bimeh %}
-                                <a href="{% url 'users:manage_bimeh' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای کارمندان</a>
-                            {% endif %}
-
                             {% if can_import_excel %}
                                 <a href="{% url 'users:import_employees' %}" class="btn btn-primary w-100 w-md-auto">
                                     <i class="fas fa-file-excel me-2"></i> ورود دسته‌جمعی پرسنل (اکسل)
@@ -305,8 +301,10 @@
     </div>
 {% endblock %}
 {% block extra_js %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script> -->
+    <!-- <script src="{% static 'cdn/Chart.js/4.2.1/chart.umd.js' %}"></script>
+    <script src="{% static 'cdn/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js' %}"></script> -->
     <script type="text/javascript">
         const ctx = document.getElementById('participationChart').getContext('2d');
         const dataValues = JSON.parse('{{ chart_data|safe }}');
@@ -435,7 +433,7 @@
         // Infinite Scrolling
         // =======================================================
         let offset = {{ participations|length }}; // تعداد مشارکت‌های بارگذاری شده اولیه
-<!--        let hasMore = {{ has_more|lower }}; // بررسی وجود داده‌های بیشتر-->
+        // let hasMore = {{ has_more|lower }}; // بررسی وجود داده‌های بیشتر
         let hasMore = {% if has_more %}true{% else %}false{% endif %};
         let isLoading = false;
         const loadingSpinner = document.getElementById('loading-spinner-management');

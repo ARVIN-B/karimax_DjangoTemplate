@@ -273,6 +273,8 @@ class EmployeeAdmin(UserAdmin):
                     "is_first_login",
                     "unlimit_reservation",
                     "can_serve_foods",
+                    "factory_bimeh",
+                    "holding_bimeh",
                 ),
                 "classes": ("collapse",),
             },
@@ -308,6 +310,8 @@ class EmployeeAdmin(UserAdmin):
                     "assigned_subdepartments",
                     "roles",
                     "can_serve_foods",
+                    "factory_bimeh",
+                    "holding_bimeh",
                     "password1",
                     "password2",
                     "is_staff",
@@ -327,6 +331,8 @@ class EmployeeAdmin(UserAdmin):
         "personnel_code",  # اضافه شد
         "national_id",
         "can_serve_foods",
+        "factory_bimeh",
+        "holding_bimeh",
         "phone_number",
         "assigned_subdepartments_display",
         "roles_display",
@@ -353,6 +359,8 @@ class EmployeeAdmin(UserAdmin):
     # --- فیلترها ---
     list_filter = [
         "can_serve_foods",
+        "factory_bimeh",
+        "holding_bimeh",
         "roles",
         "assigned_subdepartments__department__factory__holding",
         "assigned_subdepartments__department__factory",
