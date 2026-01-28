@@ -27,6 +27,7 @@ class ParticipationForm(forms.ModelForm):
         '.mp3', '.aac', '.ogg', '.m4a', '.opus', '.wma', '.wav', '.flac', # audio
         '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.rtf', '.txt', '.odt', '.ods', '.odp', '.xls', '.xlsx', # doc
         '.pages', '.numbers', # ios
+        '.zip',
     }
 
     ACCEPT_ATTRIBUTE = ",".join(ALLOWED_EXTENSIONS)

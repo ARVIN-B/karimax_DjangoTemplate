@@ -60,11 +60,12 @@
             <!-- جدول اصلی رزروها با افکت hover و رنگ‌بندی -->
 
 
-            <form method="post" id="reservation-main-form">
+            <form method="post" id="reservation-main-form" data-submitting="false">
                 {% csrf_token %}
+                <input type="hidden" name="form_token" value="{{ form_token }}" form="reservation-main-form">
 
                 <div class="table-responsive shadow-md rounded-lg overflow-hidden">
-    <!--                <table class="table table-hover table-striped table-bordered align-middle text-center mb-0">-->
+                    <!-- <table class="table table-hover table-striped table-bordered align-middle text-center mb-0"> -->
                     <table class="table table-hover table-striped table-bordered align-middle text-center mb-0" style="table-layout: fixed; min-width: 1200px;">
                         <thead class="table-dark bg-gradient-dark text-white">
                             <tr>
@@ -86,7 +87,7 @@
                                     <td>
                                         {% if day_data.is_reservation_possible and not day_data.is_reservation_time_passed %}
                                             <div class="reservation-container" id="reservation-container-{{ day_data.gdate_str }}">
-    <!--                                            <input type="hidden" name="date_{{ day_data.gdate_str }}" value="1">-->
+                                                <!-- <input type="hidden" name="date_{{ day_data.gdate_str }}" value="1"> -->
 
                                                 <!-- خط سهمیه (quota) -->
                                                 <div class="input-group mb-2 quota-slot compact-input-group flex-nowrap" data-date="{{ day_data.gdate_str }}" data-index="0" data-price-type="factory">
@@ -126,16 +127,6 @@
                                                     <i class="fas fa-plus me-1"></i>افزودن سفارش اضافی
                                                 </button>
                                             </div>
-
-
-
-
-
-
-
-
-
-
 
 
                                         <!--امروز-->
@@ -225,7 +216,7 @@
                                                                                 {% for comment in feedback_data.comments %}
                                                                                     <div class="border-start border-primary border-3 ps-3 py-2 mb-2 {% if comment.user == request.user.full_name %}bg-info{% endif %} rounded">
                                                                                         <div class="d-flex justify-content-between">
-<!--                                                                                            <small class="fw-bold">{{ comment.user }}</small>-->
+                                                                                            <!-- <small class="fw-bold">{{ comment.user }}</small> -->
                                                                                             <small class="text-muted">{{ comment.date|date:"d/m/Y" }}</small>
                                                                                         </div>
                                                                                         <div class="text-dark">{{ comment.text }}</div>
@@ -381,7 +372,7 @@
                                                                                 {% for comment in feedback_data.comments %}
                                                                                     <div class="border-start border-primary border-3 ps-3 py-2 mb-2 {% if comment.user == request.user.full_name %}bg-info{% endif %} rounded">
                                                                                         <div class="d-flex justify-content-between">
-<!--                                                                                            <small class="fw-bold">{{ comment.user }}</small>-->
+                                                                                            <!-- <small class="fw-bold">{{ comment.user }}</small> -->
                                                                                             <small class="text-muted">{{ comment.date|date:"d/m/Y" }}</small>
                                                                                         </div>
                                                                                         <div class="text-dark">{{ comment.text }}</div>
@@ -858,6 +849,34 @@
                 }
             });
         })();
+
+
+
+
+
+
+
+
+
+
+
+
+        // document.getElementById('reservation-main-form').addEventListener('submit', function(e) {
+        //     if (this.getAttribute('data-submitting') === 'true') {
+        //         e.preventDefault();
+        //         alert('لطفاً صبر کنید، در حال ارسال...');
+        //         return false;
+        //     }
+        //     this.setAttribute('data-submitting', 'true');
+            
+        //     // غیرفعال کردن دکمه
+        //     const submitBtn = this.querySelector('button[type="submit"]');
+        //     if (submitBtn) {
+        //         submitBtn.disabled = true;
+        //         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>در حال ثبت...';
+        //     }
+        // });
+
     });
 </script>
 {% endblock extra_js %}

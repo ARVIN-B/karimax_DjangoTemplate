@@ -127,6 +127,26 @@
 
 {% block extra_js %}
     <script>
+        // تابع تبدیل زمان UTC به زمان تهران
+        function getTehranDateTime() {
+            const now = new Date();
+            
+            // تبدیل به زمان تهران (UTC+3:30)
+            const tehranOffset = 3.5 * 60 * 60 * 1000; // 3:30 ساعت به میلی‌ثانیه
+            const tehranTime = new Date(now.getTime() + tehranOffset);
+            
+            // فرمت تاریخ
+            const year = tehranTime.getUTCFullYear();
+            const month = String(tehranTime.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(tehranTime.getUTCDate()).padStart(2, '0');
+            
+            // فرمت زمان
+            const hours = String(tehranTime.getUTCHours()).padStart(2, '0');
+            const minutes = String(tehranTime.getUTCMinutes()).padStart(2, '0');
+            const seconds = String(tehranTime.getUTCSeconds()).padStart(2, '0');
+            
+            return `${year}/${month}/${day} - ${hours}:${minutes}:${minutes}`;
+        }
         function printFactory(factoryId) {
             // اول همه کلاس‌ها را پاک کن
             document.querySelectorAll('[id^="factory-"]').forEach(function(el) {
@@ -137,11 +157,36 @@
             const factoryEl = document.getElementById('factory-' + factoryId);
             if (factoryEl) {
                 factoryEl.classList.add('print-factory');
+                
+                // ایجاد عنصر تاریخ و ساعت
+                const printInfoDiv = document.createElement('div');
+                printInfoDiv.className = 'print-info';
+                printInfoDiv.innerHTML = `
+                    <div style="text-align: left; direction: ltr; font-family: Arial; padding: 10px; border-bottom: 1px solid #ccc; margin-bottom: 15px;">
+                        <strong>Print Date & Time (Tehran):</strong> ${getTehranDateTime()}<br>
+                        <strong>URL:</strong> ${window.location.href}
+                    </div>
+                `;
+                
+                // درج اطلاعات پرینت در ابتدای کارخانه
+                const cardBody = factoryEl.querySelector('.card-body');
+                if (cardBody) {
+                    const existingPrintInfo = cardBody.querySelector('.print-info');
+                    if (existingPrintInfo) {
+                        existingPrintInfo.remove();
+                    }
+                    cardBody.insertBefore(printInfoDiv, cardBody.firstChild);
+                }
+                
                 window.print();
                 
                 // اختیاری: بعد از پرینت کلاس را بردار (وقتی کاربر Cancel یا Print زد)
                 window.onafterprint = function() {
                     factoryEl.classList.remove('print-factory');
+                    const printInfo = cardBody.querySelector('.print-info');
+                    if (printInfo) {
+                        printInfo.remove();
+                    }
                 };
             } else {
                 alert('کارخانه یافت نشد!');
@@ -283,6 +328,18 @@
             background: white;
         }
 
+        /* استایل اطلاعات پرینت */
+        .print-info {
+            font-size: 10pt;
+            color: #333;
+            background: #f9f9f9;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+
         /* مخفی کردن عناصر اضافی در پرینت */
         .btn,
         .alert-info,
@@ -291,7 +348,9 @@
         header,
         footer,
         .card.shadow-sm > .card-header,  /* هدر اصلی صفحه (تحویل غذا) */
-        .card.shadow-sm > .card-body > .alert-info {
+        .card.shadow-sm > .card-body > .alert-info,
+        #employeeSearch, /* مخفی کردن جعبه جستجو */
+        .input-group /* مخفی کردن جعبه جستجو */ {
             display: none !important;
         }
 
@@ -348,15 +407,11 @@
         .small {
             font-size: 10pt;
         }
-
-        /* تست دیباگ: aaaaa رو مخفی کن */
-        .print-factory::before {
-            content: "دیباگ: پرینت کارخانه فعال شد";
-            display: block;
-            font-size: 10px;
-            color: red;
-            margin-bottom: 10px;
-        }
+    }
+    
+    /* در حالت عادی مخفی کردن اطلاعات پرینت */
+    .print-info {
+        display: none;
     }
 </style>
 {% endblock %}

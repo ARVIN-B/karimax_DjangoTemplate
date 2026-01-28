@@ -32,21 +32,43 @@
                 </div>
             {% endif %}
 
-            <!-- بخش دانلود -->
+
+            
             {% if can_export_bimeh_excel %}
                 <div class="text-center mb-5">
-                    <a href="?export=full" 
-                    class="btn btn-success btn-lg px-5 py-4 shadow-lg btn-hover-scale"
-                    style="font-size: 1.3rem; min-width: 300px;">
-                        <i class="fas fa-download me-3 fa-lg"></i>
-                        دانلود اکسل بیمه همه پرسنل
-                    </a>
-                    <div class="mt-4">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            گزارش شامل تمام اطلاعات بیمه ای پرسنل می‌باشد.
-                        </small>
-                    </div>
+                    <form method="get" class="export-form">
+                        <!-- بخش کارخانه - فقط اگر اجازه انتخاب کارخانه داشته باشد -->
+                        {% if can_import_bimeh_excel %}
+                        <div class="factory-select-container mb-4">
+                            <label class="form-label fw-semibold">کارخانه</label>
+                            <select name="factory" class="form-select form-select-lg shadow-sm" id="id_factory" 
+                                    style="max-width: 400px; margin: 0 auto; font-size: 1.1rem;">
+                                <option value="">همه کارخانه‌ها</option>
+                                {% for factory in factory_list %}
+                                    {% if not factory.is_committee and factory.linked_factory is None %}
+                                        <option value="{{ factory.id }}">{{ factory.name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex flex-column align-items-center">
+                            <button type="submit" name="export" value="full" 
+                                    class="btn btn-success btn-lg px-5 py-4 shadow-lg btn-hover-scale export-btn"
+                                    style="font-size: 1.3rem; min-width: 300px;">
+                                <i class="fas fa-download me-3 fa-lg"></i>
+                                دانلود اکسل بیمه همه پرسنل
+                            </button>
+                            
+                            <div class="mt-4">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    گزارش شامل تمام اطلاعات بیمه‌ای پرسنل می‌باشد.
+                                </small>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             {% endif %}
 
@@ -90,18 +112,86 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
 
-<!-- استایل کوچک برای افکت hover دکمه -->
-<style>
-    .btn-hover-scale {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .btn-hover-scale:hover {
-        transform: translateY(-3px) scale(1.05);
-        box-shadow: 0 10px 25px rgba(0, 123, 255, 0.4) !important; /* برای دکمه آبی */
-    }
-    .alert-success { background-color: #d4edda; color: #155724; }
-    .alert-warning { background-color: #fff3cd; color: #856404; }
-    .alert-danger { background-color: #f8d7da; color: #721c24; }
-</style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const factorySelect = document.getElementById('id_factory');
+            
+            if (factorySelect) {
+                // اینجا باید API فراخوانی شود
+                fetch('/api/factories/') // آدرس API خودت را قرار بده
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(factory => {
+                            const option = document.createElement('option');
+                            option.value = factory.id;
+                            option.textContent = factory.name;
+                            factorySelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading factories:', error);
+                    });
+            }
+        });
+    </script>
+
+
+
+
+
+
+{% endblock %}
+{% block extra_css %}
+    <!-- استایل کوچک برای افکت hover دکمه -->
+    <style>
+        .btn-hover-scale {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-hover-scale:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(0, 123, 255, 0.4) !important; /* برای دکمه آبی */
+        }
+        .alert-success { background-color: #d4edda; color: #155724; }
+        .alert-warning { background-color: #fff3cd; color: #856404; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; }
+
+        .export-form {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .form-select-lg {
+            transition: all 0.3s ease;
+        }
+
+        .form-select-lg:focus {
+            border-color: #28a745;
+            box-shadow: 0 0 0 0.25rem rgba(40, 167, 69, 0.25);
+        }
+
+        .btn-hover-scale {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .btn-hover-scale:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 7px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .export-form {
+                padding: 1.5rem;
+            }
+            
+            .btn-lg {
+                min-width: 250px !important;
+                font-size: 1.1rem !important;
+            }
+        }
+    </style>
 {% endblock %}

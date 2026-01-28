@@ -87,6 +87,7 @@ from save_to_word_pdf.save_w_p import save_as_word, save_as_pdf
 from chat_bot.chat_bot import chat_with_bot
 
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 from django.core.serializers.json import DjangoJSONEncoder
 import json
@@ -1628,21 +1629,6 @@ def manage_self_menu(request):
         "save_week_start_persian": save_week_start_persian,
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     if request.GET.get("export") == "full":
         start_date = request.GET.get("start_date")
         end_date = request.GET.get("end_date")
@@ -1657,49 +1643,38 @@ def manage_self_menu(request):
         y, m, d = map(int, jalali_str.split("/"))
         end_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
 
-
-
-
         # دریافت تمام رستوران‌های مربوط به این کارخانه
         restaurants = Subdepartment.objects.filter(
-            is_restaurant=True,
-            department__factory_id=factory_id
-        ).order_by('name')
-
-
-
-
-
+            is_restaurant=True, department__factory_id=factory_id
+        ).order_by("name")
 
         employees = Employee.objects.filter(is_active=True)
 
-
-
-
-
-
         restaurant_stats = {}
-        
+
         # برای هر رستوران، تعداد سفارشات در بازه تاریخ را محاسبه می‌کنیم
         for restaurant in restaurants:
-            total_orders = FoodReservation.objects.filter(
-                menu_item__weekly_menu__restaurant=restaurant,
-                reservation_date__gte=strt_gregorian_date,
-                reservation_date__lte=end_gregorian_date,
-                related_factory_id=factory_id,
-                is_canceled=0
-            ).aggregate(
-                total=Sum('factory_quantity') + Sum('free_quantity') + Sum('guest_quantity')
-            )['total'] or 0
-            
+            total_orders = (
+                FoodReservation.objects.filter(
+                    menu_item__weekly_menu__restaurant=restaurant,
+                    reservation_date__gte=strt_gregorian_date,
+                    reservation_date__lte=end_gregorian_date,
+                    related_factory_id=factory_id,
+                    is_canceled=0,
+                ).aggregate(
+                    total=Sum("factory_quantity")
+                    + Sum("free_quantity")
+                    + Sum("guest_quantity")
+                )[
+                    "total"
+                ]
+                or 0
+            )
+
             restaurant_stats[restaurant.id] = {
-                'name': restaurant.name,
-                'total_orders': total_orders
+                "name": restaurant.name,
+                "total_orders": total_orders,
             }
-
-
-
-
 
         # لیست داده‌ها برای اکسل
         rows_full_name = []
@@ -1713,13 +1688,10 @@ def manage_self_menu(request):
         rows_total_free_qty = []
         rows_total_guest_qty = []
 
-
         # ستون‌های جدید برای آمار رستوران‌ها
         restaurant_columns = {}
         for restaurant in restaurants:
             restaurant_columns[restaurant.id] = []
-
-
 
         for emp in employees:
             reservations = FoodReservation.objects.filter(
@@ -1731,9 +1703,15 @@ def manage_self_menu(request):
             )
 
             total_debt = reservations.aggregate(total=Sum("total_price"))["total"] or 0
-            factory_quantity = reservations.aggregate(total=Sum("factory_quantity"))["total"] or 0
-            free_quantity = reservations.aggregate(total=Sum("free_quantity"))["total"] or 0
-            guest_quantity = reservations.aggregate(total=Sum("guest_quantity"))["total"] or 0
+            factory_quantity = (
+                reservations.aggregate(total=Sum("factory_quantity"))["total"] or 0
+            )
+            free_quantity = (
+                reservations.aggregate(total=Sum("free_quantity"))["total"] or 0
+            )
+            guest_quantity = (
+                reservations.aggregate(total=Sum("guest_quantity"))["total"] or 0
+            )
 
             if (
                 total_debt == 0
@@ -1745,12 +1723,19 @@ def manage_self_menu(request):
 
             # محاسبه تعداد سفارشات برای هر رستوران
             for restaurant in restaurants:
-                restaurant_orders_count = reservations.filter(
-                    menu_item__weekly_menu__restaurant=restaurant, is_canceled=0
-                ).aggregate(
-                    total=Sum('factory_quantity') + Sum('free_quantity') + Sum('guest_quantity')
-                )['total'] or 0
-                
+                restaurant_orders_count = (
+                    reservations.filter(
+                        menu_item__weekly_menu__restaurant=restaurant, is_canceled=0
+                    ).aggregate(
+                        total=Sum("factory_quantity")
+                        + Sum("free_quantity")
+                        + Sum("guest_quantity")
+                    )[
+                        "total"
+                    ]
+                    or 0
+                )
+
                 restaurant_columns[restaurant.id].append(restaurant_orders_count)
 
             rows_full_name.append(emp.full_name or "نامشخص")
@@ -1770,7 +1755,7 @@ def manage_self_menu(request):
         # مرتب‌سازی بر اساس مبلغ بدهی (نزولی)
 
         try:
-            combined_list  = list(
+            combined_list = list(
                 zip(
                     rows_full_name,
                     rows_national_id,
@@ -1781,15 +1766,17 @@ def manage_self_menu(request):
                     rows_total_free_qty,
                     rows_total_guest_qty,
                     rows_total_debt_formatted,
-                    *[restaurant_columns[restaurant.id] for restaurant in restaurants]
+                    *[restaurant_columns[restaurant.id] for restaurant in restaurants],
                 )
             )
 
-            combined_list.sort(key=lambda x: x[4], reverse=True)  # بر اساس total_debt_raw
+            combined_list.sort(
+                key=lambda x: x[4], reverse=True
+            )  # بر اساس total_debt_raw
 
             # جدا کردن دوباره بعد از سورت
             sorted_data = list(zip(*combined_list))
-            
+
             # ستون‌های اصلی
             rows_full_name = sorted_data[0]
             rows_national_id = sorted_data[1]
@@ -1800,7 +1787,6 @@ def manage_self_menu(request):
             rows_total_free_qty = sorted_data[6]
             rows_total_guest_qty = sorted_data[7]
             rows_total_debt_formatted = sorted_data[8]
-
 
             restaurant_sorted_columns = {}
             for i, restaurant in enumerate(restaurants, start=9):
@@ -1820,12 +1806,14 @@ def manage_self_menu(request):
 
             for restaurant in restaurants:
                 column_name = f"{restaurant.name} (تعداد سفارش)"
-                data_columns.append((column_name, list(restaurant_sorted_columns[restaurant.id])))
+                data_columns.append(
+                    (column_name, list(restaurant_sorted_columns[restaurant.id]))
+                )
 
             # اضافه کردن یک ردیف خلاصه برای کل سفارشات هر رستوران
             summary_row = []
             for restaurant in restaurants:
-                summary_row.append(restaurant_stats[restaurant.id]['total_orders'])
+                summary_row.append(restaurant_stats[restaurant.id]["total_orders"])
 
             # نام فایل و عنوان گزارش
             today_jalali = jdatetime.date.today().strftime("%Y/%m/%d")
@@ -1837,26 +1825,11 @@ def manage_self_menu(request):
                 filename=filename,
                 report_title=report_title,
                 restaurant_stats=restaurant_stats,
-                summary_row=summary_row
+                summary_row=summary_row,
             )
         except Exception as e:
             messages.error(request, f"در این بازه زمانی اطلاعاتی در دسترس نیست!!! {e}")
             return redirect("users:manage_self_menu")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     elif request.GET.get("export") == "single" and request.GET.get("employee_id"):
         start_date = request.GET.get("start_date")
@@ -1957,6 +1930,7 @@ def manage_self_menu(request):
             name = request.POST.get("food_name", "").strip()
             price_raw = request.POST.get("food_price", "")
             free_price_row = request.POST.get("food_free_price", "")
+            is_management_food = request.POST.get("is_management_food") == "1"
 
             if not name:
                 messages.error(request, "نام غذا نمی‌تواند خالی باشد.")
@@ -1974,6 +1948,7 @@ def manage_self_menu(request):
                         "factory_price": price,
                         "is_active": True,
                         "free_price": free_price,
+                        "is_management_food": is_management_food,
                     },
                 )
                 verb = "اضافه" if created else "به‌روزرسانی"
@@ -2231,6 +2206,7 @@ PERSIAN_WEEK_DAYS = [
 ]
 
 
+@transaction.atomic
 @login_required
 def food_reservation_view(request):
     role_name = request.session["current_role"]
@@ -2253,8 +2229,23 @@ def food_reservation_view(request):
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
 
-    can_choose_factory = False
+    if not user.unlimit_reservation:
+        max_factory_quantity = 1
+        max_free_quantity = 10
+        max_guest_quantity = 20
+    else:
+        max_factory_quantity = 1
+        max_free_quantity = 100
+        max_guest_quantity = 100
 
+    if "form_token" not in request.session:
+        request.session["form_token"] = get_random_string(32)
+
+    can_reserve_management_food = user.can_reserve_management_food
+
+    form_token = request.session["form_token"]
+
+    can_choose_factory = False
     can_reserve_guest = False
 
     if (
@@ -2348,11 +2339,20 @@ def food_reservation_view(request):
         weekly_menus = WeeklyMenu.objects.none()
 
     if weekly_menus:
-        all_menu_items = (
-            MenuItem.objects.filter(weekly_menu__in=weekly_menus)
-            .select_related("food", "weekly_menu__restaurant")
-            .all()
-        )
+        if not can_reserve_management_food:
+            all_menu_items = (
+                MenuItem.objects.filter(
+                    weekly_menu__in=weekly_menus, food__is_management_food=False
+                )
+                .select_related("food", "weekly_menu__restaurant")
+                .all()
+            )
+        else:
+            all_menu_items = (
+                MenuItem.objects.filter(weekly_menu__in=weekly_menus)
+                .select_related("food", "weekly_menu__restaurant")
+                .all()
+            )
     else:
         all_menu_items = MenuItem.objects.none()
 
@@ -2471,6 +2471,16 @@ def food_reservation_view(request):
 
     if request.method == "POST" and "submit_reservations" in request.POST:
 
+        post_token = request.POST.get("form_token")
+        session_token = request.session.get("form_token")
+
+        if not post_token or post_token != session_token:
+            messages.error(request, "فرم معتبر نیست. لطفا مجددا تلاش کنید.")
+            return redirect(request.path)
+
+        # بعد از پردازش موفق، توکن جدید ایجاد کن
+        request.session["form_token"] = get_random_string(32)
+
         is_reservation_time_passed = tehran_aware_datetime.time() > time(
             close_food_res_time_H, close_food_res_time_M
         )
@@ -2478,8 +2488,6 @@ def food_reservation_view(request):
         today = tehran_aware_datetime.date()
 
         parsed_reservations = []
-
-        print("bbbbbbbbbbbbb", request.POST)
 
         for key, value in request.POST.items():
             print("key : ", key, "value : ", value)
@@ -2555,13 +2563,16 @@ def food_reservation_view(request):
             fq = ffree = fg = 0
             if item["price_type"] == "factory":
                 fq = item["quantity"]
+                fq = fq if (fq <= max_factory_quantity) else max_factory_quantity
                 unit_price = menu_item.food.factory_price
             elif item["price_type"] == "free":
                 ffree = item["quantity"]
+                ffree = ffree if (ffree <= max_free_quantity) else max_free_quantity
                 unit_price = menu_item.food.free_price
             elif item["price_type"] == "guest":
                 if can_reserve_guest:
                     fg = item["quantity"]
+                    fg = fg if (fg <= max_guest_quantity) else max_guest_quantity
                     print(f"done{fg}")
                 else:
                     print("0")
@@ -2586,6 +2597,22 @@ def food_reservation_view(request):
                 existing.factory_quantity += fq
                 existing.free_quantity += ffree
                 existing.guest_quantity += fg
+
+                existing.factory_quantity = (
+                    existing.factory_quantity
+                    if (existing.factory_quantity <= max_factory_quantity)
+                    else max_factory_quantity
+                )
+                existing.free_quantity = (
+                    existing.free_quantity
+                    if (existing.free_quantity <= max_free_quantity)
+                    else max_free_quantity
+                )
+                existing.guest_quantity = (
+                    existing.guest_quantity
+                    if (existing.guest_quantity <= max_guest_quantity)
+                    else max_guest_quantity
+                )
 
                 # قیمت‌ها یک بار برای همیشه ثابت می‌مونن
                 existing.factory_price = menu_item.food.factory_price
@@ -2618,6 +2645,8 @@ def food_reservation_view(request):
                 guest_price=menu_item.food.guest_price,
                 total_price=(unit_price * item["quantity"]),
             )
+        messages.success(request, "رزروهای شما با موفقیت ثبت شدند.")
+        return redirect(request.path)
 
     elif request.method == "POST" and "submit_comment" in request.POST:
         # print("comment")
@@ -2645,15 +2674,6 @@ def food_reservation_view(request):
 
         existing.save(update_fields=["feedback", "rating"])
 
-    if not user.unlimit_reservation:
-        max_factory_quantity = 1
-        max_free_quantity = 10
-        max_guest_quantity = 20
-    else:
-        max_factory_quantity = 1
-        max_free_quantity = 100
-        max_guest_quantity = 100
-
     context = {
         "weekly_data": weekly_data,
         "week_start_date": week_start_date,
@@ -2668,6 +2688,8 @@ def food_reservation_view(request):
         "current_factory_id": factory.id,
         "today_gdate_str": tehran_aware_datetime.date(),
         "is_reservation_time_passed": is_reservation_time_passed,
+        "form_token": form_token,
+        "can_reserve_management_food": can_reserve_management_food,
     }
 
     return render(request, "users/food_reservation.html", context)
@@ -3144,7 +3166,7 @@ def process_participation(request, participation_id):
         raise PermissionDenied("شما اجازه دسترسی به این مشارکت را ندارید.")
 
     # if participation.user != request.user and role_name not in ['super_admin', 'factory_manager', 'department_manager', 'supervisor']:
-    print(role_name)
+    # print(role_name)
     if participation.user != request.user and not role_name in [
         "super_admin",
         "factory_manager",
@@ -3431,6 +3453,7 @@ def process_participation(request, participation_id):
             word_buffer.close()
 
             return response
+
         elif (
             action == "download_mp3"
             and participation.text_content
@@ -3442,26 +3465,21 @@ def process_participation(request, participation_id):
         ):
             file_path = participation.attachment.path
             file_name = os.path.basename(file_path)
+            print(file_path)
+            print(file_name)
             if os.path.exists(file_path):
-
-                if not os.path.exists(file_path):
-                    raise Http404("فایل روی سرور یافت نشد.")
-
                 try:
-                    response = FileResponse(open(file_path, "rb"))
-
-                    response["Content-Type"] = "application/octet-stream"
-                    response["Content-Disposition"] = (
-                        f'attachment; filename="{file_name}"'
+                    response = FileResponse(
+                        open(file_path, "rb"),
+                        as_attachment=True,
+                        filename=os.path.basename(file_path),
                     )
-
                     return response
                 except Exception as e:
                     messages.error(request, f"خطا در ارسال فایل: {str(e)}")
             else:
                 messages.error(request, "فایل مورد نظر در سرور موجود نیست.")
 
-    # print(f"Debug - Participation ID: {participation.id}, Status: {participation.status}, is_finalized: {participation.is_finalized}, User: {participation.user.username}, Current User: {request.user.username}")
     can_convert = (
         participation.status == "pending"
         and participation.attachment
@@ -4820,11 +4838,16 @@ def manage_bimeh(request):
     factory_bimeh = user.factory_bimeh
     holding_bimeh = user.holding_bimeh
 
+    if holding_id:
+        factory_list = Factory.objects.filter(holding__id=holding_id)
+    else:
+        factory_list = Factory.objects.filter()
+
     can_manage_bimeh = factory_bimeh or holding_bimeh
     can_export_bimeh_excel = factory_bimeh or holding_bimeh
     can_import_bimeh_excel = holding_bimeh
 
-    print(Factory.objects.filter(id=factory_id))
+    # print(Factory.objects.filter(id=factory_id))
 
     if not can_manage_bimeh:
         messages.error(request, "شما اجازه دسترسی به این صفحه را ندارید..")
@@ -4902,9 +4925,12 @@ def manage_bimeh(request):
 
         for emp in employees:
 
+            selected_factory_id = request.GET.get("factory")
             user_factory = ""
+            related_factories = Factory.objects.filter()
+
             if factory_bimeh:
-                related_factories = Factory.objects.filter(id=factory_id).filter(
+                related_factories = related_factories.filter(id=factory_id).filter(
                     Q(manager=emp)
                     | Q(departments__manager=emp)
                     | Q(departments__manager_2=emp)
@@ -4912,9 +4938,20 @@ def manage_bimeh(request):
                     | Q(departments__subdepartments__supervisor=emp)
                     | Q(departments__subdepartments__assigned_employees=emp)
                 )
-                # print(f"aaa{related_factories}")
-                if not related_factories:
-                    continue
+            if holding_bimeh and selected_factory_id:
+                related_factories = related_factories.filter(
+                    id=selected_factory_id
+                ).filter(
+                    Q(manager=emp)
+                    | Q(departments__manager=emp)
+                    | Q(departments__manager_2=emp)
+                    | Q(departments__manager_3=emp)
+                    | Q(departments__subdepartments__supervisor=emp)
+                    | Q(departments__subdepartments__assigned_employees=emp)
+                )
+
+            if not related_factories:
+                continue
 
             # --- اطلاعات مشترک ---
             bimeh = (
@@ -4965,7 +5002,11 @@ def manage_bimeh(request):
                     "نام خانوادگی": emp.last_name or "",
                     "نام پدر": emp.father_name or "",
                     "تاریخ تولد": (
-                        emp.birth_date.strftime("%Y/%m/%d") if emp.birth_date else ""
+                        jdatetime.date.fromgregorian(date=emp.birth_date).strftime(
+                            "%Y/%m/%d"
+                        )
+                        if emp.birth_date
+                        else ""
                     ),
                     "کد جنسیت": emp.gender.code if emp.gender else "",
                     "کد وضعیت تأهل": (
@@ -4981,7 +5022,9 @@ def manage_bimeh(request):
                         bimeh.job_group.code if bimeh and bimeh.job_group else ""
                     ),
                     "تاریخ استخدام": (
-                        bimeh.employment_date.strftime("%Y/%m/%d")
+                        jdatetime.date.fromgregorian(
+                            date=bimeh.employment_date
+                        ).strftime("%Y/%m/%d")
                         if bimeh and bimeh.employment_date
                         else ""
                     ),
@@ -5043,6 +5086,7 @@ def manage_bimeh(request):
                 dep_account_number = (
                     dep_bank_account.account_number if dep_bank_account else ""
                 )
+
                 if dep.relative_type.code and str(dep.relative_type.code) in [
                     "1",
                     "2",
@@ -5052,16 +5096,10 @@ def manage_bimeh(request):
                     "8",
                 ]:
                     dep_sheba = sheba
-                    # print(
-                    #     f"aaaaaaaaaaaaaaa{dep_sheba} , aaaaaa {dep.relative_type} , vvvvvvvvvvvvvvv {dep_bank_account.sheba_number if dep_bank_account else ""}"
-                    # )
                 else:
                     dep_sheba = (
                         dep_bank_account.sheba_number if dep_bank_account else ""
                     )
-                    # print(f"bbbbbbbbbbbbbbbbb{dep_sheba} , aaaaaa  {dep.relative_type}")
-
-                # dep_sheba = dep_bank_account.sheba_number if dep_bank_account else ""
 
                 dep_account_type_code = (
                     dep_bank_account.bank_account_type.code
@@ -5078,7 +5116,9 @@ def manage_bimeh(request):
                         "نام خانوادگی": dep.last_name,
                         "نام پدر": dep.father_name or "",
                         "تاریخ تولد": (
-                            dep.birth_date.strftime("%Y/%m/%d")
+                            jdatetime.date.fromgregorian(date=dep.birth_date).strftime(
+                                "%Y/%m/%d"
+                            )
                             if dep.birth_date
                             else ""
                         ),
@@ -5208,6 +5248,7 @@ def manage_bimeh(request):
         "can_manage_bimeh": can_manage_bimeh,
         "can_export_bimeh_excel": can_export_bimeh_excel,
         "can_import_bimeh_excel": can_import_bimeh_excel,
+        "factory_list": factory_list,
     }
 
     return render(request, "users/manage_bimeh.html", context)
@@ -6321,22 +6362,6 @@ def import_from_excel(excel_file):
         "dependents": dependent_count,
         "errors": errors,
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # SELECT * FROM `users_foodreservation` WHERE `menu_item_id`=321 OR `menu_item_id`=315 OR `menu_item_id`=319 OR `menu_item_id`=318 OR `menu_item_id`=317 OR `menu_item_id`=316 OR `menu_item_id`=320 OR `menu_item_id`=308 OR `menu_item_id`=302 OR `menu_item_id`=306 OR `menu_item_id`=305 OR `menu_item_id`=304 OR `menu_item_id`=303 OR `menu_item_id`=307 OR `menu_item_id`=282 OR `menu_item_id`=276 OR `menu_item_id`=280 OR `menu_item_id`=279 OR `menu_item_id`=278 OR `menu_item_id`=277 OR `menu_item_id`=281 OR `menu_item_id`=269 OR `menu_item_id`=263 OR `menu_item_id`=267 OR `menu_item_id`=266 OR `menu_item_id`=265 OR `menu_item_id`=264 OR `menu_item_id`=268

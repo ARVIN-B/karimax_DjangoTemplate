@@ -131,24 +131,19 @@
                     <button type="submit" name="action" value="summarized_text" class="btn btn-info">خلاصه سازی متن</button>
                 {% endif %}
 
-<!--                <button type="submit" name="action" value="normal_text" class="btn btn-secondary">متن اصلی</button>-->
-
-
+                <!-- <button type="submit" name="action" value="normal_text" class="btn btn-secondary">متن اصلی</button> -->
 
                 {% if can_delete %}
-                        {% csrf_token %}
-                        <button type="submit"
-                                name="action"
-                                value="delete"
-                                class="btn btn-danger"
-                                onclick="return confirm('آیا مطمئن هستید که می‌خواهید این مشارکت را حذف کنید؟ این عمل غیرقابل بازگشت است.');">
+                    {% csrf_token %}
+                    <button type="submit"
+                            name="action"
+                            value="delete"
+                            class="btn btn-danger"
+                            onclick="return confirm('آیا مطمئن هستید که می‌خواهید این مشارکت را حذف کنید؟ این عمل غیرقابل بازگشت است.');">
 
-                            حذف مشارکت
-                        </button>
+                        حذف مشارکت
+                    </button>
                 {% endif %}
-
-
-
 
             </form>
         {% elif participation.text_content %}
@@ -170,7 +165,7 @@
                         </div>
                     {% endif %}
                     {% if can_download %}
-<!--                        <a href="{% url 'users:process_participation' participation.id %}?action=download_text" class="btn btn-success">دانلود متن</a>-->
+                        <a href="{% url 'users:process_participation' participation.id %}?action=download_text" class="btn btn-success">دانلود متن</a>
                         <a href="{% url 'users:process_participation' participation.id %}?action=download_pdf" class="btn btn-warning">دانلود pdf</a>
                         <a href="{% url 'users:process_participation' participation.id %}?action=download_word" class="btn btn-secondary">دانلود word</a>
                         {%if participation.attachment%}

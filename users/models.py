@@ -7,7 +7,6 @@ from django.contrib.auth.hashers import make_password
 from django.core.files.base import ContentFile
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from datetime import datetime, timedelta
 from io import BytesIO
 from pydub import AudioSegment
 import os
@@ -22,8 +21,7 @@ from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
 
 
-close_food_res_time_H = 10
-# close_food_res_time_H = 15
+close_food_res_time_H = 23
 close_food_res_time_M = 0
 
 start_today_food_comment_time_H = 10
@@ -383,6 +381,10 @@ class Employee(AbstractUser):
     )
     holding_bimeh = models.BooleanField(
         default=False, verbose_name="اجازه دانلود اطلاعات بیمه ای پرسنل هلدینگ"
+    )
+
+    can_reserve_management_food = models.BooleanField(
+        default=False, verbose_name="اجازه سفارش غذای ویژه"
     )
 
     USERNAME_FIELD = "national_id"
@@ -780,6 +782,7 @@ class FoodItem(models.Model):
     guest_price = models.PositiveIntegerField(default=0, verbose_name="قیمت غذای مهمان")
     price = models.PositiveIntegerField(default=0, verbose_name="قیمت")
     is_active = models.BooleanField(default=True, verbose_name="فعال")
+    is_management_food = models.BooleanField(default=False, verbose_name="غذای مدریتی")
 
     class Meta:
         verbose_name = "غذا"
