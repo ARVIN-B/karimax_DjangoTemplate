@@ -21,11 +21,11 @@ from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
 
 
-close_food_res_time_H = 23
-close_food_res_time_M = 0
+close_food_res_time_H = 10
+close_food_res_time_M = 00
 
 start_today_food_comment_time_H = 10
-start_today_food_comment_time_M = 0
+start_today_food_comment_time_M = 00
 
 
 def generate_random_password(length=12):
@@ -319,6 +319,33 @@ class Employee(AbstractUser):
     unlimit_reservation = models.BooleanField(
         default=False, verbose_name="مجوز رزرو نامحدود"
     )
+
+
+
+
+
+    # field1 = models.IntegerField(default=0, verbose_name="فیلد عددی ۱")
+    # field2 = models.IntegerField(default=100, verbose_name="فیلد عددی ۲")
+    # field3 = models.IntegerField(default=-1, verbose_name="فیلد عددی ۳")
+    # flag = models.BooleanField(default=False, verbose_name="فلگ وضعیت")
+
+    # factory_quantity_limit = models.PositiveIntegerField(
+    #     default=1, verbose_name="محدودیت روزانه ثبت غذای پرسنلی"
+    # )
+    # free_quantity_limit = models.PositiveIntegerField(
+    #     default=0, verbose_name="محدودیت روزانه ثبت غذای آزاد"
+    # )
+    # guest_quantity_limit = models.PositiveIntegerField(
+    #     default=0, verbose_name="محدودیت روزانه ثبت غذای مهمان"
+    # )
+
+
+
+
+
+
+
+
     food_receiver_role = models.PositiveSmallIntegerField(
         default=0, choices=FOOD_RECEIVER_CHOICES, verbose_name="نقش تحویل‌گیرنده غذا"
     )
@@ -386,6 +413,8 @@ class Employee(AbstractUser):
     can_reserve_management_food = models.BooleanField(
         default=False, verbose_name="اجازه سفارش غذای ویژه"
     )
+
+
 
     USERNAME_FIELD = "national_id"
     REQUIRED_FIELDS = ["first_name", "last_name", "phone_number"]

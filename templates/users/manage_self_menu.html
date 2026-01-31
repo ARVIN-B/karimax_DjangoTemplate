@@ -74,18 +74,17 @@
             </h4>
         </div>
 
-
-
         <div class="card-body p-4">
-
-
-
 
             <!-- دکمه دانلود اکسل همه کاربران -->
             <div class="text-center mb-4">
                 <a href="?export=full" id="export-full-btn" class="btn btn-success btn-lg px-5 shadow-sm">
                     <i class="fas fa-users me-2"></i>
                     دانلود اکسل بدهی همه پرسنل
+                </a>
+                <a href="?export=full-restaurant" id="export-full-restaurant-btn" class="btn btn-success btn-lg px-5 shadow-sm">
+                    <i class="fas fa-users me-2"></i>
+                    دانلود اکسل بدهی به رستوران ها
                 </a>
                 <p class="text-muted small mt-2 mb-0">
                     شامل تمام کارمندان فعال با مجموع بدهی
@@ -352,6 +351,20 @@ $(document).ready(function() {
 
         // ساخت URL با پارامترها
         let url = `?export=full&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+        window.location.href = url;
+    });
+
+    $('#export-full-restaurant-btn').on('click', function(e) {
+        e.preventDefault();
+        const startDate = $('#from_date').val();
+        const endDate   = $('#to_date').val();
+
+        if (!startDate || !endDate) {
+            alert('لطفاً تاریخ‌ها را انتخاب کنید');
+            return;
+        }
+        
+        let url = `?export=full-restaurant&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
         window.location.href = url;
     });
 

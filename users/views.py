@@ -93,6 +93,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 import json
 from autogen_agentchat.messages import TextMessage
 
+from collections import defaultdict
+
 
 if sys.platform == "win32":
     os.system("chcp 65001 >nul")  # تغییر کدپیج کنسول به UTF-8
@@ -1830,6 +1832,88 @@ def manage_self_menu(request):
         except Exception as e:
             messages.error(request, f"در این بازه زمانی اطلاعاتی در دسترس نیست!!! {e}")
             return redirect("users:manage_self_menu")
+
+    elif request.GET.get("export") == "full-restaurant":
+
+        start_date = request.GET.get("start_date")
+        end_date = request.GET.get("end_date")
+
+        print(start_date)
+        print(end_date)
+
+        jalali_str = start_date.replace("-", "/").strip()
+        y, m, d = map(int, jalali_str.split("/"))
+        strt_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
+
+        jalali_str = end_date.replace("-", "/").strip()
+        y, m, d = map(int, jalali_str.split("/"))
+        end_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
+
+        reservations = (
+            FoodReservation.objects.filter(
+                # related_factory_id=factory_id,
+                reservation_date__gte=strt_gregorian_date,
+                reservation_date__lte=end_gregorian_date,
+                is_canceled=0,
+                menu_item__weekly_menu__restaurant__is_restaurant=True,
+            )
+            .values(
+                "reservation_date",
+                "menu_item__weekly_menu__restaurant__name",
+            )
+            .annotate(
+                total_orders=Sum("factory_quantity")
+                + Sum("free_quantity")
+                + Sum("guest_quantity")
+            )
+            .order_by("reservation_date")
+        )
+
+        from collections import defaultdict
+
+        daily_stats = defaultdict(dict)
+
+        for r in reservations:
+            daily_stats[r["reservation_date"]][
+                r["menu_item__weekly_menu__restaurant__name"]
+            ] = (r["total_orders"] or 0)
+
+        restaurants = list(
+            Subdepartment.objects.filter(
+                is_restaurant=True,
+                # department__factory_id=factory_id
+            ).values_list("name", flat=True)
+        )
+
+        dates = sorted(daily_stats.keys())
+
+        data_columns = [
+            (
+                "تاریخ",
+                [
+                    jdatetime.date.fromgregorian(date=d).strftime("%Y/%m/%d")
+                    for d in dates
+                ],
+            )
+        ]
+
+        for r in restaurants:
+            data_columns.append(
+                (
+                    r,
+                    [daily_stats[d].get(r, 0) for d in dates],
+                )
+            )
+
+        today_jalali = jdatetime.date.today().strftime("%Y/%m/%d")
+        filename = f"Restaurant_Daily_Report_{today_jalali.replace('/', '-')}"
+        report_title = f"گزارش روزانه سفارش رستوران‌ها - {today_jalali}"
+
+        return export_to_excel(
+            columns=data_columns,
+            filename=filename,
+            report_title=report_title,
+        )
 
     elif request.GET.get("export") == "single" and request.GET.get("employee_id"):
         start_date = request.GET.get("start_date")
@@ -4853,52 +4937,10 @@ def manage_bimeh(request):
         messages.error(request, "شما اجازه دسترسی به این صفحه را ندارید..")
         return redirect("users:dashboard")
 
-    if request.GET.get("export") == "full":
-
-        # print(can_manage_bimeh)
-        # if can_export_bimeh_excel:
-        #     print("aaa")
-        #     if holding_bimeh:
-        #         employees = (
-        #             Employee.objects.filter(is_active=True)
-        #             .select_related("gender", "marital_status", "dependency_status")
-        #             .prefetch_related(
-        #                 "dependents__gender",
-        #                 "dependents__marital_status",
-        #                 "dependents__dependency_status",
-        #                 "dependents__relative_type",
-        #                 "dependents__country",
-        #                 "bimeh",
-        #                 "bimeh__employment_type",
-        #                 "bimeh__job_group",
-        #                 "bimeh__base_insurance",
-        #                 "bimeh__country",
-        #                 "bank_accounts__bank",
-        #                 "bank_accounts__bank_account_type",
-        #                 "contact_infos",
-        #             )
-        #         )
-
-        #     elif factory_bimeh:
-        #         employees = (
-        #             Employee.objects.filter(is_active=True)
-        #             .select_related("gender", "marital_status", "dependency_status")
-        #             .prefetch_related(
-        #                 "dependents__gender",
-        #                 "dependents__marital_status",
-        #                 "dependents__dependency_status",
-        #                 "dependents__relative_type",
-        #                 "dependents__country",
-        #                 "bimeh",
-        #                 "bimeh__employment_type",
-        #                 "bimeh__job_group",
-        #                 "bimeh__base_insurance",
-        #                 "bimeh__country",
-        #                 "bank_accounts__bank",
-        #                 "bank_accounts__bank_account_type",
-        #                 "contact_infos",
-        #             )
-        #         )
+    if (
+        request.GET.get("export") == "full"
+        or request.GET.get("export") == "with_family_full"
+    ):
 
         employees = (
             Employee.objects.filter(is_active=True)
@@ -4952,6 +4994,14 @@ def manage_bimeh(request):
 
             if not related_factories:
                 continue
+
+            if request.GET.get("export") == "with_family_full":
+                depen = emp.dependents.all()
+
+                if not depen.exists():
+                    continue
+
+                print(f"aaaaaaaaaaa{depen}")
 
             # --- اطلاعات مشترک ---
             bimeh = (
@@ -6362,7 +6412,3 @@ def import_from_excel(excel_file):
         "dependents": dependent_count,
         "errors": errors,
     }
-
-
-# SELECT * FROM `users_foodreservation` WHERE `menu_item_id`=321 OR `menu_item_id`=315 OR `menu_item_id`=319 OR `menu_item_id`=318 OR `menu_item_id`=317 OR `menu_item_id`=316 OR `menu_item_id`=320 OR `menu_item_id`=308 OR `menu_item_id`=302 OR `menu_item_id`=306 OR `menu_item_id`=305 OR `menu_item_id`=304 OR `menu_item_id`=303 OR `menu_item_id`=307 OR `menu_item_id`=282 OR `menu_item_id`=276 OR `menu_item_id`=280 OR `menu_item_id`=279 OR `menu_item_id`=278 OR `menu_item_id`=277 OR `menu_item_id`=281 OR `menu_item_id`=269 OR `menu_item_id`=263 OR `menu_item_id`=267 OR `menu_item_id`=266 OR `menu_item_id`=265 OR `menu_item_id`=264 OR `menu_item_id`=268
-# !!! export_to_excel() got an unexpected keyword argument 'restaurant_stats'
