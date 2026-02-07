@@ -1536,6 +1536,8 @@ def manage_self_menu(request):
     has_management_access = role_name in management_roles
     can_access_evaluation_panel = role_name in ["super_admin", "department_manager"]
 
+    can_download_other_factories_resers = True
+
     # دسترسی فقط برای مدیر سلف
     if not Department.objects.filter(manager=request.user, is_self=True).exists():
         messages.error(request, "شما دسترسی به مدیریت منوی سلف ندارید.")
@@ -1629,6 +1631,7 @@ def manage_self_menu(request):
         "week_start_persian": display_week_start_persian,
         "no_restaurant": not restaurants.exists(),
         "save_week_start_persian": save_week_start_persian,
+        "can_download_other_factories_resers": can_download_other_factories_resers,
     }
 
     if request.GET.get("export") == "full":
@@ -1644,6 +1647,10 @@ def manage_self_menu(request):
         jalali_str = end_date.replace("-", "/").strip()
         y, m, d = map(int, jalali_str.split("/"))
         end_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
+
+        # if can_download_other_factories_resers:
+        # factory_id = [1,9,12,11]
+        # factory_id = [12]
 
         # دریافت تمام رستوران‌های مربوط به این کارخانه
         restaurants = Subdepartment.objects.filter(

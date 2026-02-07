@@ -16,8 +16,6 @@
                         <form method="get" class="mb-4">
                             <div class="row g-3">
 
-
-
                                 <div class="col-12 col-md-3">
                                     <label class="form-label">وضعیت مشارکت</label>
                                     <select name="status" class="form-select">
@@ -29,9 +27,6 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-
-
-
 
                                 <div class="col-12 col-md-6">
                                     <div class="bg-light border rounded p-3" style="background-color: #ced4da !important;">
@@ -68,9 +63,6 @@
                                     </div>
                                 </div>
 
-
-
-
                                 <div class="col-12 text-center mt-3">
                                     <button type="submit" class="btn btn-primary">اعمال فیلتر</button>
                                     <a href="{% url 'users:dashboard' %}" class="btn btn-secondary">حذف فیلتر</a>
@@ -78,15 +70,12 @@
                             </div>
                         </form>
 
-
-
-
                         <div class="row mt-4">
                             <div class="col-12 text-center">
                                 
 
                                 {% if can_manage_bimeh %}
-                                    <a href="{% url 'users:manage_bimeh' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای کارمندان</a>
+                                    <!-- <a href="{% url 'users:manage_bimeh' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای کارمندان</a> -->
                                 {% endif %}
 
                                 <a href="{% url 'users:referrals_inbox' %}" class="btn btn-warning mb-3 w-100 w-md-auto">ارجاعات دریافتی</a>
@@ -95,19 +84,19 @@
                                 <a href="https://cloud.karimax.ir/" class="btn btn-info mb-3 w-100 w-md-auto">سامانه ابری</a>
                                 
                                 
-                                <a href="{% url 'users:insurance_info' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای</a>
+                                <!-- <a href="{% url 'users:insurance_info' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای</a> -->
 
 
-                                <a href="{% url 'users:family_management' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای افراد خانواده</a>
+                                <!-- <a href="{% url 'users:family_management' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای افراد خانواده</a> -->
 
                                 {% if has_management_access %}
                                     <a href="{% url 'users:management_dashboard' %}" class="btn btn-primary mb-3 w-100 w-md-auto">داشبورد مدیریتی</a>
                                 {% endif %}
                                     <a href="{% url 'users:food_delivery_page' %}" class="btn btn-primary mb-3 w-100 w-md-auto">تحویل غذا</a>
                                 {% if food_receiver_role %}
+                                    <a href="{% url 'users:submit_participation' %}" class="btn btn-primary mb-3 w-100 w-md-auto">ثبت مشارکت جدید</a>
                                 {% endif %}
-                                <a href="{% url 'users:submit_participation' %}" class="btn btn-primary mb-3 w-100 w-md-auto">ثبت مشارکت جدید</a>
-<!--                                <a href="{% url 'users:chat_page' %}" class="btn btn-primary mb-3 w-100 w-md-auto"><i class="fas fa-robot"></i> چت‌بات</a>-->
+                                <!-- <a href="{% url 'users:chat_page' %}" class="btn btn-primary mb-3 w-100 w-md-auto"><i class="fas fa-robot"></i> چت‌بات</a> -->
                                 <a href="#" class="btn btn-primary mb-3 w-100 w-md-auto"><i class="fas fa-robot"></i> چت‌بات</a>
                                 <form method="post" class="d-inline">
                                     {% csrf_token %}

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from decouple import config
+import os
 from django.contrib.messages import constants as messages
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -111,19 +112,19 @@ DATABASES = {
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
+    #    {
+    #        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    #    },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-        "OPTIONS": {"min_length": 10},
+        "OPTIONS": {"min_length": 6},
     },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    #    {
+    #        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    #    },
+    #    {
+    #        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    #    },
 ]
 
 # Internationalization - Persian
