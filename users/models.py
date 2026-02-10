@@ -319,10 +319,18 @@ class Employee(AbstractUser):
     unlimit_reservation = models.BooleanField(
         default=False, verbose_name="مجوز رزرو نامحدود"
     )
-
-
-
-
+    can_reserve_for_others = models.BooleanField(
+        default=False, verbose_name="مجوز رزرو برای دیگران"
+    )
+    guest_limit_reservation_for_others = models.IntegerField(
+        default=0, verbose_name="محدودیت رزرو مهمان برای دیگران"
+    )
+    free_limit_reservation_for_others = models.IntegerField(
+        default=0, verbose_name="محدودیت رزرو آزاد برای دیگران"
+    )
+    factory_limit_reservation_for_others = models.IntegerField(
+        default=0, verbose_name="محدودیت رزرو سهمیه ای برای دیگران"
+    )
 
     # field1 = models.IntegerField(default=0, verbose_name="فیلد عددی ۱")
     # field2 = models.IntegerField(default=100, verbose_name="فیلد عددی ۲")
@@ -338,13 +346,6 @@ class Employee(AbstractUser):
     # guest_quantity_limit = models.PositiveIntegerField(
     #     default=0, verbose_name="محدودیت روزانه ثبت غذای مهمان"
     # )
-
-
-
-
-
-
-
 
     food_receiver_role = models.PositiveSmallIntegerField(
         default=0, choices=FOOD_RECEIVER_CHOICES, verbose_name="نقش تحویل‌گیرنده غذا"
@@ -413,8 +414,6 @@ class Employee(AbstractUser):
     can_reserve_management_food = models.BooleanField(
         default=False, verbose_name="اجازه سفارش غذای ویژه"
     )
-
-
 
     USERNAME_FIELD = "national_id"
     REQUIRED_FIELDS = ["first_name", "last_name", "phone_number"]

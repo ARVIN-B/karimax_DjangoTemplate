@@ -71,4 +71,14 @@ urlpatterns = [
     path("family/add/", views.add_dependent, name="add_dependent"),
     path("insurance_info/", views.insurance_info, name="insurance_info"),
     path("manage_bimeh/", views.manage_bimeh, name="manage_bimeh"),
+    path(
+        "food-reservation-for-others/",
+        views.food_reservation_for_others,
+        name="food_reservation_for_others",
+    ),
+    path(
+        "get-employee-reservation-info/",
+        views.get_employee_reservation_info,
+        name="get_employee_reservation_info",
+    ),
 ]

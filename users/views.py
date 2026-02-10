@@ -2787,6 +2787,105 @@ def food_reservation_view(request):
 
 
 @login_required
+def get_employee_reservation_info(request):
+
+    today_jdate = jdatetime.date.today()
+
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    q = request.GET.get("q")  # national_id یا personnel_code یا id
+    if not q:
+        return JsonResponse({"error": "No query"}, status=400)
+
+    try:
+        employee = Employee.objects.filter(
+            Q(national_id=q) | Q(personnel_code=q) | Q(id=q)
+        ).first()
+
+        if not employee:
+            return JsonResponse({"found": False})
+
+        # محاسبه مجوزها (کاملاً مشابه منطق ویو اصلی)
+        can_guest = employee.unlimit_reservation  # or employee.role_name in [
+        #     "super_admin",
+        #     "holding_manager",
+        #     "factory_manager",
+        #     "department_manager",
+        # ]
+
+        max_factory = 1
+        max_free = 100 if employee.unlimit_reservation else 10
+        max_guest = 100 if employee.unlimit_reservation else 20
+
+        can_management = employee.can_reserve_management_food
+        print("aaaa")
+        print(today_jdate)
+
+        existing_reservations_qs = FoodReservation.objects.filter(
+            employee=employee,
+            reservation_date="2025-11-26",  # تبدیل به میلادی
+            is_canceled=False,
+        ).select_related("menu_item__food", "menu_item__weekly_menu__restaurant")
+
+        existing_reservations = [
+            {
+                "id": res.id,
+                "menu_item": res.menu_item.id,
+                "menu_item__food__name": (
+                    res.menu_item.food.name
+                    if res.menu_item and res.menu_item.food
+                    else "غذا نامشخص"
+                ),
+                "factory_quantity": res.factory_quantity,
+                "free_quantity": res.free_quantity,
+                "guest_quantity": res.guest_quantity,
+                "restaurant_name": (
+                    res.menu_item.weekly_menu.restaurant.name
+                    if res.menu_item and res.menu_item.weekly_menu
+                    else ""
+                ),
+            }
+            for res in existing_reservations_qs
+        ]
+
+        rest_of_factory_quantity = 1
+        rest_of_free_quantity = 5
+        rest_of_guest_quantity = 5
+
+        print(f"aaaa  {existing_reservations}")
+
+        return JsonResponse(
+            {
+                "found": True,
+                "id": employee.id,
+                "full_name": employee.full_name,
+                "national_id": employee.national_id,
+                "personnel_code": employee.personnel_code,
+                "can_reserve_guest": can_guest,
+                "can_reserve_management_food": can_management,
+                # "max_factory_quantity": max_factory,
+                # "max_free_quantity": max_free,
+                # "max_guest_quantity": max_guest,
+                "existing_reservations": existing_reservations,
+                "rest_of_factory_quantity": rest_of_factory_quantity,
+                "rest_of_free_quantity": rest_of_free_quantity,
+                "rest_of_guest_quantity": rest_of_guest_quantity,
+            }
+        )
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@transaction.atomic
+@login_required
+def food_reservation_for_others(request):
+    context = {}
+    return render(request, "users/food_reservation_for_others.html", context)
+
+
+@login_required
 def load_more_participations(request):
     # تنظیم تعداد مشارکت‌ها در هر بار
     # PARTICIPATIONS_PER_LOAD = 20
@@ -5008,7 +5107,7 @@ def manage_bimeh(request):
                 if not depen.exists():
                     continue
 
-                print(f"aaaaaaaaaaa{depen}")
+                # print(f"aaaaaaaaaaa{depen}")
 
             # --- اطلاعات مشترک ---
             bimeh = (
