@@ -923,6 +923,9 @@ class FoodReservation(models.Model):
     total_price = models.PositiveIntegerField(
         default=0, verbose_name="هزینه کل این سفارش"
     )
+    reserved_by = models.PositiveIntegerField(
+        default=0, verbose_name="شخص رزرو کننده (اگر خود یوزر بود، میشود 0)"
+    )
 
     def has_feedback(self):
         return bool(self.rating or self.feedback)

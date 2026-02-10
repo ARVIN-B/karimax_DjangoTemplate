@@ -2786,10 +2786,82 @@ def food_reservation_view(request):
     return render(request, "users/food_reservation.html", context)
 
 
+def get_factory_ids(employee):
+    related_holdings = (
+        Holding.objects.filter(
+            Q(manager=employee)
+            | Q(factories__manager=employee)
+            | Q(factories__departments__manager=employee)
+            | Q(
+                factories__departments__manager_2=employee
+            )  # 🌟 جدید: اضافه کردن manager_2 و manager_3 برای department
+            | Q(factories__departments__manager_3=employee)
+            | Q(factories__departments__subdepartments__supervisor=employee)
+            | Q(factories__departments__subdepartments__assigned_employees=employee)
+        )
+        .distinct()
+        .order_by("name")
+    )
+
+    management_tree_1 = []
+    factory_ids = []
+    managing_holdings_ids = []
+    is_holding_manager = False
+
+    for holding in related_holdings:
+        holding_dict = {
+            "id": holding.id,
+            "name": holding.name,
+            "role": "holding_manager" if holding.manager == employee else None,
+            "factories": [],
+        }
+
+        if is_holding_manager == False and holding.manager == employee:
+            is_holding_manager = True
+
+        if holding.manager == employee:
+            managing_holdings_ids.append(holding.id)
+
+        # کارخانه‌های مرتبط در این هلدینگ
+        related_factories = (
+            Factory.objects.filter(holding=holding)
+            .filter(
+                Q(manager=employee)
+                | Q(departments__manager=employee)
+                | Q(
+                    departments__manager_2=employee
+                )  # 🌟 جدید: اضافه کردن manager_2 و manager_3
+                | Q(departments__manager_3=employee)
+                | Q(departments__subdepartments__supervisor=employee)
+                | Q(departments__subdepartments__assigned_employees=employee)
+            )
+            .distinct()
+            .order_by("name")
+        )
+        for factory in related_factories:
+            factory_dict = {
+                "id": factory.id,
+                "name": factory.name,
+                "role": "factory_manager" if factory.manager == employee else None,
+            }
+            factory_ids.append(factory.id)
+
+        holding_dict["factories"].append(factory_dict)
+
+    if holding_dict:
+        management_tree_1.append(holding_dict)
+
+    return factory_ids, management_tree_1, is_holding_manager, managing_holdings_ids
+
+
 @login_required
 def get_employee_reservation_info(request):
 
-    today_jdate = jdatetime.date.today()
+    today_gdate = date.today()
+    # today_jdate = jdatetime.date.today()
+
+    # print(f"sssssssssss {today_jdate} aaaaa {today_gdate}")
+    today = "2025-11-26"
 
     if request.method != "GET":
         return JsonResponse({"error": "Method not allowed"}, status=405)
@@ -2819,13 +2891,12 @@ def get_employee_reservation_info(request):
         max_guest = 100 if employee.unlimit_reservation else 20
 
         can_management = employee.can_reserve_management_food
-        print("aaaa")
-        print(today_jdate)
 
         existing_reservations_qs = FoodReservation.objects.filter(
             employee=employee,
-            reservation_date="2025-11-26",  # تبدیل به میلادی
+            reservation_date=today,  # تبدیل به میلادی
             is_canceled=False,
+            reserved_by=request.user.id,
         ).select_related("menu_item__food", "menu_item__weekly_menu__restaurant")
 
         existing_reservations = [
@@ -2849,11 +2920,128 @@ def get_employee_reservation_info(request):
             for res in existing_reservations_qs
         ]
 
+        # av_menus = [{} for menu in ]
+
         rest_of_factory_quantity = 1
         rest_of_free_quantity = 5
         rest_of_guest_quantity = 5
 
-        print(f"aaaa  {existing_reservations}")
+        factory_ids, management_tree_1, is_holding_manager, managing_holdings_ids = (
+            get_factory_ids(employee)
+        )
+
+        if employee.is_staff:
+            factories = Factory.objects.all()
+        elif is_holding_manager:
+            factories = Factory.objects.filter(
+                holding_id__in=managing_holdings_ids
+            ).all()
+        else:
+            factories = Factory.objects.filter(id__in=factory_ids)
+
+        # print(f"aaaaaaaaaaaaa{management_tree_1}")
+        # print(f"bbbbbbbbbbbbb{factory_ids}")
+        # print(Factory.objects.all())
+        # print(employee.is_staff)
+        # print(is_holding_manager)
+
+        # factories = []
+
+        available_menus = []
+        available_factories = []
+        menu_list = []
+
+        # print(factories)
+        for factory in factories:
+            can_reserve_management_food = employee.can_reserve_management_food
+            days_until_saturday = today_gdate.weekday()
+            week_start_jdate = today_gdate - timedelta(days=days_until_saturday)
+            week_start_date = (
+                week_start_jdate.togregorian()
+            )  # تاریخ میلادی برای جستجوی WeeklyMenu
+
+            latest_start_dates = (
+                WeeklyMenu.objects.filter(
+                    restaurant__department__factory=factory,
+                    week_start_date__lte=week_start_date,
+                )
+                .values("restaurant")
+                .annotate(latest_start_date=Max("week_start_date"))
+            )
+
+            # 2. ساخت Q object برای فچ کردن منوهای دقیق (Greatest-N-per-Group)
+            q_objects = Q()
+            if latest_start_dates.exists():
+                for item in latest_start_dates:
+                    # ترکیب شناسه رستوران و آخرین تاریخ شروع آن
+                    q_objects |= Q(
+                        restaurant_id=item["restaurant"],
+                        week_start_date=item["latest_start_date"],
+                    )
+
+                # فچ کردن منوهای هفتگی که شرایط Q object را دارند
+                weekly_menus = (
+                    WeeklyMenu.objects.filter(q_objects)
+                    .select_related("restaurant", "restaurant__department")
+                    .all()
+                )
+            else:
+                weekly_menus = WeeklyMenu.objects.none()
+
+            if weekly_menus:
+                if not can_reserve_management_food:
+                    all_menu_items = (
+                        MenuItem.objects.filter(
+                            weekly_menu__in=weekly_menus, food__is_management_food=False
+                        )
+                        .select_related("food", "weekly_menu__restaurant")
+                        .all()
+                    )
+
+                    menu_list.extend(
+                        {
+                            "menu_item": menu.id,
+                            "menu_item__food__name": menu.food.name,
+                        }
+                        for menu in all_menu_items
+                    )
+
+                else:
+                    all_menu_items = (
+                        MenuItem.objects.filter(weekly_menu__in=weekly_menus)
+                        .select_related("food", "weekly_menu__restaurant")
+                        .all()
+                    )
+                    menu_list.extend(
+                        {
+                            "menu_item": menu.id,
+                            "menu_item__food__name": menu.food.name,
+                        }
+                        for menu in all_menu_items
+                    )
+
+                    # print(menu_list)
+
+                    # print(menu for menu in all_menu_items)
+            else:
+                all_menu_items = MenuItem.objects.none()
+                menu_list.extend(
+                    {
+                        "menu_item": menu.id,
+                        "menu_item__food__name": menu.food.name,
+                    }
+                    for menu in all_menu_items
+                )
+
+            available_menus.append(
+                {
+                    "factory_name": factory.name,
+                    "factory_id": factory.id,
+                    "menu": menu_list,
+                }
+            )
+
+        # print(f"sssssssssssss   {available_menus}")
 
         return JsonResponse(
             {
@@ -2871,11 +3059,33 @@ def get_employee_reservation_info(request):
                 "rest_of_factory_quantity": rest_of_factory_quantity,
                 "rest_of_free_quantity": rest_of_free_quantity,
                 "rest_of_guest_quantity": rest_of_guest_quantity,
+                # "factory": factory,
+                "available_menus": available_menus,
             }
         )
 
+        # context = {
+        #     "found": True,
+        #     "id": employee.id,
+        #     "full_name": employee.full_name,
+        #     "national_id": employee.national_id,
+        #     "personnel_code": employee.personnel_code,
+        #     "can_reserve_guest": can_guest,
+        #     "can_reserve_management_food": can_management,
+        #     # "max_factory_quantity": max_factory,
+        #     # "max_free_quantity": max_free,
+        #     # "max_guest_quantity": max_guest,
+        #     "existing_reservations": existing_reservations,
+        #     "rest_of_factory_quantity": rest_of_factory_quantity,
+        #     "rest_of_free_quantity": rest_of_free_quantity,
+        #     "rest_of_guest_quantity": rest_of_guest_quantity,
+        #     # "factory": factory,
+        # }
+
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+    # return render(request, "users/food_reservation_for_others.html", context)
 
 
 @transaction.atomic
