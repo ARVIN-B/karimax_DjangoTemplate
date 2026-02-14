@@ -2539,26 +2539,25 @@ def food_reservation_view(request):
         user_can_comment = True
         is_today_comment_time = True
 
-        weekly_data.append(
-            {
-                "day_name": day_name,
-                "jdate_str": day_date_j.strftime("%Y/%m/%d"),
-                "gdate_str": day_date_g.strftime("%Y-%m-%d"),
-                "menus": menus,
-                "is_reservation_possible": is_reservation_possible,
-                "is_reservation_time_passed": is_reservation_time_passed,
-                "available_menu_ids": available_menu_ids,
-                # 'previous_comments': day_previous_comments,
-                "average_ratings": day_average_ratings,
-                "user_can_comment": user_can_comment,
-                "day_reservations": day_reservations,
-                "day_food_feedbacks": day_food_feedbacks,
-                "reservation_time_limit": time(
-                    close_food_res_time_H, close_food_res_time_M
-                ),
-                "is_today_comment_time": is_today_comment_time,
-            }
-        )
+        weekly_data.append({
+            "day_name": day_name,
+            "jdate_str": day_date_j.strftime("%Y/%m/%d"),
+            "gdate_str": day_date_g.strftime("%Y-%m-%d"),
+            "menus": menus,
+            "is_reservation_possible": is_reservation_possible,
+            "is_reservation_time_passed": is_reservation_time_passed,
+            "available_menu_ids": available_menu_ids,
+            # 'previous_comments': day_previous_comments,
+            "average_ratings": day_average_ratings,
+            "user_can_comment": user_can_comment,
+            "day_reservations": day_reservations,
+            "day_food_feedbacks": day_food_feedbacks,
+            "reservation_time_limit": time(
+                close_food_res_time_H, close_food_res_time_M
+            ),
+            "is_today_comment_time": is_today_comment_time,
+        })
+        print(weekly_data)
 
     if request.method == "POST" and "submit_reservations" in request.POST:
 
@@ -2858,7 +2857,7 @@ def get_factory_ids(employee):
 def get_employee_reservation_info(request):
 
     today_gdate = date.today()
-    # today_jdate = jdatetime.date.today()
+    today_jdate = jdatetime.date.today()
 
     # print(f"sssssssssss {today_jdate} aaaaa {today_gdate}")
     today = "2025-11-26"
@@ -2894,7 +2893,7 @@ def get_employee_reservation_info(request):
 
         existing_reservations_qs = FoodReservation.objects.filter(
             employee=employee,
-            reservation_date=today,  # تبدیل به میلادی
+            reservation_date=today_gdate,  # تبدیل به میلادی
             is_canceled=False,
             reserved_by=request.user.id,
         ).select_related("menu_item__food", "menu_item__weekly_menu__restaurant")
@@ -2954,8 +2953,10 @@ def get_employee_reservation_info(request):
         # print(factories)
         for factory in factories:
             can_reserve_management_food = employee.can_reserve_management_food
-            days_until_saturday = today_gdate.weekday()
-            week_start_jdate = today_gdate - timedelta(days=days_until_saturday)
+
+
+            days_until_saturday = today_jdate.weekday()
+            week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
             week_start_date = (
                 week_start_jdate.togregorian()
             )  # تاریخ میلادی برای جستجوی WeeklyMenu
@@ -2990,6 +2991,7 @@ def get_employee_reservation_info(request):
 
             if weekly_menus:
                 if not can_reserve_management_food:
+
                     all_menu_items = (
                         MenuItem.objects.filter(
                             weekly_menu__in=weekly_menus, food__is_management_food=False
@@ -2998,50 +3000,56 @@ def get_employee_reservation_info(request):
                         .all()
                     )
 
-                    menu_list.extend(
-                        {
-                            "menu_item": menu.id,
-                            "menu_item__food__name": menu.food.name,
-                        }
-                        for menu in all_menu_items
-                    )
-
                 else:
                     all_menu_items = (
                         MenuItem.objects.filter(weekly_menu__in=weekly_menus)
                         .select_related("food", "weekly_menu__restaurant")
                         .all()
                     )
+                    
+            else:
+                all_menu_items = MenuItem.objects.none()
+
+            week_days = [code for code, name in PERSIAN_WEEK_DAYS]
+
+            for i, day_code in enumerate(week_days):
+                day_date_j = week_start_jdate + jdatetime.timedelta(days=i)
+                day_date_g = week_start_date + timedelta(days=i)
+                day_name = dict(PERSIAN_WEEK_DAYS)[day_code]
+
+                # لیست منوها برای این روز (هر ترکیب غذا + رستوران جداگانه)
+                menus = all_menu_items.filter(day_persian=day_code)
+
+                is_today = day_date_g == today_gdate
+
+                if is_today and menus:
+
                     menu_list.extend(
                         {
                             "menu_item": menu.id,
                             "menu_item__food__name": menu.food.name,
+                            "restaurant_name": menu.weekly_menu.restaurant.name,
                         }
-                        for menu in all_menu_items
+                        for menu in menus
                     )
 
-                    # print(menu_list)
 
-                    # print(menu for menu in all_menu_items)
-            else:
-                all_menu_items = MenuItem.objects.none()
-                menu_list.extend(
-                    {
-                        "menu_item": menu.id,
-                        "menu_item__food__name": menu.food.name,
-                    }
-                    for menu in all_menu_items
-                )
 
-            available_menus.append(
-                {
-                    "factory_name": factory.name,
-                    "factory_id": factory.id,
-                    "menu": menu_list,
-                }
-            )
 
-        # print(f"sssssssssssss   {available_menus}")
+                    available_menus.append({
+                        "factory_name": factory.name,
+                        "factory_id": factory.id,
+                        "menu": menu_list,
+                    })
+
+
+
+
+
+
+
+
+
 
         return JsonResponse(
             {
