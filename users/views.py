@@ -92,8 +92,8 @@ from django.utils.crypto import get_random_string
 from django.core.serializers.json import DjangoJSONEncoder
 import json
 from autogen_agentchat.messages import TextMessage
-
 from collections import defaultdict
+import re
 
 
 if sys.platform == "win32":
@@ -2539,24 +2539,26 @@ def food_reservation_view(request):
         user_can_comment = True
         is_today_comment_time = True
 
-        weekly_data.append({
-            "day_name": day_name,
-            "jdate_str": day_date_j.strftime("%Y/%m/%d"),
-            "gdate_str": day_date_g.strftime("%Y-%m-%d"),
-            "menus": menus,
-            "is_reservation_possible": is_reservation_possible,
-            "is_reservation_time_passed": is_reservation_time_passed,
-            "available_menu_ids": available_menu_ids,
-            # 'previous_comments': day_previous_comments,
-            "average_ratings": day_average_ratings,
-            "user_can_comment": user_can_comment,
-            "day_reservations": day_reservations,
-            "day_food_feedbacks": day_food_feedbacks,
-            "reservation_time_limit": time(
-                close_food_res_time_H, close_food_res_time_M
-            ),
-            "is_today_comment_time": is_today_comment_time,
-        })
+        weekly_data.append(
+            {
+                "day_name": day_name,
+                "jdate_str": day_date_j.strftime("%Y/%m/%d"),
+                "gdate_str": day_date_g.strftime("%Y-%m-%d"),
+                "menus": menus,
+                "is_reservation_possible": is_reservation_possible,
+                "is_reservation_time_passed": is_reservation_time_passed,
+                "available_menu_ids": available_menu_ids,
+                # 'previous_comments': day_previous_comments,
+                "average_ratings": day_average_ratings,
+                "user_can_comment": user_can_comment,
+                "day_reservations": day_reservations,
+                "day_food_feedbacks": day_food_feedbacks,
+                "reservation_time_limit": time(
+                    close_food_res_time_H, close_food_res_time_M
+                ),
+                "is_today_comment_time": is_today_comment_time,
+            }
+        )
         print(weekly_data)
 
     if request.method == "POST" and "submit_reservations" in request.POST:
@@ -2859,9 +2861,6 @@ def get_employee_reservation_info(request):
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
 
-    # print(f"sssssssssss {today_jdate} aaaaa {today_gdate}")
-    today = "2025-11-26"
-
     if request.method != "GET":
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
@@ -2885,10 +2884,6 @@ def get_employee_reservation_info(request):
         #     "department_manager",
         # ]
 
-        max_factory = 1
-        max_free = 100 if employee.unlimit_reservation else 10
-        max_guest = 100 if employee.unlimit_reservation else 20
-
         can_management = employee.can_reserve_management_food
 
         existing_reservations_qs = FoodReservation.objects.filter(
@@ -2902,28 +2897,33 @@ def get_employee_reservation_info(request):
             {
                 "id": res.id,
                 "menu_item": res.menu_item.id,
-                "menu_item__food__name": (
-                    res.menu_item.food.name
-                    if res.menu_item and res.menu_item.food
-                    else "غذا نامشخص"
-                ),
                 "factory_quantity": res.factory_quantity,
                 "free_quantity": res.free_quantity,
                 "guest_quantity": res.guest_quantity,
-                "restaurant_name": (
-                    res.menu_item.weekly_menu.restaurant.name
-                    if res.menu_item and res.menu_item.weekly_menu
-                    else ""
-                ),
             }
             for res in existing_reservations_qs
         ]
 
-        # av_menus = [{} for menu in ]
+        total_factory_res = 0
+        total_free_res = 0
+        total_guest_res = 0
 
-        rest_of_factory_quantity = 1
-        rest_of_free_quantity = 5
-        rest_of_guest_quantity = 5
+        all_existing_reservations_qs = FoodReservation.objects.filter(
+            employee=employee,
+            reservation_date=today_gdate,  # تبدیل به میلادی
+            is_canceled=False,
+        ).select_related("menu_item__food", "menu_item__weekly_menu__restaurant")
+
+        for res in all_existing_reservations_qs:
+            total_factory_res = total_factory_res + int(res.factory_quantity)
+            total_free_res = total_free_res + int(res.free_quantity)
+            total_guest_res = total_guest_res + int(res.guest_quantity)
+
+        print(total_factory_res, total_free_res, total_guest_res)
+
+        max_factory_quantity = request.user.factory_limit_reservation_for_others
+        max_free_quantity = request.user.free_limit_reservation_for_others
+        max_guest_quantity = request.user.guest_limit_reservation_for_others
 
         factory_ids, management_tree_1, is_holding_manager, managing_holdings_ids = (
             get_factory_ids(employee)
@@ -2938,22 +2938,12 @@ def get_employee_reservation_info(request):
         else:
             factories = Factory.objects.filter(id__in=factory_ids)
 
-        # print(f"aaaaaaaaaaaaa{management_tree_1}")
-        # print(f"bbbbbbbbbbbbb{factory_ids}")
-        # print(Factory.objects.all())
-        # print(employee.is_staff)
-        # print(is_holding_manager)
-
-        # factories = []
-
         available_menus = []
         available_factories = []
         menu_list = []
 
-        # print(factories)
         for factory in factories:
             can_reserve_management_food = employee.can_reserve_management_food
-
 
             days_until_saturday = today_jdate.weekday()
             week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
@@ -3006,7 +2996,7 @@ def get_employee_reservation_info(request):
                         .select_related("food", "weekly_menu__restaurant")
                         .all()
                     )
-                    
+
             else:
                 all_menu_items = MenuItem.objects.none()
 
@@ -3029,27 +3019,22 @@ def get_employee_reservation_info(request):
                             "menu_item": menu.id,
                             "menu_item__food__name": menu.food.name,
                             "restaurant_name": menu.weekly_menu.restaurant.name,
+                            "factory_price": menu.food.factory_price,
+                            "free_price": menu.food.free_price,
+                            "guest_price": menu.food.guest_price,
                         }
                         for menu in menus
                     )
 
+                    menu_qs = menus
 
-
-
-                    available_menus.append({
-                        "factory_name": factory.name,
-                        "factory_id": factory.id,
-                        "menu": menu_list,
-                    })
-
-
-
-
-
-
-
-
-
+                    available_menus.append(
+                        {
+                            "factory_name": factory.name,
+                            "factory_id": factory.id,
+                            "menu": menu_list,
+                        }
+                    )
 
         return JsonResponse(
             {
@@ -3060,47 +3045,106 @@ def get_employee_reservation_info(request):
                 "personnel_code": employee.personnel_code,
                 "can_reserve_guest": can_guest,
                 "can_reserve_management_food": can_management,
-                # "max_factory_quantity": max_factory,
-                # "max_free_quantity": max_free,
-                # "max_guest_quantity": max_guest,
                 "existing_reservations": existing_reservations,
-                "rest_of_factory_quantity": rest_of_factory_quantity,
-                "rest_of_free_quantity": rest_of_free_quantity,
-                "rest_of_guest_quantity": rest_of_guest_quantity,
+                "max_factory_quantity": max_factory_quantity,
+                "max_free_quantity": max_free_quantity,
+                "max_guest_quantity": max_guest_quantity,
+                "total_factory_res": total_factory_res,
+                "total_free_res": total_free_res,
+                "total_guest_res": total_guest_res,
                 # "factory": factory,
                 "available_menus": available_menus,
             }
         )
 
-        # context = {
-        #     "found": True,
-        #     "id": employee.id,
-        #     "full_name": employee.full_name,
-        #     "national_id": employee.national_id,
-        #     "personnel_code": employee.personnel_code,
-        #     "can_reserve_guest": can_guest,
-        #     "can_reserve_management_food": can_management,
-        #     # "max_factory_quantity": max_factory,
-        #     # "max_free_quantity": max_free,
-        #     # "max_guest_quantity": max_guest,
-        #     "existing_reservations": existing_reservations,
-        #     "rest_of_factory_quantity": rest_of_factory_quantity,
-        #     "rest_of_free_quantity": rest_of_free_quantity,
-        #     "rest_of_guest_quantity": rest_of_guest_quantity,
-        #     # "factory": factory,
-        # }
-
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
-
-    # return render(request, "users/food_reservation_for_others.html", context)
 
 
 @transaction.atomic
 @login_required
 def food_reservation_for_others(request):
-    context = {}
-    return render(request, "users/food_reservation_for_others.html", context)
+    if request.method == 'POST':
+
+        reservations_by_employee = defaultdict(list)  # employee_id → لیست سفارش‌ها
+
+        # فقط کلیدهایی که با reservations[ شروع می‌شوند
+        for key, value_list in request.POST.lists():
+            if not key.startswith('reservations['):
+                continue
+
+            # مثال کلید: reservations[26][3][price_type]
+            # → employee_id = '26', slot_index = '3', field = 'price_type'
+            match = re.match(r'reservations\[(\d+)\]\[(\d+)\]\[(\w+)\]', key)
+            if not match:
+                continue
+
+            employee_id, slot_index, field = match.groups()
+
+            # چون ممکن است چندبار submit شده باشد (multi-value)، معمولاً یکی است
+            value = value_list[0] if value_list else ''
+
+            # پیدا کردن یا ساخت رکورد سفارش فعلی
+            # ابتدا لیست سفارش‌های این کارمند را بگیریم
+            orders = reservations_by_employee[employee_id]
+
+            # اگر slot_index بزرگ‌تر از طول لیست فعلی است → پر کردن با None
+            current_len = len(orders)
+            target_index = int(slot_index)
+
+            while len(orders) <= target_index:
+                orders.append({})
+
+            # حالا مقدار را ست کنیم
+            orders[target_index][field] = value
+
+        # حالا reservations_by_employee چیزی شبیه این است:
+        # {
+        #     '26': [
+        #         {'food_choice': '460', 'quantity': '1', 'price_type': 'factory'},
+        #         {'food_choice': '460', 'quantity': '1', 'price_type': 'guest'},
+        #         ...
+        #     ],
+        #     '27': [
+        #         {'food_choice': '460', 'quantity': '1', 'price_type': 'free'}
+        #     ]
+        # }
+
+        # -----------------------
+        # حالا به راحتی می‌تونی لوپ بزنی
+        # -----------------------
+
+
+
+        print(f"bbbbbbbbbbbbb {orders}")
+
+        for employee_id, orders in reservations_by_employee.items():
+            print(f"کارمند {employee_id} سفارش‌های زیر را دارد:")
+            for i, order in enumerate(orders):
+                if not order:  # سفارش خالی (در صورت وجود گپ)
+                    continue
+                food = order.get('food_choice', '0')
+                qty = order.get('quantity', '0')
+                ptype = order.get('price_type', 'unknown')
+                print(f"  سفارش {i}: غذا={food}, تعداد={qty}, نوع={ptype}")
+
+            # اینجا می‌تونی منطق ذخیره‌سازی در دیتابیس را بنویسی
+            # مثلاً:
+            # employee = Employee.objects.get(id=employee_id)
+            # for order in orders:
+            #     if order.get('food_choice') != '0' and int(order.get('quantity', 0)) > 0:
+            #         Reservation.objects.create(
+            #             employee=employee,
+            #             menu_item_id=order['food_choice'],
+            #             quantity=int(order['quantity']),
+            #             price_type=order['price_type'],
+            #             # ... بقیه فیلدها
+            #         )
+        return redirect('users:food_reservation_for_others')
+    else:
+        print(f"AAAAAA{request}")  # برای GET (رفرش صفحه)
+        context = {}
+        return render(request, "users/food_reservation_for_others.html", context)
 
 
 @login_required
