@@ -462,7 +462,13 @@
                     const excess = totals[overType] - container.data(`max-${overType}`);
                     const newQty = Math.max(0, currentQty - excess);
                     changedSlot.find('.quantity-input').val(newQty);
-                    alert(`حداکثر مجاز برای ${overType === 'factory' ? 'سهمیه' : overType === 'free' ? 'آزاد' : 'مهمان'} تجاوز کرد! تعداد به ${newQty} تنظیم شد.`);
+                    // alert(`حداکثر مجاز برای ${overType === 'factory' ? 'سهمیه' : overType === 'free' ? 'آزاد' : 'مهمان'} تجاوز کرد! تعداد به ${newQty} تنظیم شد.`);
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'محدودیت ثبت',
+                        text: `حداکثر مجاز برای ${overType === 'factory' ? 'سهمیه' : overType === 'free' ? 'آزاد' : 'مهمان'} ${parseInt(container.data(`max-${overType}`))} عدد است.\nتعداد به ${newQty} تنظیم شد.`,
+                        confirmButtonText: 'باشه'
+                    });
                     
                     // recalculate بعد از adjust
                     totals[overType] = totals[overType] - (currentQty - newQty);
@@ -653,28 +659,6 @@
             const total = unitPrice * qty;
             slot.find('.price-total').text(new Intl.NumberFormat('fa-IR').format(total) + ' ریال');
         }
-
-        // بقیه توابع (initializeRowEvents, updatePrices, updateTotal, updateTypeLabel, formatPrice, createExtraSlot)
-        // دقیقاً همان‌هایی که قبلاً داشتی را نگه دار
-        // فقط createExtraSlot را کمی اصلاح کن تا با ساختار جدید سازگار باشد
-
-        // ... (توابع قبلی updatePrices, updateTotal, formatPrice, updateTypeLabel را کپی کن)
-
-        // برای createExtraSlot هم مشابه createReservationSlot بساز (با index جدید و price_type پیش‌فرض 'free')
-
-
-
-
-
-
-
-
-
-
-
-        // =======================================
-        //  ثبت نهایی رزروهای گروهی (با جلوگیری از double submit)
-        // =======================================
         let isSubmitting = false;   // فلگ مهم برای جلوگیری از کلیک چندباره
 
         $('#submit-group-reservations').on('click', function() {
@@ -703,14 +687,12 @@
                     'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
                 },
                 success: function(response) {
-                    // موفقیت
                     Swal.fire({
                         icon: 'success',
                         title: 'ثبت شد!',
                         text: 'رزروهای گروهی با موفقیت ثبت شد.',
                         confirmButtonText: 'باشه'
                     }).then(() => {
-                        // اختیاری: صفحه رو رفرش کن تا داده‌ها تازه بشن
                         location.reload();
                     });
                 },

@@ -3066,85 +3066,147 @@ def get_employee_reservation_info(request):
 def food_reservation_for_others(request):
     if request.method == 'POST':
 
-        reservations_by_employee = defaultdict(list)  # employee_id → لیست سفارش‌ها
+        # مرحله ۱: parse خام به شکل employee → لیست سفارش‌ها
+        raw_orders = defaultdict(list)
 
-        # فقط کلیدهایی که با reservations[ شروع می‌شوند
         for key, value_list in request.POST.lists():
             if not key.startswith('reservations['):
                 continue
 
-            # مثال کلید: reservations[26][3][price_type]
-            # → employee_id = '26', slot_index = '3', field = 'price_type'
             match = re.match(r'reservations\[(\d+)\]\[(\d+)\]\[(\w+)\]', key)
             if not match:
                 continue
 
             employee_id, slot_index, field = match.groups()
-
-            # چون ممکن است چندبار submit شده باشد (multi-value)، معمولاً یکی است
             value = value_list[0] if value_list else ''
 
-            # پیدا کردن یا ساخت رکورد سفارش فعلی
-            # ابتدا لیست سفارش‌های این کارمند را بگیریم
-            orders = reservations_by_employee[employee_id]
-
-            # اگر slot_index بزرگ‌تر از طول لیست فعلی است → پر کردن با None
-            current_len = len(orders)
+            orders = raw_orders[employee_id]
             target_index = int(slot_index)
 
             while len(orders) <= target_index:
                 orders.append({})
 
-            # حالا مقدار را ست کنیم
             orders[target_index][field] = value
 
-        # حالا reservations_by_employee چیزی شبیه این است:
+        # مرحله ۲: merge سفارش‌ها برای هر کارمند (غذای یکسان → جمع مقادیر)
+        merged_reservations = defaultdict(list)
+
+        for employee_id, orders in raw_orders.items():
+            food_map = defaultdict(lambda: {
+                'factory_quantity': 0,
+                'free_quantity': 0,
+                'guest_quantity': 0
+            })
+
+            for order in orders:
+                food_id = order.get('food_choice')
+                if not food_id or food_id == '0':
+                    continue  # بدون غذا → رد
+
+                qty = int(order.get('quantity', 0))
+                if qty <= 0:
+                    continue
+
+                ptype = order.get('price_type')
+                if ptype == 'factory':
+                    food_map[food_id]['factory_quantity'] += qty
+                elif ptype == 'free':
+                    food_map[food_id]['free_quantity'] += qty
+                elif ptype == 'guest':
+                    food_map[food_id]['guest_quantity'] += qty
+
+            # تبدیل به لیست نهایی (فقط مواردی که حداقل یک مقدار > 0 دارند)
+            for food_id, qtys in food_map.items():
+                total_qty = sum(qtys.values())
+                if total_qty > 0:
+                    merged_reservations[employee_id].append({
+                        'food_choice': food_id,
+                        'factory_quantity': str(qtys['factory_quantity']),
+                        'free_quantity': str(qtys['free_quantity']),
+                        'guest_quantity': str(qtys['guest_quantity']),
+                    })
+
+        # حالا merged_reservations دقیقاً همان ساختار دلخواه شماست
+        # مثال خروجی برای داده POST شما:
         # {
         #     '26': [
-        #         {'food_choice': '460', 'quantity': '1', 'price_type': 'factory'},
-        #         {'food_choice': '460', 'quantity': '1', 'price_type': 'guest'},
-        #         ...
+        #         {'food_choice': '460', 'factory_quantity': '1', 'free_quantity': '0', 'guest_quantity': '1'},
+        #         {'food_choice': '458', 'factory_quantity': '0', 'free_quantity': '3', 'guest_quantity': '0'},
+        #         {'food_choice': '474', 'factory_quantity': '0', 'free_quantity': '1', 'guest_quantity': '0'},
         #     ],
         #     '27': [
-        #         {'food_choice': '460', 'quantity': '1', 'price_type': 'free'}
+        #         {'food_choice': '460', 'factory_quantity': '0', 'free_quantity': '1', 'guest_quantity': '0'},
         #     ]
         # }
 
-        # -----------------------
-        # حالا به راحتی می‌تونی لوپ بزنی
-        # -----------------------
+        # مرحله ۳: ذخیره‌سازی در دیتابیس
+        today = date.today()
 
+        for employee_id, items in merged_reservations.items():
+            try:
+                employee = Employee.objects.get(id=employee_id)
+            except Employee.DoesNotExist:
+                messages.error(request, f"کارمند با شناسه {employee_id} یافت نشد.")
+                continue
 
-
-        print(f"bbbbbbbbbbbbb {orders}")
-
-        for employee_id, orders in reservations_by_employee.items():
-            print(f"کارمند {employee_id} سفارش‌های زیر را دارد:")
-            for i, order in enumerate(orders):
-                if not order:  # سفارش خالی (در صورت وجود گپ)
+            for item in items:
+                food_id = item['food_choice']
+                try:
+                    menu_item = MenuItem.objects.get(id=food_id)
+                except MenuItem.DoesNotExist:
+                    messages.warning(request, f"غذا با شناسه {food_id} یافت نشد (کارمند {employee_id}).")
                     continue
-                food = order.get('food_choice', '0')
-                qty = order.get('quantity', '0')
-                ptype = order.get('price_type', 'unknown')
-                print(f"  سفارش {i}: غذا={food}, تعداد={qty}, نوع={ptype}")
 
-            # اینجا می‌تونی منطق ذخیره‌سازی در دیتابیس را بنویسی
-            # مثلاً:
-            # employee = Employee.objects.get(id=employee_id)
-            # for order in orders:
-            #     if order.get('food_choice') != '0' and int(order.get('quantity', 0)) > 0:
-            #         Reservation.objects.create(
-            #             employee=employee,
-            #             menu_item_id=order['food_choice'],
-            #             quantity=int(order['quantity']),
-            #             price_type=order['price_type'],
-            #             # ... بقیه فیلدها
-            #         )
-        return redirect('users:food_reservation_for_others')
+                # چک وجود رزرو قبلی برای همین غذا + تاریخ + کارمند
+                existing = FoodReservation.objects.filter(
+                    employee=employee,
+                    menu_item=menu_item,
+                    reservation_date=today,
+                    is_canceled=False,
+                    reserved_by=request.user.id,
+                ).first()
+
+                if existing:
+                    # آپدیت (جمع با مقادیر قبلی - اگر لازم است)
+                    existing.factory_quantity += int(item['factory_quantity'])
+                    existing.free_quantity    += int(item['free_quantity'])
+                    existing.guest_quantity   += int(item['guest_quantity'])
+                    # قیمت‌ها را اینجا محاسبه یا آپدیت کن (اگر لازم)
+                    existing.save()
+                else:
+                    # ایجاد جدید
+                    reservation = FoodReservation(
+                        employee=employee,
+                        menu_item=menu_item,
+                        reservation_date=today,
+                        factory_quantity=int(item['factory_quantity']),
+                        free_quantity=int(item['free_quantity']),
+                        guest_quantity=int(item['guest_quantity']),
+                        # قیمت‌ها: اینجا باید از menu_item یا جدول قیمت بگیری
+                        # factory_price=...,
+                        # free_price=...,
+                        # guest_price=...,
+                        # total_price= محاسبه مجموع
+                        reserved_by=request.user.id,
+                        # related_factory=employee.factory,
+                    )
+                    reservation.save()  
+        return JsonResponse({
+            'status': 'success',
+            'message': 'رزروها با موفقیت ثبت شد.',
+            'saved_count': len(raw_orders)
+        })
     else:
         print(f"AAAAAA{request}")  # برای GET (رفرش صفحه)
         context = {}
         return render(request, "users/food_reservation_for_others.html", context)
+    
+
+
+
+
+
+
 
 
 @login_required
