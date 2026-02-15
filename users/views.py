@@ -3064,21 +3064,21 @@ def get_employee_reservation_info(request):
 @transaction.atomic
 @login_required
 def food_reservation_for_others(request):
-    if request.method == 'POST':
+    if request.method == "POST":
 
         # مرحله ۱: parse خام به شکل employee → لیست سفارش‌ها
         raw_orders = defaultdict(list)
 
         for key, value_list in request.POST.lists():
-            if not key.startswith('reservations['):
+            if not key.startswith("reservations["):
                 continue
 
-            match = re.match(r'reservations\[(\d+)\]\[(\d+)\]\[(\w+)\]', key)
+            match = re.match(r"reservations\[(\d+)\]\[(\d+)\]\[(\w+)\]", key)
             if not match:
                 continue
 
             employee_id, slot_index, field = match.groups()
-            value = value_list[0] if value_list else ''
+            value = value_list[0] if value_list else ""
 
             orders = raw_orders[employee_id]
             target_index = int(slot_index)
@@ -3092,39 +3092,39 @@ def food_reservation_for_others(request):
         merged_reservations = defaultdict(list)
 
         for employee_id, orders in raw_orders.items():
-            food_map = defaultdict(lambda: {
-                'factory_quantity': 0,
-                'free_quantity': 0,
-                'guest_quantity': 0
-            })
+            food_map = defaultdict(
+                lambda: {"factory_quantity": 0, "free_quantity": 0, "guest_quantity": 0}
+            )
 
             for order in orders:
-                food_id = order.get('food_choice')
-                if not food_id or food_id == '0':
+                food_id = order.get("food_choice")
+                if not food_id or food_id == "0":
                     continue  # بدون غذا → رد
 
-                qty = int(order.get('quantity', 0))
+                qty = int(order.get("quantity", 0))
                 if qty <= 0:
                     continue
 
-                ptype = order.get('price_type')
-                if ptype == 'factory':
-                    food_map[food_id]['factory_quantity'] += qty
-                elif ptype == 'free':
-                    food_map[food_id]['free_quantity'] += qty
-                elif ptype == 'guest':
-                    food_map[food_id]['guest_quantity'] += qty
+                ptype = order.get("price_type")
+                if ptype == "factory":
+                    food_map[food_id]["factory_quantity"] += qty
+                elif ptype == "free":
+                    food_map[food_id]["free_quantity"] += qty
+                elif ptype == "guest":
+                    food_map[food_id]["guest_quantity"] += qty
 
             # تبدیل به لیست نهایی (فقط مواردی که حداقل یک مقدار > 0 دارند)
             for food_id, qtys in food_map.items():
                 total_qty = sum(qtys.values())
                 if total_qty > 0:
-                    merged_reservations[employee_id].append({
-                        'food_choice': food_id,
-                        'factory_quantity': str(qtys['factory_quantity']),
-                        'free_quantity': str(qtys['free_quantity']),
-                        'guest_quantity': str(qtys['guest_quantity']),
-                    })
+                    merged_reservations[employee_id].append(
+                        {
+                            "food_choice": food_id,
+                            "factory_quantity": str(qtys["factory_quantity"]),
+                            "free_quantity": str(qtys["free_quantity"]),
+                            "guest_quantity": str(qtys["guest_quantity"]),
+                        }
+                    )
 
         # حالا merged_reservations دقیقاً همان ساختار دلخواه شماست
         # مثال خروجی برای داده POST شما:
@@ -3150,11 +3150,14 @@ def food_reservation_for_others(request):
                 continue
 
             for item in items:
-                food_id = item['food_choice']
+                food_id = item["food_choice"]
                 try:
                     menu_item = MenuItem.objects.get(id=food_id)
                 except MenuItem.DoesNotExist:
-                    messages.warning(request, f"غذا با شناسه {food_id} یافت نشد (کارمند {employee_id}).")
+                    messages.warning(
+                        request,
+                        f"غذا با شناسه {food_id} یافت نشد (کارمند {employee_id}).",
+                    )
                     continue
 
                 # چک وجود رزرو قبلی برای همین غذا + تاریخ + کارمند
@@ -3168,9 +3171,9 @@ def food_reservation_for_others(request):
 
                 if existing:
                     # آپدیت (جمع با مقادیر قبلی - اگر لازم است)
-                    existing.factory_quantity += int(item['factory_quantity'])
-                    existing.free_quantity    += int(item['free_quantity'])
-                    existing.guest_quantity   += int(item['guest_quantity'])
+                    existing.factory_quantity = int(item["factory_quantity"])
+                    existing.free_quantity = int(item["free_quantity"])
+                    existing.guest_quantity = int(item["guest_quantity"])
                     # قیمت‌ها را اینجا محاسبه یا آپدیت کن (اگر لازم)
                     existing.save()
                 else:
@@ -3179,9 +3182,9 @@ def food_reservation_for_others(request):
                         employee=employee,
                         menu_item=menu_item,
                         reservation_date=today,
-                        factory_quantity=int(item['factory_quantity']),
-                        free_quantity=int(item['free_quantity']),
-                        guest_quantity=int(item['guest_quantity']),
+                        factory_quantity=int(item["factory_quantity"]),
+                        free_quantity=int(item["free_quantity"]),
+                        guest_quantity=int(item["guest_quantity"]),
                         # قیمت‌ها: اینجا باید از menu_item یا جدول قیمت بگیری
                         # factory_price=...,
                         # free_price=...,
@@ -3190,23 +3193,18 @@ def food_reservation_for_others(request):
                         reserved_by=request.user.id,
                         # related_factory=employee.factory,
                     )
-                    reservation.save()  
-        return JsonResponse({
-            'status': 'success',
-            'message': 'رزروها با موفقیت ثبت شد.',
-            'saved_count': len(raw_orders)
-        })
+                    reservation.save()
+        return JsonResponse(
+            {
+                "status": "success",
+                "message": "رزروها با موفقیت ثبت شد.",
+                "saved_count": len(raw_orders),
+            }
+        )
     else:
         print(f"AAAAAA{request}")  # برای GET (رفرش صفحه)
         context = {}
         return render(request, "users/food_reservation_for_others.html", context)
-    
-
-
-
-
-
-
 
 
 @login_required
