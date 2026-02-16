@@ -53,6 +53,7 @@
             <!-- جدول ردیف‌ها -->
             <form method="post" id="group-reservation-form">
                 {% csrf_token %}
+                <input type="hidden" name="action" id="form-action" value="save_group">
                 <div class="table-responsive shadow-md rounded-lg overflow-hidden">
                     <table class="table table-hover table-striped table-bordered align-middle text-center mb-0" style="table-layout: fixed; min-width: 1200px;">
                         <thead class="table-dark bg-gradient-dark text-white">
@@ -342,12 +343,10 @@
             const container = $(`#reservation-container-${employeeId}`);
 
             const qty = factoryQty || freeQty || guestQty || 0;
-            let priceType = factoryQty > 0 ? 'factory' : (freeQty > 0 ? 'free' : (guestQty > 0 ? 'guest' : 'factory'));
-
-            // اگر سهمیه پر شده، اضافی‌ها را آزاد در نظر بگیر
-            if (!isQuota && priceType === 'factory') {
-                priceType = 'free';
-            }
+            let priceType = 'factory';
+            if (guestQty > 0)      priceType = 'guest';
+            else if (freeQty > 0)  priceType = 'free';
+            else if (factoryQty > 0) priceType = 'factory';
 
             const slotClass = isQuota ? 'quota-slot border-primary' : 'extra-slot border-secondary';
             const baseName = `reservations[${employeeId}][${index}]`;
@@ -493,6 +492,58 @@
             container.append(addBtn);
         }
 
+        // =======================================
+        // اعمال محدودیت نهایی قبل از ثبت (از آخرین سفارش به اولین)
+        // =======================================
+        function enforceLimitsBeforeSubmit() {
+            $('#employees-table-body .reservation-container').each(function() {
+                const container = $(this);
+                
+                const maxFactory = parseInt(container.data('max-factory')) || 0;
+                const maxFree    = parseInt(container.data('max-free'))    || 0;
+                const maxGuest   = parseInt(container.data('max-guest'))   || 0;
+
+                // همه slotها را از آخر به اول بگیریم
+                const slots = container.find('.input-group').toArray().reverse();
+
+                let usedFactory = 0;
+                let usedFree    = 0;
+                let usedGuest   = 0;
+
+                slots.forEach(slotEl => {
+                    const slot = $(slotEl);
+                    const type = slot.attr('data-price-type');
+                    let qty = parseInt(slot.find('.quantity-input').val()) || 0;
+
+                    if (qty <= 0) return;
+
+                    let allowed = qty;
+
+                    if (type === 'factory') {
+                        if (usedFactory + qty > maxFactory) {
+                            allowed = Math.max(0, maxFactory - usedFactory);
+                        }
+                        usedFactory += allowed;
+                    } 
+                    else if (type === 'free') {
+                        if (usedFree + qty > maxFree) {
+                            allowed = Math.max(0, maxFree - usedFree);
+                        }
+                        usedFree += allowed;
+                    } 
+                    else if (type === 'guest') {
+                        if (usedGuest + qty > maxGuest) {
+                            allowed = Math.max(0, maxGuest - usedGuest);
+                        }
+                        usedGuest += allowed;
+                    }
+
+                    // اعمال مقدار مجاز
+                    slot.find('.quantity-input').val(allowed);
+                });
+            });
+        }
+
 
 
 
@@ -603,8 +654,62 @@
 
             // حذف ردیف اضافی
             container.on('click', '.remove-extra-btn', function() {
-                $(this).closest('.input-group').remove();
-                validateAndUpdateRemaining(container);
+                const slot = $(this).closest('.input-group');
+                const employeeId = slot.data('employee-id');
+                const foodId      = slot.find('.food-select').val();
+                const priceType   = slot.attr('data-price-type');
+                const quantity    = parseInt(slot.find('.quantity-input').val()) || 0;
+
+                // اگر هنوز غذایی انتخاب نشده، فقط حذف محلی
+                if (foodId == '0' || !foodId) {
+                    slot.remove();
+                    validateAndUpdateRemaining(container);
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'حذف رزرو',
+                    html: `آیا از حذف این رزرو مطمئن هستید؟<br>
+                           <small>کارمند: ${employeeId} | غذا: ${foodId} | نوع: ${priceType}</small>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'بله، حذف کن',
+                    cancelButtonText: 'انصراف',
+                    confirmButtonColor: '#d33'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: window.location.href,
+                            type: 'POST',
+                            data: {
+                                action: 'delete_reservation',
+                                employee_id: employeeId,
+                                menu_item: foodId,
+                                price_type: priceType,
+                                quantity: quantity,
+                                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val()
+                            },
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'حذف شد',
+                                    text: 'رزرو با موفقیت حذف شد.',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                                slot.remove();
+                                validateAndUpdateRemaining(container);
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'خطا',
+                                    text: xhr.responseJSON?.message || 'حذف انجام نشد.',
+                                });
+                            }
+                        });
+                    }
+                });
             });
 
             // اضافه کردن سفارش جدید (پیش‌فرض آزاد) 
@@ -675,8 +780,10 @@
                 در حال ثبت رزروها...
             `);
 
+            enforceLimitsBeforeSubmit();
+
             // ۲. جمع‌آوری تمام داده‌های فرم (دقیقاً همان چیزی که Django انتظار داره)
-            const formData = $('#group-reservation-form').serialize();
+            const formData = $('#group-reservation-form').serialize() + '&action=save_group';
 
             // ۳. ارسال AJAX
             $.ajax({

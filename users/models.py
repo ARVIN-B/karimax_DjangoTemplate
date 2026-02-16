@@ -21,7 +21,7 @@ from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
 
 
-close_food_res_time_H = 16
+close_food_res_time_H = 18
 close_food_res_time_M = 00
 
 start_today_food_comment_time_H = 10
