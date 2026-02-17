@@ -45,10 +45,10 @@
                 </div>
             </div>
 
-            <div id="debug-output"
+            <!-- <div id="debug-output"
                 style="direction:ltr; background:#000; color:#0f0; padding:15px; margin-bottom:20px; white-space:pre-wrap; font-size:13px;">
                 DEBUG OUTPUT
-            </div>
+            </div> -->
 
             <!-- جدول ردیف‌ها -->
             <form method="post" id="group-reservation-form">
@@ -84,11 +84,11 @@
 
 <script>
 
-    window.onerror = function(msg, url, line) {
-        $('#debug-output').append(
-            '\n\nJS ERROR:\n' + msg + '\nLine: ' + line
-        );
-    };
+    // window.onerror = function(msg, url, line) {
+    //     $('#debug-output').append(
+    //         '\n\nJS ERROR:\n' + msg + '\nLine: ' + line
+    //     );
+    // };
 
     
     const URLS = {
@@ -179,7 +179,7 @@
                 dataType: "json",
                 success: function (data) {
 
-                    $('#debug-output').text(JSON.stringify(data, null, 2));
+                    // $('#debug-output').text(JSON.stringify(data, null, 2));
 
                     // اگر برای این کارمند state نداریم → بساز
                     if (!employeeReservationStates[employeeId]) {
@@ -192,12 +192,12 @@
                     // همیشه نسخه کش‌شده رو به callback بده
                     if (callback) callback(employeeReservationStates[employeeId]);
                 },
-                error: function(xhr) {
-                    $('#debug-output').text(
-                        'ERROR:\n' + xhr.responseText
-                    );
-                    console.error(xhr);
-                }
+                // error: function(xhr) {
+                //     $('#debug-output').text(
+                //         'ERROR:\n' + xhr.responseText
+                //     );
+                //     console.error(xhr);
+                // }
             });
         }
 
@@ -1052,16 +1052,263 @@
 
 {% endblock %}
 
-
 {% block extra_css %}
+<style>
+    /* ──────────────── Reset & Base ──────────────── */
+    :root {
+        --primary:    #2563eb;     /* آبی مدرن */
+        --primary-dark:#1d4ed8;
+        --success:    #16a34a;
+        --danger:     #dc2626;
+        --warning:    #d97706;
+        --light:      #f8fafc;
+        --gray:       #64748b;
+        --dark:       #0f172a;
+        --border:     #e2e8f0;
+        --shadow-sm:  0 1px 3px rgba(0,0,0,0.1);
+        --shadow:     0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        --radius:     0.75rem;     /* 12px — مدرن */
+    }
 
-    <style>
-        .factory-list {
-            font-size: 1.05rem;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
-    </style>
+    body {
+        background: var(--light);
+        color: var(--dark);
+        font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+    }
 
+    /* کارت اصلی */
+    .card.shadow-lg {
+        border: none;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+    }
+
+    .card-header.bg-gradient-primary {
+        background: linear-gradient(90deg, var(--primary), #3b82f6) !important;
+        border-bottom: none;
+        padding: 1.25rem 1.5rem;
+    }
+
+    /* جدول */
+    .table {
+        border-collapse: separate;
+        border-spacing: 0 0.5rem;
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background: var(--dark);
+        color: white;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+        border: none;
+        padding: 1rem 0.75rem;
+    }
+
+    .table tbody tr {
+        background: white;
+        box-shadow: var(--shadow-sm);
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .table td {
+        border: none;
+        vertical-align: middle;
+        padding: 1.25rem 0.75rem;
+    }
+
+    /* reservation container — اسکرول افقی تمیز */
+    .reservation-container {
+        min-width: 720px;           /* تنظیم دلخواه — تست کنید */
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 0.5rem 0 1rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary) transparent;
+    }
+
+    .reservation-container::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .reservation-container::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 3px;
+    }
+
+    /* Input group — slot رزرو */
+    .compact-input-group {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: white;
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+
+    .compact-input-group:hover {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    .type-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        min-width: 70px;
+        text-align: center;
+        border-radius: 0;
+    }
+
+    .food-select {
+        border: none;
+        font-size: 0.95rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .price-btn {
+        border: none;
+        background: transparent;
+        color: var(--gray);
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+        transition: all 0.2s;
+        min-width: 80px;
+    }
+
+    .price-btn.active {
+        background: var(--primary);
+        color: white;
+        font-weight: 600;
+    }
+
+    .price-btn:hover:not(.active) {
+        background: rgba(37,99,235,0.08);
+        color: var(--primary-dark);
+    }
+
+    .quantity-input {
+        border: none;
+        text-align: center;
+        font-weight: 600;
+        width: 80px !important;
+        background: var(--light);
+    }
+
+    .price-total {
+        font-weight: 700;
+        color: var(--primary);
+        min-width: 100px;
+        background: rgba(37,99,235,0.05);
+    }
+
+    /* دکمه افزودن */
+    .add-extra-btn {
+        border: 2px dashed var(--gray);
+        color: var(--gray);
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .add-extra-btn:hover {
+        border-color: var(--success);
+        color: var(--success);
+        background: rgba(22,163,74,0.05);
+    }
+
+    /* دکمه ثبت نهایی */
+    .btn-success.btn-lg {
+        background: var(--success);
+        border: none;
+        font-size: 1.15rem;
+        padding: 0.9rem 2rem;
+        border-radius: var(--radius);
+        box-shadow: 0 4px 14px rgba(22,163,74,0.25);
+        transition: all 0.25s;
+    }
+
+    .btn-success.btn-lg:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(22,163,74,0.3);
+    }
+
+    /* ستاره‌ها — ساده و مدرن */
+    .star-rating label {
+        font-size: 1.6rem;
+        color: #e2e8f0;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label {
+        color: #fbbf24;
+    }
+
+
+
+    .price-btn.active {
+        color: white;
+        font-weight: 600;
+        border: none;
+    }
+
+    /* سهمیه → آبی */
+    .price-btn.factory-btn.active {
+        background: var(--primary);           /* #2563eb */
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+    }
+
+    /* آزاد → قرمز */
+    .price-btn.free-btn.active {
+        background: var(--danger);            /* #dc2626 */
+        box-shadow: 0 0 0 3px rgba(220,38,38,0.2);
+    }
+
+    /* مهمان → زرد/طلایی */
+    .price-btn.guest-btn.active {
+        background: var(--warning);           /* #d97706 یا #f59e0b */
+        color: var(--dark);                   /* متن تیره‌تر برای خوانایی روی زرد */
+        box-shadow: 0 0 0 3px rgba(217,119,6,0.25);
+    }
+
+    /* hover حالت غیرفعال - فقط کمی برجسته بشه */
+    .price-btn:hover:not(.active) {
+        background: rgba(100,116,139,0.08);   /* خاکستری خیلی ملایم */
+        color: var(--primary-dark);
+    }
+
+    /* لیبل نوع (سمت چپ) هم باید رنگ هماهنگ داشته باشه */
+    .input-group[data-price-type="factory"] .type-label {
+        background: var(--primary) !important;
+        color: white;
+    }
+    .input-group[data-price-type="free"] .type-label {
+        background: var(--danger) !important;
+        color: white;
+    }
+    .input-group[data-price-type="guest"] .type-label {
+        background: var(--warning) !important;
+        color: var(--dark);
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .reservation-container { min-width: 640px; }
+        .price-btn { min-width: 70px; font-size: 0.78rem; }
+        .quantity-input { width: 70px !important; }
+    }
+
+    @media (max-width: 768px) {
+        .reservation-container { min-width: 580px; }
+        .table td { padding: 1rem 0.5rem; }
+    }
+</style>
 {% endblock %}

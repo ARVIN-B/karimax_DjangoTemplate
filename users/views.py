@@ -2922,18 +2922,21 @@ def get_employee_reservation_info(request):
 
         # print(total_factory_res, total_free_res, total_guest_res)
 
-        max_factory_quantity = (request.user.factory_limit_reservation_for_others
+        max_factory_quantity = (
+            request.user.factory_limit_reservation_for_others
             # (request.user.factory_limit_reservation_for_others - total_factory_res)
             # if (request.user.factory_limit_reservation_for_others - total_factory_res)
             # >= 0
             # else 0
         )
-        max_free_quantity = (request.user.free_limit_reservation_for_others
+        max_free_quantity = (
+            request.user.free_limit_reservation_for_others
             # (request.user.free_limit_reservation_for_others - total_free_res)
             # if (request.user.free_limit_reservation_for_others - total_free_res) >= 0
             # else 0
         )
-        max_guest_quantity = (request.user.guest_limit_reservation_for_others
+        max_guest_quantity = (
+            request.user.guest_limit_reservation_for_others
             # (request.user.guest_limit_reservation_for_others - total_guest_res)
             # if (request.user.guest_limit_reservation_for_others - total_guest_res) >= 0
             # else 0
@@ -3081,6 +3084,17 @@ def get_employee_reservation_info(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
+# {'reservations[26][0][food_choice]': ['456'],    'reservations[26][0][quantity]': ['2'],              'reservations[26][0][price_type]': ['free'],      'reservations[26][0][factory_id]': ['2'],
+#  'full_reservations[26][0][menu_item]': ['456'], 'full_reservations[26][0][factory_quantity]': ['0'], 'full_reservations[26][0][free_quantity]': ['2'], 'full_reservations[26][0][guest_quantity]': ['0'], 'full_reservations[26][0][id]': ['943']
+# }
+
+# ordersssssssssssssss[{'food_choice': '456', 'quantity': '2', 'price_type': 'free', 'factory_id': '2'}, {'food_choice': '461', 'quantity': '1', 'price_type': 'factory', 'factory_id': '2'}, {'food_choice': '461', 'quantity': '1', 'price_type': 'free', 'factory_id': '2'}, {'food_choice': '476', 'quantity': '1', 'price_type': 'free', 'factory_id': '2'}]
+# food mappppppppppppppdefaultdict(<function food_reservation_for_others.<locals>.<lambda> at 0x000001FAC41AE2A0>, {'456': {'factory_quantity': 0, 'free_quantity': 2, 'guest_quantity': 0}, '461': {'factory_quantity': 1, 'free_quantity': 1, 'guest_quantity': 0}, '476': {'factory_quantity': 0, 'free_quantity': 1, 'guest_quantity': 0}})
+
+# ordersssssssssssssss[{'menu_item': '456', 'factory_quantity': '0', 'free_quantity': '2', 'guest_quantity': '0', 'id': '943'}, {'menu_item': '461', 'factory_quantity': '1', 'free_quantity': '1', 'guest_quantity': '0', 'id': '946'}, {'menu_item': '482', 'factory_quantity': '0', 'free_quantity': '1', 'guest_quantity': '0', 'id': '947'}, {'menu_item': '485', 'factory_quantity': '0', 'free_quantity': '0', 'guest_quantity': '1', 'id': '948'}, {'menu_item': '476', 'factory_quantity': '0', 'free_quantity': '2', 'guest_quantity': '0', 'id': '949'}]
+# food mappppppppppppppdefaultdict(<function food_reservation_for_others.<locals>.<lambda> at 0x000002148BF32FC0>, {})
+
+
 @transaction.atomic
 @login_required
 def food_reservation_for_others(request):
@@ -3092,7 +3106,7 @@ def food_reservation_for_others(request):
             # مرحله ۱: parse خام به شکل employee → لیست سفارش‌ها
             raw_orders = defaultdict(list)
 
-            print(F"************ {request.POST}")
+            print(f"************ {request.POST}")
 
             for key, value_list in request.POST.lists():
                 if not key.startswith("full_reservations["):
@@ -3116,6 +3130,8 @@ def food_reservation_for_others(request):
             # مرحله ۲: merge سفارش‌ها برای هر کارمند (غذای یکسان → جمع مقادیر)
             merged_reservations = defaultdict(list)
 
+            print(f"ordersssssssssssssss{orders}")
+
             for employee_id, orders in raw_orders.items():
                 food_map = defaultdict(
                     lambda: {
@@ -3126,23 +3142,41 @@ def food_reservation_for_others(request):
                 )
 
                 for order in orders:
-                    food_id = order.get("food_choice")
+                    food_id = order.get("menu_item")
                     if not food_id or food_id == "0":
                         continue  # بدون غذا → رد
 
-                    qty = int(order.get("quantity", 0))
+                    # qty = int(order.get("quantity", 0))
+                    # # if qty <= 0:
+                    # #     continue
+
+                    # ptype = order.get("price_type")
+                    # if ptype == "factory":
+                    #     food_map[food_id]["factory_quantity"] += qty
+                    # elif ptype == "free":
+                    #     food_map[food_id]["free_quantity"] += qty
+                    # elif ptype == "guest":
+                    #     food_map[food_id]["guest_quantity"] += qty
+
+                    # qty = int(order.get("quantity", 0))
                     # if qty <= 0:
                     #     continue
 
                     ptype = order.get("price_type")
-                    if ptype == "factory":
-                        food_map[food_id]["factory_quantity"] += qty
-                    elif ptype == "free":
-                        food_map[food_id]["free_quantity"] += qty
-                    elif ptype == "guest":
-                        food_map[food_id]["guest_quantity"] += qty
 
-                print(food_map)
+                    food_map[food_id]["factory_quantity"] = int(
+                        order.get("factory_quantity", 0)
+                    )
+
+                    food_map[food_id]["free_quantity"] = int(
+                        order.get("free_quantity", 0)
+                    )
+
+                    food_map[food_id]["guest_quantity"] = int(
+                        order.get("guest_quantity", 0)
+                    )
+
+                print(f"food mapppppppppppppp{food_map}")
                 # تبدیل به لیست نهایی (فقط مواردی که حداقل یک مقدار > 0 دارند)
                 for food_id, qtys in food_map.items():
                     total_qty = sum(qtys.values())
