@@ -658,6 +658,8 @@ def dashboard(request):
 
     can_manage_bimeh = factory_bimeh or holding_bimeh
 
+    can_reserve_for_others = user.can_reserve_for_others
+
     return render(
         request,
         "users/dashboard.html",
@@ -686,6 +688,7 @@ def dashboard(request):
             "can_manage_bimeh": can_manage_bimeh,
             "factory_bimeh": factory_bimeh,
             "holding_bimeh": holding_bimeh,
+            "can_reserve_for_others": can_reserve_for_others,
         },
     )
 
@@ -3082,17 +3085,6 @@ def get_employee_reservation_info(request):
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
-
-
-# {'reservations[26][0][food_choice]': ['456'],    'reservations[26][0][quantity]': ['2'],              'reservations[26][0][price_type]': ['free'],      'reservations[26][0][factory_id]': ['2'],
-#  'full_reservations[26][0][menu_item]': ['456'], 'full_reservations[26][0][factory_quantity]': ['0'], 'full_reservations[26][0][free_quantity]': ['2'], 'full_reservations[26][0][guest_quantity]': ['0'], 'full_reservations[26][0][id]': ['943']
-# }
-
-# ordersssssssssssssss[{'food_choice': '456', 'quantity': '2', 'price_type': 'free', 'factory_id': '2'}, {'food_choice': '461', 'quantity': '1', 'price_type': 'factory', 'factory_id': '2'}, {'food_choice': '461', 'quantity': '1', 'price_type': 'free', 'factory_id': '2'}, {'food_choice': '476', 'quantity': '1', 'price_type': 'free', 'factory_id': '2'}]
-# food mappppppppppppppdefaultdict(<function food_reservation_for_others.<locals>.<lambda> at 0x000001FAC41AE2A0>, {'456': {'factory_quantity': 0, 'free_quantity': 2, 'guest_quantity': 0}, '461': {'factory_quantity': 1, 'free_quantity': 1, 'guest_quantity': 0}, '476': {'factory_quantity': 0, 'free_quantity': 1, 'guest_quantity': 0}})
-
-# ordersssssssssssssss[{'menu_item': '456', 'factory_quantity': '0', 'free_quantity': '2', 'guest_quantity': '0', 'id': '943'}, {'menu_item': '461', 'factory_quantity': '1', 'free_quantity': '1', 'guest_quantity': '0', 'id': '946'}, {'menu_item': '482', 'factory_quantity': '0', 'free_quantity': '1', 'guest_quantity': '0', 'id': '947'}, {'menu_item': '485', 'factory_quantity': '0', 'free_quantity': '0', 'guest_quantity': '1', 'id': '948'}, {'menu_item': '476', 'factory_quantity': '0', 'free_quantity': '2', 'guest_quantity': '0', 'id': '949'}]
-# food mappppppppppppppdefaultdict(<function food_reservation_for_others.<locals>.<lambda> at 0x000002148BF32FC0>, {})
 
 
 @transaction.atomic

@@ -89,8 +89,9 @@
 
                                 <!-- <a href="{% url 'users:family_management' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای افراد خانواده</a> -->
 
-
-                                <a href="{% url 'users:food_reservation_for_others' %}" class="btn btn-primary mb-3 w-100 w-md-auto">رزرو غذا برای دیگران</a>
+                                {% if can_reserve_for_others %}
+                                    <a href="{% url 'users:food_reservation_for_others' %}" class="btn btn-primary mb-3 w-100 w-md-auto">رزرو غذا برای دیگران</a>
+                                {% endif %}
 
 
 
