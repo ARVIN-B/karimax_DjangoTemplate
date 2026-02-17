@@ -2453,6 +2453,7 @@ def food_reservation_view(request):
             reservation_date__gte=week_start_date,
             reservation_date__lte=week_start_date + timedelta(days=6),
             related_factory=factory,
+            is_canceled=False,
         )
         .select_related(
             "menu_item__food", "menu_item__weekly_menu__restaurant__department"
@@ -2559,7 +2560,7 @@ def food_reservation_view(request):
                 "is_today_comment_time": is_today_comment_time,
             }
         )
-        print(weekly_data)
+        # print(weekly_data)
 
     if request.method == "POST" and "submit_reservations" in request.POST:
 
@@ -2919,11 +2920,24 @@ def get_employee_reservation_info(request):
             total_free_res = total_free_res + int(res.free_quantity)
             total_guest_res = total_guest_res + int(res.guest_quantity)
 
-        print(total_factory_res, total_free_res, total_guest_res)
+        # print(total_factory_res, total_free_res, total_guest_res)
 
-        max_factory_quantity = request.user.factory_limit_reservation_for_others
-        max_free_quantity = request.user.free_limit_reservation_for_others
-        max_guest_quantity = request.user.guest_limit_reservation_for_others
+        max_factory_quantity = (request.user.factory_limit_reservation_for_others
+            # (request.user.factory_limit_reservation_for_others - total_factory_res)
+            # if (request.user.factory_limit_reservation_for_others - total_factory_res)
+            # >= 0
+            # else 0
+        )
+        max_free_quantity = (request.user.free_limit_reservation_for_others
+            # (request.user.free_limit_reservation_for_others - total_free_res)
+            # if (request.user.free_limit_reservation_for_others - total_free_res) >= 0
+            # else 0
+        )
+        max_guest_quantity = (request.user.guest_limit_reservation_for_others
+            # (request.user.guest_limit_reservation_for_others - total_guest_res)
+            # if (request.user.guest_limit_reservation_for_others - total_guest_res) >= 0
+            # else 0
+        )
 
         factory_ids, management_tree_1, is_holding_manager, managing_holdings_ids = (
             get_factory_ids(employee)
@@ -2940,9 +2954,14 @@ def get_employee_reservation_info(request):
 
         available_menus = []
         available_factories = []
-        menu_list = []
+        # menu_list = []
 
         for factory in factories:
+
+            # available_menus = []
+            # available_factories = []
+            menu_list = []
+
             can_reserve_management_food = employee.can_reserve_management_food
 
             days_until_saturday = today_jdate.weekday()
@@ -3026,7 +3045,7 @@ def get_employee_reservation_info(request):
                         for menu in menus
                     )
 
-                    menu_qs = menus
+                    # menu_qs = menus
 
                     available_menus.append(
                         {
@@ -3036,6 +3055,7 @@ def get_employee_reservation_info(request):
                         }
                     )
 
+        # print(f"******************{total_factory_res}")
         return JsonResponse(
             {
                 "found": True,
@@ -3065,19 +3085,20 @@ def get_employee_reservation_info(request):
 @login_required
 def food_reservation_for_others(request):
     if request.method == "POST":
-        action = request.POST.get('action')
+        action = request.POST.get("action")
 
-        if action == 'save_group':
-
+        if action == "save_group":
 
             # مرحله ۱: parse خام به شکل employee → لیست سفارش‌ها
             raw_orders = defaultdict(list)
 
+            print(F"************ {request.POST}")
+
             for key, value_list in request.POST.lists():
-                if not key.startswith("reservations["):
+                if not key.startswith("full_reservations["):
                     continue
 
-                match = re.match(r"reservations\[(\d+)\]\[(\d+)\]\[(\w+)\]", key)
+                match = re.match(r"full_reservations\[(\d+)\]\[(\d+)\]\[(\w+)\]", key)
                 if not match:
                     continue
 
@@ -3097,7 +3118,11 @@ def food_reservation_for_others(request):
 
             for employee_id, orders in raw_orders.items():
                 food_map = defaultdict(
-                    lambda: {"factory_quantity": 0, "free_quantity": 0, "guest_quantity": 0}
+                    lambda: {
+                        "factory_quantity": 0,
+                        "free_quantity": 0,
+                        "guest_quantity": 0,
+                    }
                 )
 
                 for order in orders:
@@ -3165,6 +3190,23 @@ def food_reservation_for_others(request):
                         )
                         continue
 
+                    factory = (
+                        MenuItem.objects.filter(id=food_id)
+                        .select_related("weekly_menu__restaurant__department__factory")
+                        .values_list(
+                            "weekly_menu__restaurant__department__factory__id",
+                            "weekly_menu__restaurant__department__factory__name",
+                            flat=False,
+                        )
+                        .first()
+                    )
+                    if factory:
+                        factory_id, factory_name = factory
+                        # print(f"کارخانه: {factory_name} (ID: {factory_id})")
+                    else:
+                        # print("منو آیتم پیدا نشد")
+                        continue
+
                     # چک وجود رزرو قبلی برای همین غذا + تاریخ + کارمند
                     existing = FoodReservation.objects.filter(
                         employee=employee,
@@ -3172,14 +3214,40 @@ def food_reservation_for_others(request):
                         reservation_date=today,
                         is_canceled=False,
                         reserved_by=request.user.id,
+                        related_factory_id=factory_id,
                     ).first()
 
+                    total_price = (
+                        (menu_item.food.factory_price * int(item["factory_quantity"]))
+                        + (menu_item.food.free_price * int(item["free_quantity"]))
+                        + (menu_item.food.guest_price * int(item["guest_quantity"]))
+                    )
+
+                    reservation_is_canceled = 0
+
+                    if (
+                        (int(item["factory_quantity"]) == 0)
+                        and (int(item["free_quantity"]) == 0)
+                        and (int(item["guest_quantity"]) == 0)
+                    ):
+                        reservation_is_canceled = 1
+
                     if existing:
-                        # آپدیت (جمع با مقادیر قبلی - اگر لازم است)
-                        existing.factory_quantity = int(item["factory_quantity"])
-                        existing.free_quantity = int(item["free_quantity"])
-                        existing.guest_quantity = int(item["guest_quantity"])
-                        # قیمت‌ها را اینجا محاسبه یا آپدیت کن (اگر لازم)
+
+                        if reservation_is_canceled:
+                            existing.is_canceled = reservation_is_canceled
+
+                        else:
+                            # آپدیت (جمع با مقادیر قبلی - اگر لازم است)
+                            existing.factory_quantity = int(item["factory_quantity"])
+                            existing.free_quantity = int(item["free_quantity"])
+                            existing.guest_quantity = int(item["guest_quantity"])
+                            existing.factory_price = menu_item.food.factory_price
+                            existing.free_price = menu_item.food.free_price
+                            existing.guest_price = menu_item.food.guest_price
+                            existing.total_price = total_price
+                            # قیمت‌ها را اینجا محاسبه یا آپدیت کن (اگر لازم)
+
                         existing.save()
                     else:
                         # ایجاد جدید
@@ -3190,15 +3258,16 @@ def food_reservation_for_others(request):
                             factory_quantity=int(item["factory_quantity"]),
                             free_quantity=int(item["free_quantity"]),
                             guest_quantity=int(item["guest_quantity"]),
-                            # قیمت‌ها: اینجا باید از menu_item یا جدول قیمت بگیری
-                            # factory_price=...,
-                            # free_price=...,
-                            # guest_price=...,
-                            # total_price= محاسبه مجموع
+                            factory_price=menu_item.food.factory_price,
+                            free_price=menu_item.food.free_price,
+                            guest_price=menu_item.food.guest_price,
+                            total_price=total_price,
                             reserved_by=request.user.id,
-                            # related_factory=employee.factory,
+                            related_factory_id=factory_id,
+                            is_canceled=reservation_is_canceled,
                         )
                         reservation.save()
+
             return JsonResponse(
                 {
                     "status": "success",
@@ -3206,13 +3275,12 @@ def food_reservation_for_others(request):
                     "saved_count": len(raw_orders),
                 }
             )
-        
 
-        elif action == 'delete_reservation':
-            employee_id = request.POST.get('employee_id')
-            menu_item_id = request.POST.get('menu_item')
-            price_type = request.POST.get('price_type')
-            quantity = int(request.POST.get('quantity', 0))
+        elif action == "delete_reservation":
+            employee_id = request.POST.get("employee_id")
+            menu_item_id = request.POST.get("menu_item")
+            price_type = request.POST.get("price_type")
+            quantity = int(request.POST.get("quantity", 0))
 
             # اینجا منطق حذف یا کاهش مقدار رو بنویس (مثال ساده):
             try:
@@ -3220,7 +3288,7 @@ def food_reservation_for_others(request):
                     employee_id=employee_id,
                     menu_item_id=menu_item_id,
                     reservation_date=date.today(),
-                    is_canceled=False
+                    is_canceled=False,
                 )
                 # if price_type == 'factory':
                 #     reservation.factory_quantity = max(0, reservation.factory_quantity - quantity)
@@ -3233,12 +3301,12 @@ def food_reservation_for_others(request):
                 reservation.is_canceled = True
                 reservation.save()
 
-                return JsonResponse({'status': 'success', 'message': 'رزرو حذف شد.'})
+                return JsonResponse({"status": "success", "message": "رزرو حذف شد."})
 
             except FoodReservation.DoesNotExist:
-                return JsonResponse({'status': 'error', 'message': 'رزرو یافت نشد.'}, status=404)
-            
-
+                return JsonResponse(
+                    {"status": "error", "message": "رزرو یافت نشد."}, status=404
+                )
 
     else:
         print(f"AAAAAA{request}")  # برای GET (رفرش صفحه)

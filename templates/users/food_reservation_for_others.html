@@ -98,6 +98,9 @@
     
     $(document).ready(function() {
 
+
+        const employeeReservationStates = {};
+
         // ===============================
         // 1. اولیه‌سازی Select2
         // ===============================
@@ -176,13 +179,18 @@
                 dataType: "json",
                 success: function (data) {
 
-                    // 👇 چاپ خروجی وسط صفحه
-                    $('#debug-output').text(
-                        JSON.stringify(data, null, 2)
-                    );
+                    $('#debug-output').text(JSON.stringify(data, null, 2));
 
-                    // اجرای منطق اصلی
-                    if (callback) callback(data);
+                    // اگر برای این کارمند state نداریم → بساز
+                    if (!employeeReservationStates[employeeId]) {
+                        employeeReservationStates[employeeId] = {
+                            ...data,                              // کپی تمام فیلدها
+                            existing_reservations: data.existing_reservations.map(r => ({...r}))  // deep copy آرایه رزروها
+                        };
+                    }
+
+                    // همیشه نسخه کش‌شده رو به callback بده
+                    if (callback) callback(employeeReservationStates[employeeId]);
                 },
                 error: function(xhr) {
                     $('#debug-output').text(
@@ -218,6 +226,36 @@
             const container = $(`#reservation-container-${employeeId}`);
             container.empty();
 
+            container.off('change', '.factory-list');
+
+            // استخراج کارخانه‌ها
+            const factories = data.available_menus || [];
+
+            // ساخت گزینه‌ها
+            let options = '';
+            if (factories.length > 0) {
+                // اولین کارخانه پیش‌فرض انتخاب شود
+                options = `<option value="${factories[0].factory_id}" selected>${factories[0].factory_name}</option>`;
+                
+                // بقیه کارخانه‌ها بدون selected
+                for (let i = 1; i < factories.length; i++) {
+                    options += `<option value="${factories[i].factory_id}">${factories[i].factory_name}</option>`;
+                }
+            } else {
+                options = '<option value="" disabled selected>هیچ کارخانه‌ای موجود نیست</option>';
+            }
+
+            const factorySelect = `
+                <div class="mb-3 text-center">
+                    <label class="form-label fw-bold">کارخانه‌های قابل رزرو:</label><br>
+                    <select class="form-select factory-list" style="max-width: 450px; margin: 0 auto;">
+                        ${options}
+                    </select>
+                </div>
+            `;
+
+            container.append(factorySelect);
+
             const maxFactory = data.max_factory_quantity || 0;
             const maxFree    = data.max_free_quantity    || 0;
             const maxGuest   = data.max_guest_quantity   || 0;
@@ -231,13 +269,41 @@
             container.data('max-free',    maxFree);
             container.data('max-guest',   maxGuest);
 
+            container.data('initial-total-factory', initialTotalFactory);
+            container.data('initial-total-free',    initialTotalFree);
+            container.data('initial-total-guest',   initialTotalGuest);
 
-            // ──────────────── 1. ساخت نقشه غذاها + قیمت‌ها ────────────────
-            const menuMap = {};
-            const allFoodOptions = [];
 
-            data.available_menus.forEach(factory => {
-                factory.menu.forEach(item => {
+            if (!data._isMutable) {
+                data.existing_reservations = data.existing_reservations.map(r => ({...r}));
+                data._isMutable = true;
+            }
+
+
+
+            // ──────────────── مدیریت تغییر کارخانه ────────────────
+            container.off('change', '.factory-list');  // ← مهم: جلوگیری از bind چندباره
+
+            container.on('change', '.factory-list', function() {
+                const factoryId = $(this).val();
+                container.data('selected-factory', factoryId);
+
+
+                // پاک کردن محتوای قبلی (slotها، remaining، add-btn)
+                container.find('.input-group, .remaining-display, .add-extra-btn').remove();
+
+                // پیدا کردن کارخانه انتخابی
+                const selectedFactory = data.available_menus.find(f => f.factory_id == parseInt(factoryId));
+                if (!selectedFactory) {
+                    container.append('<p class="text-danger text-center">کارخانه یافت نشد.</p>');
+                    return;
+                }
+
+                // ──────────────── ساخت نقشه غذاها + قیمت‌ها فقط برای کارخانه انتخابی ────────────────
+                const menuMap = {};
+                const allFoodOptions = [];
+
+                selectedFactory.menu.forEach(item => {
                     menuMap[item.menu_item] = {
                         name: item.menu_item__food__name || "غذا بدون نام",
                         restaurant: item.restaurant_name || "—",
@@ -246,7 +312,6 @@
                         guest_price:   item.guest_price   || 0,
                     };
 
-                    // برای <select> استفاده می‌شود
                     allFoodOptions.push(`
                         <option value="${item.menu_item}"
                                 data-factory-price="${item.factory_price}"
@@ -256,81 +321,101 @@
                         </option>
                     `);
                 });
+
+                container.data('all-food-options', allFoodOptions.join(''));
+
+                // ──────────────── فیلتر رزروهای موجود فقط برای کارخانه انتخابی ────────────────
+                const filteredReservations = employeeReservationStates[employeeId].existing_reservations.filter(res => 
+                    selectedFactory.menu.some(item => item.menu_item === res.menu_item)
+                );
+
+                // console.log('رزروهای فیلتر شده:', filteredReservations);  // ← حالا درست
+
+                let hasAnyReservation = false;
+                let quotaFilled = false;
+
+                if (filteredReservations.length > 0) {
+                    filteredReservations.forEach((res) => {
+                        const types = [
+                            { key: 'factory_quantity', type: 'factory', qty: res.factory_quantity || 0 },
+                            { key: 'free_quantity',    type: 'free',    qty: res.free_quantity   || 0 },
+                            { key: 'guest_quantity',   type: 'guest',   qty: res.guest_quantity  || 0 },
+                        ];
+
+                        types.forEach(t => {
+                            if (t.qty <= 0) return;
+
+                            hasAnyReservation = true;
+
+                            const isQuota = !quotaFilled && t.type === 'factory';
+
+                            createReservationSlot(
+                                employeeId,
+                                container.find('.input-group').length,
+                                res.menu_item,
+                                menuMap[res.menu_item]?.name || "غذا نامشخص",
+                                t.type === 'factory' ? t.qty : 0,
+                                t.type === 'free'    ? t.qty : 0,
+                                t.type === 'guest'   ? t.qty : 0,
+                                data.can_reserve_guest,
+                                isQuota,
+                                menuMap[res.menu_item] || {},
+                                allFoodOptions.join('')
+                            );
+
+                            if (isQuota) quotaFilled = true;
+                        });
+                    });
+                }
+
+                // ──────────────── اگر هیچ رزرو نداشت → یک سهمیه خالی بساز ────────────────
+                if (!hasAnyReservation) {
+
+                    // console.log('initialTotalFactory (از data اولیه):', initialTotalFactory);
+                    // console.log('initialTotalFactory (از data اولیه):', maxFactory);
+                    // console.log('نتیجه محاسبه qty سهمیه:', maxFactory - initialTotalFactory);
+
+
+                    createReservationSlot(
+                        employeeId,
+                        0,
+                        0, "",
+                        maxFactory - initialTotalFactory,
+                        0, 0,
+                        data.can_reserve_guest,
+                        true,
+                        {},
+                        allFoodOptions.join('')
+                    );
+                }
+
+                // ──────────────── نمایش باقی‌مانده سهمیه‌ها ────────────────
+                container.append(`
+                    <div class="mt-3 small text-muted text-center remaining-display">
+                        باقی‌مانده → 
+                        سهمیه: <strong>${maxFactory - initialTotalFactory}</strong> |
+                        آزاد: <strong>${maxFree - initialTotalFree}</strong> |
+                        مهمان: <strong>${maxGuest - initialTotalGuest}</strong>
+                    </div>
+                `);
+
+                // دکمه اضافه کردن
+                container.append(`
+                    <button type="button" class="btn btn-outline-success btn-sm add-extra-btn mt-3 w-100" data-employee-id="${employeeId}">
+                        <i class="fas fa-plus me-1"></i> افزودن سفارش اضافی
+                    </button>
+                `);
+
+                // فعال کردن رویدادها
+                initializeRowEvents(employeeId);
+
+                // اعتبارسنجی اولیه
+                validateAndUpdateRemaining(container);
             });
 
-            container.data('all-food-options', allFoodOptions.join(''));
-
-            // ──────────────── 2. پر کردن رزروهای موجود ────────────────
-            let hasAnyReservation = false;
-            let quotaFilled = false;
-
-            if (data.existing_reservations && data.existing_reservations.length > 0) {
-                data.existing_reservations.forEach((res, originalIndex) => {
-                    const types = [
-                        { key: 'factory_quantity', type: 'factory', qty: res.factory_quantity || 0 },
-                        { key: 'free_quantity',    type: 'free',    qty: res.free_quantity   || 0 },
-                        { key: 'guest_quantity',   type: 'guest',   qty: res.guest_quantity  || 0 },
-                    ];
-
-                    types.forEach(t => {
-                        if (t.qty <= 0) return;
-
-                        hasAnyReservation = true;
-
-                        const isQuota = !quotaFilled && t.type === 'factory';
-
-                        createReservationSlot(
-                            employeeId,
-                            container.find('.input-group').length,   // index خودکار
-                            res.menu_item,
-                            menuMap[res.menu_item]?.name || "غذا نامشخص",
-                            t.type === 'factory' ? t.qty : 0,
-                            t.type === 'free'    ? t.qty : 0,
-                            t.type === 'guest'   ? t.qty : 0,
-                            data.can_reserve_guest,
-                            isQuota,
-                            menuMap[res.menu_item] || {},           // ← قیمت‌ها
-                            allFoodOptions.join('')                 // ← همه گزینه‌ها
-                        );
-
-                        if (isQuota) quotaFilled = true;
-                    });
-                });
-            }
-
-            // ──────────────── 3. اگر هیچ رزرو نداشت → یک سهمیه خالی ────────────────
-            if (!hasAnyReservation) {
-                createReservationSlot(
-                    employeeId,
-                    0,
-                    0, "",
-                    maxFactory - initialTotalFactory,  // ← تغییر: محاسبه باقی‌مانده سهمیه
-                    0, 0,
-                    data.can_reserve_guest,
-                    true,
-                    {},
-                    container.data('all-food-options')  // ← برای سازگاری، از ذخیره‌شده استفاده کن
-                );
-                quotaFilled = true;
-            }
-            // ──────────────── 4. نمایش باقی‌مانده سهمیه‌ها ────────────────
-            container.append(`
-                <div class="mt-3 small text-muted text-center remaining-display">
-                    باقی‌مانده → 
-                    سهمیه: <strong>${maxFactory - initialTotalFactory}</strong> |
-                    آزاد: <strong>${maxFree - initialTotalFree}</strong> |
-                    مهمان: <strong>${maxGuest - initialTotalGuest}</strong>
-                </div>
-            `);
-
-            // دکمه اضافه کردن
-            container.append(`
-                <button type="button" class="btn btn-outline-success btn-sm add-extra-btn mt-3 w-100" data-employee-id="${employeeId}">
-                    <i class="fas fa-plus me-1"></i> افزودن سفارش اضافی
-                </button>
-            `);
-
-            initializeRowEvents(employeeId);
+            // اولیه‌سازی با کارخانه اول
+            container.find('.factory-list').trigger('change');
+            // console.log('trigger اولیه کارخانه اول اجرا شد');
         }
 
 
@@ -390,6 +475,8 @@
 
                     <input type="hidden" name="${baseName}[price_type]" value="${priceType}">
 
+                    <input type="hidden" name="${baseName}[factory_id]" value="${$(`#reservation-container-${employeeId}`).data('selected-factory') || ''}">
+
                     ${!isQuota ? '<button type="button" class="btn btn-danger btn-sm remove-extra-btn"><i class="fas fa-trash"></i></button>' : ''}
                 </div>
             `;
@@ -437,47 +524,57 @@
             return { factory: totalFactory, free: totalFree, guest: totalGuest };
         }
 
-
-
-
-
         function validateAndUpdateRemaining(container, changedSlot = null) {
-            const totals = calculateCurrentTotals(container);
+            const employeeId = container.attr('id').replace('reservation-container-', ''); // یا از data-employee-id
+            const state = employeeReservationStates[employeeId];
+
+            if (!state) return; // اگر state نبود، چیزی نکن
+
+            // جمع کل رزروهای فعلی (همه کارخانه‌ها) از state
+            let totalFactory = 0;
+            let totalFree    = 0;
+            let totalGuest   = 0;
+
+            state.existing_reservations.forEach(res => {
+                totalFactory += res.factory_quantity || 0;
+                totalFree    += res.free_quantity    || 0;
+                totalGuest   += res.guest_quantity   || 0;
+            });
 
             const maxFactory = parseInt(container.data('max-factory')) || 0;
             const maxFree    = parseInt(container.data('max-free'))    || 0;
             const maxGuest   = parseInt(container.data('max-guest'))   || 0;
 
             let overType = null;
-            if (totals.factory > maxFactory) overType = 'factory';
-            else if (totals.free > maxFree)  overType = 'free';
-            else if (totals.guest > maxGuest) overType = 'guest';
+            if (totalFactory > maxFactory) overType = 'factory';
+            else if (totalFree    > maxFree)    overType = 'free';
+            else if (totalGuest   > maxGuest)   overType = 'guest';
 
             if (overType && changedSlot) {
-                // adjust qty آخرین slot تغییر یافته
                 const currentQty = parseInt(changedSlot.find('.quantity-input').val()) || 0;
-                const slotType = changedSlot.attr('data-price-type');
+                const slotType   = changedSlot.attr('data-price-type');
+
                 if (slotType === overType) {
-                    const excess = totals[overType] - container.data(`max-${overType}`);
+                    const excess = totalFactory - maxFactory; // یا برای نوع مربوطه
                     const newQty = Math.max(0, currentQty - excess);
                     changedSlot.find('.quantity-input').val(newQty);
-                    // alert(`حداکثر مجاز برای ${overType === 'factory' ? 'سهمیه' : overType === 'free' ? 'آزاد' : 'مهمان'} تجاوز کرد! تعداد به ${newQty} تنظیم شد.`);
+
                     Swal.fire({
                         icon: 'warning',
                         title: 'محدودیت ثبت',
-                        text: `حداکثر مجاز برای ${overType === 'factory' ? 'سهمیه' : overType === 'free' ? 'آزاد' : 'مهمان'} ${parseInt(container.data(`max-${overType}`))} عدد است.\nتعداد به ${newQty} تنظیم شد.`,
+                        text: `حداکثر مجاز برای ${overType === 'factory' ? 'سهمیه' : overType === 'free' ? 'آزاد' : 'مهمان'} ${maxFactory} عدد است.\nتعداد به ${newQty} تنظیم شد.`,
                         confirmButtonText: 'باشه'
                     });
-                    
-                    // recalculate بعد از adjust
-                    totals[overType] = totals[overType] - (currentQty - newQty);
+
+                    // آپدیت state بعد از تغییر qty
+                    syncSlotToDataReservations(changedSlot, state);
                 }
             }
 
-            // آپدیت نمایش باقی‌مانده
-            const restFactory = maxFactory - totals.factory;
-            const restFree    = maxFree    - totals.free;
-            const restGuest   = maxGuest   - totals.guest;
+            // محاسبه باقی‌مانده واقعی (کل state)
+            const restFactory = maxFactory - totalFactory;
+            const restFree    = maxFree    - totalFree;
+            const restGuest   = maxGuest   - totalGuest;
 
             container.find('.remaining-display').html(`
                 باقی‌مانده → 
@@ -486,6 +583,7 @@
                 مهمان: <strong>${restGuest < 0 ? 0 : restGuest}</strong>
             `);
 
+            // مرتب‌سازی دوباره
             const remaining = container.find('.remaining-display').detach();
             const addBtn = container.find('.add-extra-btn').detach();
             container.append(remaining);
@@ -493,7 +591,7 @@
         }
 
         // =======================================
-        // اعمال محدودیت نهایی قبل از ثبت (از آخرین سفارش به اولین)
+        // اعمال محدودیت نهایی قبل از ثبت (مازاد را از آخرین سفارش حذف کن)
         // =======================================
         function enforceLimitsBeforeSubmit() {
             $('#employees-table-body .reservation-container').each(function() {
@@ -503,12 +601,26 @@
                 const maxFree    = parseInt(container.data('max-free'))    || 0;
                 const maxGuest   = parseInt(container.data('max-guest'))   || 0;
 
-                // همه slotها را از آخر به اول بگیریم
-                const slots = container.find('.input-group').toArray().reverse();
+                // محاسبه کل فعلی هر نوع
+                let totalFactory = 0, totalFree = 0, totalGuest = 0;
+                container.find('.input-group').each(function() {
+                    const slot = $(this);
+                    const type = slot.attr('data-price-type');
+                    const qty  = parseInt(slot.find('.quantity-input').val()) || 0;
+                    if (type === 'factory') totalFactory += qty;
+                    else if (type === 'free') totalFree += qty;
+                    else if (type === 'guest') totalGuest += qty;
+                });
 
-                let usedFactory = 0;
-                let usedFree    = 0;
-                let usedGuest   = 0;
+                // مازاد هر نوع
+                let excessFactory = Math.max(0, totalFactory - maxFactory);
+                let excessFree    = Math.max(0, totalFree - maxFree);
+                let excessGuest   = Math.max(0, totalGuest - maxGuest);
+
+                if (excessFactory === 0 && excessFree === 0 && excessGuest === 0) return;
+
+                // از **آخرین slot** به **اولین** (جدیدترین به قدیمی)
+                const slots = container.find('.input-group').toArray().reverse();
 
                 slots.forEach(slotEl => {
                     const slot = $(slotEl);
@@ -517,37 +629,27 @@
 
                     if (qty <= 0) return;
 
-                    let allowed = qty;
+                    let reduce = 0;
 
-                    if (type === 'factory') {
-                        if (usedFactory + qty > maxFactory) {
-                            allowed = Math.max(0, maxFactory - usedFactory);
-                        }
-                        usedFactory += allowed;
+                    if (type === 'factory' && excessFactory > 0) {
+                        reduce = Math.min(qty, excessFactory);
+                        excessFactory -= reduce;
                     } 
-                    else if (type === 'free') {
-                        if (usedFree + qty > maxFree) {
-                            allowed = Math.max(0, maxFree - usedFree);
-                        }
-                        usedFree += allowed;
+                    else if (type === 'free' && excessFree > 0) {
+                        reduce = Math.min(qty, excessFree);
+                        excessFree -= reduce;
                     } 
-                    else if (type === 'guest') {
-                        if (usedGuest + qty > maxGuest) {
-                            allowed = Math.max(0, maxGuest - usedGuest);
-                        }
-                        usedGuest += allowed;
+                    else if (type === 'guest' && excessGuest > 0) {
+                        reduce = Math.min(qty, excessGuest);
+                        excessGuest -= reduce;
                     }
 
-                    // اعمال مقدار مجاز
-                    slot.find('.quantity-input').val(allowed);
+                    if (reduce > 0) {
+                        slot.find('.quantity-input').val(qty - reduce);
+                    }
                 });
             });
         }
-
-
-
-
-
 
         // فرمت قیمت به فارسی
         function formatPrice(price) {
@@ -569,9 +671,9 @@
 
             // در حال حاضر قیمت‌ها از JSON نمی‌آن، پس فعلاً نمونه ثابت می‌ذاریم
             // بعداً می‌تونی data-* attribute یا درخواست جدا بذاری
-            const factoryPrice = 180000; // نمونه
-            const freePrice    = 250000;
-            const guestPrice   = 300000;
+            // const factoryPrice = 180000; // نمونه
+            // const freePrice    = 250000;
+            // const guestPrice   = 300000;
 
             slot.find('.factory-btn .price-value').text(formatPrice(factoryPrice));
             slot.find('.free-btn .price-value').text(formatPrice(freePrice));
@@ -620,6 +722,7 @@
             container.on('change', '.food-select', function() {
                 const slot = $(this).closest('.input-group');
                 updatePricesAndTotal(slot);
+                syncSlotToDataReservations(slot, employeeReservationStates[employeeId]);
                 validateAndUpdateRemaining(container, slot);
             });
 
@@ -627,6 +730,7 @@
             container.on('input', '.quantity-input', function() {
                 const slot = $(this).closest('.input-group');
                 updatePricesAndTotal(slot);
+                syncSlotToDataReservations(slot, employeeReservationStates[employeeId]);
                 validateAndUpdateRemaining(container, slot);
             });
 
@@ -649,6 +753,7 @@
                 else if (newType === 'guest')   label.addClass('bg-warning').text('مهمان');
 
                 updatePricesAndTotal(slot);
+                syncSlotToDataReservations(slot, employeeReservationStates[employeeId]);
                 validateAndUpdateRemaining(container, slot);
             });
 
@@ -697,8 +802,23 @@
                                     timer: 1500,
                                     showConfirmButton: false
                                 });
+
+
+                                const menu_item = parseInt(foodId);  // یا slot.find('.food-select').val() اگر هنوز slot هست
+                                if (menu_item && menu_item != 0) {
+                                    const state = employeeReservationStates[employeeId];
+                                    const res = state.existing_reservations.find(r => r.menu_item === menu_item);
+                                    if (res) {
+                                        res.factory_quantity = 0;
+                                        res.free_quantity    = 0;
+                                        res.guest_quantity   = 0;
+                                        console.log('رزرو حذف شد از state کارمند ' + employeeId + ':', menu_item);
+                                    }
+                                }
+
                                 slot.remove();
                                 validateAndUpdateRemaining(container);
+
                             },
                             error: function(xhr) {
                                 Swal.fire({
@@ -711,6 +831,8 @@
                     }
                 });
             });
+
+            container.off('click', '.add-extra-btn');
 
             // اضافه کردن سفارش جدید (پیش‌فرض آزاد) 
             container.on('click', '.add-extra-btn', function() {
@@ -726,6 +848,9 @@
                 );
                 const newIndex = container.find('.input-group').length - 1;
                 const newSlot = container.find(`[data-index="${newIndex}"]`);
+                if (newSlot.find('.food-select').val() != "0") {
+                    syncSlotToDataReservations(newSlot, data);
+                }
                 validateAndUpdateRemaining(container, newSlot);
             });
         }
@@ -766,6 +891,53 @@
         }
         let isSubmitting = false;   // فلگ مهم برای جلوگیری از کلیک چندباره
 
+        function syncSlotToDataReservations(slot, employeeState) {
+            const menu_item = parseInt(slot.find('.food-select').val());
+            // const priceType = slot.attr('data-price-type');
+            // const qty = parseInt(slot.find('.quantity-input').val()) || 0;
+
+            if (!menu_item || menu_item == 0) return;
+
+            
+            const container = slot.closest('.reservation-container');
+
+            // جمع مقادیر تمام slotهای فعلی صفحه برای این menu_item
+            let factoryQty = 0;
+            let freeQty = 0;
+            let guestQty = 0;
+
+            container.find('.input-group').each(function() {
+                const s = $(this);
+                if (parseInt(s.find('.food-select').val()) === menu_item) {
+                    const t = s.attr('data-price-type');
+                    const q = parseInt(s.find('.quantity-input').val()) || 0;
+                    if (t === 'factory') factoryQty += q;
+                    else if (t === 'free') freeQty += q;
+                    else if (t === 'guest') guestQty += q;
+                }
+            });
+
+
+            let reservation = employeeState.existing_reservations.find(r => r.menu_item === menu_item);
+
+            if (!reservation) {
+                reservation = {
+                    id: null,
+                    menu_item: menu_item,
+                    factory_quantity: 0,
+                    free_quantity: 0,
+                    guest_quantity: 0
+                };
+                employeeState.existing_reservations.push(reservation);
+            }
+
+            // ست کردن مقادیر جمع‌شده
+            reservation.factory_quantity = factoryQty;
+            reservation.free_quantity    = freeQty;
+            reservation.guest_quantity   = guestQty;
+        }
+
+
         $('#submit-group-reservations').on('click', function() {
 
             if (isSubmitting) return;   // جلوگیری از کلیک دوم
@@ -782,8 +954,59 @@
 
             enforceLimitsBeforeSubmit();
 
+
+            // ──────────────── مرحله کلیدی: اضافه کردن تمام رزروهای همه کارخانه‌ها به فرم ────────────────
+
+            // اول hiddenهای قبلی رو پاک کن (جلوگیری از تکرار یا داده قدیمی)
+            $('#group-reservation-form').find('input[name^="full_reservations"]').remove();
+
+            // ساخت داده کامل از state (فقط رزروهایی که حداقل یک تعداد غیرصفر دارن)
+            let hasAnyChange = false;
+
+            Object.entries(employeeReservationStates).forEach(([empId, state]) => {
+                state.existing_reservations.forEach((res, resIndex) => {
+                    // فقط اگر حداقل یک نوع تعداد داشته باشه
+                    if (res.factory_quantity > 0 || res.free_quantity > 0 || res.guest_quantity > 0) {
+                        hasAnyChange = true;
+                        const prefix = `full_reservations[${empId}][${resIndex}]`;
+
+                        $('#group-reservation-form').append(`
+                            <input type="hidden" name="${prefix}[menu_item]" value="${res.menu_item}">
+                            <input type="hidden" name="${prefix}[factory_quantity]" value="${res.factory_quantity}">
+                            <input type="hidden" name="${prefix}[free_quantity]" value="${res.free_quantity}">
+                            <input type="hidden" name="${prefix}[guest_quantity]" value="${res.guest_quantity}">
+                            <input type="hidden" name="${prefix}[id]" value="${res.id || ''}">
+                        `);
+                    }
+                });
+            });
+
+
+            
+
+
+
+            // اگر هیچ تغییری نبود، می‌تونی پیام بدی (اختیاری)
+            if (!hasAnyChange) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'هیچ تغییری ثبت نشده',
+                    text: 'هیچ رزرو جدیدی یا تغییری وجود ندارد.',
+                    confirmButtonText: 'باشه'
+                });
+                isSubmitting = false;
+                btn.prop('disabled', false).html(originalHtml);
+                return;
+            }
+
+            $('#group-reservation-form').trigger('change');  // ← این خط جدید
+
             // ۲. جمع‌آوری تمام داده‌های فرم (دقیقاً همان چیزی که Django انتظار داره)
             const formData = $('#group-reservation-form').serialize() + '&action=save_group';
+
+
+            // برای دیباگ (اختیاری – می‌تونی بعداً حذف کنی)
+            console.log('فرم ارسال‌شده:', formData);
 
             // ۳. ارسال AJAX
             $.ajax({
@@ -826,5 +1049,19 @@
 
     });
 </script>
+
+{% endblock %}
+
+
+{% block extra_css %}
+
+    <style>
+        .factory-list {
+            font-size: 1.05rem;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+    </style>
 
 {% endblock %}
