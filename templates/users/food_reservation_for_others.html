@@ -55,7 +55,8 @@
                 {% csrf_token %}
                 <input type="hidden" name="action" id="form-action" value="save_group">
                 <div class="table-responsive shadow-md rounded-lg overflow-hidden">
-                    <table class="table table-hover table-striped table-bordered align-middle text-center mb-0" style="table-layout: fixed; min-width: 1200px;">
+                    <div class="response-tabel">
+                        <table class="table table-hover table-striped table-bordered align-middle text-center mb-0" style="table-layout: fixed; min-width: 1200px;">
                         <thead class="table-dark bg-gradient-dark text-white">
                             <tr>
                                 <th scope="col" style="width: 20%;"><i class="fas fa-user me-1"></i>نام کارمند</th>
@@ -66,6 +67,8 @@
                             <!-- ردیف‌ها به صورت دینامیک اضافه خواهند شد -->
                         </tbody>
                     </table>
+                    </div>
+                    
                 </div>
                 <div class="d-grid gap-2 mt-5">
                     <button type="button" id="submit-group-reservations" 
@@ -1309,6 +1312,71 @@
     @media (max-width: 768px) {
         .reservation-container { min-width: 580px; }
         .table td { padding: 1rem 0.5rem; }
+    }
+
+    @media (max-width:375px){
+        .response-tabel table{
+            min-width: 350px !important;
+        }
+        .response-tabel #employees-table-body tr{
+            display: flex;
+            flex-direction: column;
+            min-width: 270px;
+        }
+
+        .response-tabel #employees-table-body .fw-bold{
+            font-size: 12px;
+        }
+
+        .response-tabel #employees-table-body .text-muted{
+            font-size: 10px;
+        }
+
+        .response-tabel #employees-table-body .text-center{
+            min-width: 250px;
+        }
+
+        .response-tabel #employees-table-body td:nth-child(2){
+            min-width: 270px;
+        }
+
+        .response-tabel #employees-table-body td:nth-child(2) .reservation-container{
+            min-width: 250px;
+        }
+
+        .response-tabel #employees-table-body td:nth-child(2) .reservation-container .input-group{
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .response-tabel #employees-table-body td:nth-child(2) .reservation-container .input-group .input-group-text{
+            width: 100% !important;
+        }
+
+        .response-tabel #employees-table-body td:nth-child(2) .reservation-container .input-group button{
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .response-tabel #employees-table-body td:nth-child(2) .reservation-container .input-group select{
+            width: 100%;
+        }
+
+        .response-tabel #employees-table-body td:nth-child(2) .reservation-container .input-group .form-control{
+            width: 100%;
+        }
+
+        .factory-list{
+            width: 100%;
+        }
+
+        .factory-list option{
+            min-width: 270px;
+        }
+
+
     }
 </style>
 {% endblock %}
