@@ -140,12 +140,27 @@
         transform: none;
     }
 
-    /* ─── Responsive ──────────────────────────────────────── */
+    .accordion-item:has(.badge) .accordion-body {
+    background-color: #d6a2aa;          /* قرمز خیلی روشن */
+    /* یا اگر قرمز پررنگ‌تر می‌خوای: */
+    /* background-color: #ef5350; */
+    /* background-color: rgba(244, 67, 54, 0.12); */
+    }
 
+    .accordion-item:has(.badge) .accordion-body tr:nth-child(odd) {
+    background-color: #dfdd9a;          /* قرمز خیلی روشن */
+    }
+
+    .accordion-item:has(.badge) .accordion-body tr:nth-child(even) {
+    background-color: #fff;          /* قرمز خیلی روشن */
+    
+
+    }
     @media (max-width: 575.98px) {
         .card-body { padding: 1rem; }
         .accordion-button { padding: 0.875rem 1.125rem; font-size: 0.8rem; }
         .day-title { font-size: 0.85rem; }
+        .card-header .badge { font-size: 0.95rem; }
         .badge { font-size: 0.65rem; padding: 0.4em 0.75em; }
         .table th, .table td { font-size: 0.9rem; padding: 0.65rem; }
         .total-cell { font-size: 1.15rem; }
