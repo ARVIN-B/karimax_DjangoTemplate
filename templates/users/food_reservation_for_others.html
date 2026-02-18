@@ -1309,19 +1309,20 @@
         .quantity-input { width: 70px !important; }
     }
 
-    @media (max-width: 768px) {
+    /* @media (max-width: 768px) {
         .reservation-container { min-width: 580px; }
         .table td { padding: 1rem 0.5rem; }
-    }
+    } */
 
-    @media (max-width:375px){
+    /* @media (max-width:375px){ */
+    @media (max-width:770px){
         .response-tabel table{
             min-width: 350px !important;
         }
         .response-tabel #employees-table-body tr{
             display: flex;
             flex-direction: column;
-            min-width: 270px;
+            width: 85vw;
         }
 
         .response-tabel #employees-table-body .fw-bold{
@@ -1333,15 +1334,15 @@
         }
 
         .response-tabel #employees-table-body .text-center{
-            min-width: 250px;
+            width: 100%;
         }
 
         .response-tabel #employees-table-body td:nth-child(2){
-            min-width: 270px;
+            width: 90%;
         }
 
         .response-tabel #employees-table-body td:nth-child(2) .reservation-container{
-            min-width: 250px;
+            min-width: 70vw;
         }
 
         .response-tabel #employees-table-body td:nth-child(2) .reservation-container .input-group{
@@ -1365,7 +1366,7 @@
         }
 
         .response-tabel #employees-table-body td:nth-child(2) .reservation-container .input-group .form-control{
-            width: 100%;
+            width: 100% !important;
         }
 
         .factory-list{
@@ -1373,7 +1374,7 @@
         }
 
         .factory-list option{
-            min-width: 270px;
+            width: 100%;
         }
 
 
