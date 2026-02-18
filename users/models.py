@@ -21,8 +21,8 @@ from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
 
 
-close_food_res_time_H = 18
-close_food_res_time_M = 00
+default_close_food_res_time_H = 10
+default_close_food_res_time_M = 00
 
 start_today_food_comment_time_H = 10
 start_today_food_comment_time_M = 00
@@ -87,6 +87,12 @@ class Factory(models.Model):
         blank=True,
         verbose_name="کارخانه لینک شده",
     )
+    close_food_res_time_H = models.IntegerField(
+        default=10, verbose_name="ساعت بسته شدن مهلت رزرو غذا در این کارخانه"
+    )
+    close_food_res_time_M = models.IntegerField(
+        default=0, verbose_name="دقیقه بسته شدن مهلت رزرو غذا در این کارخانه"
+    )
 
     class Meta:
         verbose_name = "کارخانه"
@@ -94,6 +100,35 @@ class Factory(models.Model):
 
     def __str__(self):
         return self.name
+    
+
+    def clean(self):
+        """
+        اعتبارسنجی ساعت و دقیقه زمان بسته شدن رزرو
+        """
+        errors = {}
+
+        # بررسی ساعت
+        if not (0 <= self.close_food_res_time_H < 24):
+            errors['close_food_res_time_H'] = ValidationError(
+                _("ساعت باید بین 0 تا 23 باشد."),
+                code='invalid_hour'
+            )
+
+        # بررسی دقیقه
+        if not (0 <= self.close_food_res_time_M < 60):
+            errors['close_food_res_time_M'] = ValidationError(
+                _("دقیقه باید بین ۰ تا ۵۹ باشد."),
+                code='invalid_minute'
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # قبل از ذخیره، اعتبارسنجی را اجرا می‌کنیم
+        self.full_clean()           # ← این خط مهم است
+        super().save(*args, **kwargs)
 
 
 class Department(models.Model):

@@ -3,124 +3,343 @@
 {% load humanize %}
 
 {% block title %}داشبورد آشپزخانه{% endblock %}
-{% block breadcrumb_title %}داشبورد مدیریت رستوران{% endblock %}
+{% block breadcrumb_title %}مدیریت رستوران{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --bg:        #f5f7fa;
+        --surface:   #ffffff;
+        --surface-2: #fafbfc;
+        --border:    #e2e8f0;
+        --text:      #1e293b;
+        --text-sec:  #64748b;
+        --primary:   #3b82f6;
+        --primary-d: #2563eb;
+        --success:   #10b981;
+        --warning:   #f59e0b;
+        --info:      #0ea5e9;
+        --danger:    #ef4444;
+        --radius:    0.875rem;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.08);
+        --shadow:    0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body { background: var(--bg); color: var(--text); }
+
+    .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        transition: var(--transition);
+    }
+    .card:hover { box-shadow: var(--shadow); }
+
+
+    .accordion-item .btn{
+        margin: 0px 10px;
+        padding: 5px 10px;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        border-bottom: 1px solid var(--border);
+        padding: 1.125rem 1.5rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .card-header-gradient {
+        background: linear-gradient(135deg, var(--primary), var(--primary-d));
+        color: white;
+    }
+
+    .accordion-item {
+        border: none;
+        border-bottom: 1px solid var(--border);
+        border-radius: 0;
+        background: transparent;
+    }
+    .accordion-item:last-child { border-bottom: none; }
+
+    .accordion-button {
+        background: var(--surface-2);
+        border-radius: var(--radius) !important;
+        padding: 1rem 1.5rem;
+        font-weight: 500;
+        color: var(--text);
+        transition: var(--transition);
+    }
+    .accordion-button:not(.collapsed) {
+        background: #eff6ff;
+        color: var(--primary-d);
+        box-shadow: inset 0 -1px 0 var(--border);
+    }
+    .accordion-button:focus {
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        z-index: 1;
+    }
+
+    /* حالت روزهایی که رزرو هنوز باز است */
+    .accordion-item.open-reservation .accordion-button {
+        background: #fefce8;
+        border-left: 4px solid var(--warning);
+    }
+    .accordion-item.open-reservation .accordion-button:not(.collapsed) {
+        background: #fef08a;
+    }
+
+    .badge {
+        font-weight: 500;
+        padding: 0.45em 0.9em;
+        border-radius: 1.25rem;
+    }
+
+    .today-badge     { background: var(--success); color: white; }
+    .open-res-badge  { background: var(--warning); color: #713f12; }
+
+    .table {
+        --bs-table-bg: transparent;
+        --bs-table-accent-bg: rgba(243,244,246,0.4);
+        --bs-table-striped-bg: rgba(243,244,246,0.25);
+    }
+    .table th { background: #f1f5f9; font-weight: 600; }
+    .table .total-cell {
+        font-weight: 700;
+        color: var(--success);
+        font-size: 1.25rem;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        border-color: var(--primary);
+        transition: var(--transition);
+    }
+    .btn-primary:hover {
+        background: var(--primary-d);
+        border-color: var(--primary-d);
+        transform: translateY(-1px);
+    }
+
+    #download-range-report {
+        background: var(--success);
+        border-color: var(--success);
+        font-weight: 600;
+    }
+    #download-range-report:hover {
+        background: #059669;
+        border-color: #059669;
+        transform: translateY(-1px) scale(1.02);
+    }
+    #download-range-report:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* ─── Responsive ──────────────────────────────────────── */
+
+    @media (max-width: 575.98px) {
+        .card-body { padding: 1rem; }
+        .accordion-button { padding: 0.875rem 1.125rem; font-size: 0.8rem; }
+        .day-title { font-size: 0.85rem; }
+        .badge { font-size: 0.65rem; padding: 0.4em 0.75em; }
+        .table th, .table td { font-size: 0.9rem; padding: 0.65rem; }
+        .total-cell { font-size: 1.15rem; }
+        .btn-lg { padding: 0.65rem 1.25rem; font-size: 1rem; }
+    }
+
+    @media (min-width: 576px) and (max-width: 767.98px) {
+        .accordion-button { padding: 1rem 1.375rem; }
+        .table th, .table td { padding: 0.75rem; }
+    }
+
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .date-row > div { flex: 0 0 48%; max-width: 48%; }
+        .date-row > div:last-child { flex: 0 0 100%; max-width: 100%; margin-top: 0.5rem; }
+    }
+
+    @media (min-width: 992px) {
+        .date-row > div { flex: 0 0 auto; }
+        .container-fluid { max-width: 1480px; padding-left: 2.5rem; padding-right: 2.5rem; }
+    }
+
+    @media (min-width: 1400px) {
+        .container-fluid { max-width: 1640px; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-warning text-dark">
-            <div class="d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">
-                    <i class="fas fa-utensils me-2"></i>
-                    پنل مدیریت رستوران: {{ restaurant_name }}
-                </h4>
-                <div>
-                    <a href="?export=excel" class="btn btn-success btn-sm ms-2">
-                        <i class="fas fa-file-excel me-1"></i> دانلود اکسل
-                    </a>
+<div class="container-fluid mt-3 mt-md-4 pb-5">
 
-<!--                    <span class="badge bg-light text-dark ms-2">{{ latest_menu_info }}</span>-->
+    <!-- گزارش بازه زمانی -->
+    <div class="card mb-4">
+        <div class="card-header card-header-gradient text-white">
+            <h5 class="mb-0 d-flex align-items-center justify-content-center gap-2">
+                <i class="far fa-calendar-alt"></i>
+                گزارش رزروها در بازه دلخواه
+            </h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-4 justify-content-center align-items-end date-row">
+                <div class="col-12 col-md-5">
+                    <label class="form-label fw-semibold text-muted small mb-1">از تاریخ (شمسی)</label>
+                    <input type="text" id="from_date" class="form-control form-control-lg text-center"
+                           data-jdp placeholder="۱۴۰۴/۰۹/۰۱" autocomplete="off">
                 </div>
-                <span class="badge bg-light text-dark">{{ latest_menu_info }}</span>
+                <div class="col-12 col-md-5">
+                    <label class="form-label fw-semibold text-muted small mb-1">تا تاریخ (شمسی)</label>
+                    <input type="text" id="to_date" class="form-control form-control-lg text-center"
+                           data-jdp placeholder="۱۴۰۴/۰۹/۳۰" autocomplete="off">
+                </div>
+                <div class="col-12 col-md">
+                    <button id="download-range-report" class="btn btn-lg text-white w-100" disabled>
+                        <i class="fas fa-file-excel me-2"></i>دانلود گزارش
+                    </button>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    شامل رزروهای نهایی‌شده در بازه انتخابی
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- پنل اصلی -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <h4 class="mb-0 d-flex align-items-center gap-2">
+                <i class="fas fa-utensils"></i>
+                {{ restaurant_name }}
+            </h4>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="badge bg-dark text-warning px-3 py-2 d-flex align-items-center gap-2">
+                    <i class="fas fa-clock"></i>
+                    این کارخانه تا ساعت<strong class="text-white mx-1">{{ close_food_res_time_H|add:"0"|stringformat:"02d" }}:{{ close_food_res_time_M|add:"0"|stringformat:"02d" }}</strong>امکان رزرو دارد
+                </div>
+                <a href="?export=excel" class="btn btn-success">
+                    <i class="fas fa-file-excel me-1"></i> اکسل کامل
+                </a>
+                <span class="badge bg-secondary-subtle text-secondary">{{ latest_menu_info }}</span>
             </div>
         </div>
 
-        <div class="card-body">
+        <div class="card-body p-0">
             {% if not weekly_data %}
-                <div class="alert alert-info text-center">
-                    <i class="fas fa-info-circle fa-lg mb-2"></i><br>
-                    هنوز منوی هفتگی فعالی برای این رستوران تعریف نشده است.
+                <div class="alert alert-info border-0 m-4 text-center py-5">
+                    <i class="fas fa-calendar-times fa-2x mb-3 d-block text-info"></i>
+                    هنوز منوی هفتگی تعریف نشده است.
                 </div>
             {% else %}
-
                 <div class="accordion" id="kitchenReportAccordion">
                     {% for day in weekly_data %}
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="heading-{{ forloop.counter }}">
+                    <div class="accordion-item {% if day.is_reservation_time %}open-reservation{% endif %}">
+                        <h2 class="accordion-header">
                             <button class="accordion-button {% if not day.is_today %}collapsed{% endif %}"
-                                    type="button"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#collapse-{{ forloop.counter }}"
-                                    aria-expanded="{% if day.is_today %}true{% else %}false{% endif %}"
-                                    aria-controls="collapse-{{ forloop.counter }}">
-
-                                <div class="d-flex w-100 justify-content-between align-items-center pe-3">
-                                    <!-- سمت چپ: عنوان روز + بج امروز -->
-                                    <div class="d-flex align-items-center">
-                                        <span class="fw-bold">{{ day.jdate_str }}</span>
-                                        {% if day.is_today %}
-                                            <span class="badge bg-success ms-2">امروز</span>
+                                    type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-{{ forloop.counter }}">
+                                <div class="d-flex w-100 justify-content-between align-items-center flex-wrap gap-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="day-title fw-semibold">{{ day.jdate_str }}</span>
+                                        {% if day.is_today %}<span class="badge today-badge">امروز</span>{% endif %}
+                                        {% if day.is_reservation_time %}
+                                            <span class="badge open-res-badge d-flex align-items-center gap-1">
+                                                <i class="fas fa-hourglass-half fa-pulse fa-xs"></i>
+                                                رزرو باز
+                                            </span>
                                         {% endif %}
                                     </div>
-
-                                    <!-- سمت راست: تعداد غذا + دکمه اکسل -->
                                     <div class="d-flex align-items-center gap-3">
-                                        {% if day.foods %}
-                                            <span class="text-muted small">
-                                                {{ day.foods|length }} نوع غذا
-                                            </span>
-                                        {% else %}
-                                            <span class="text-muted small">تعطیل / بدون غذا</span>
-                                        {% endif %}
-
+                                        <span class="text-muted small">
+                                            {{ day.foods|length|default:0 }} نوع غذا
+                                        </span>
                                         <a href="?export_date={{ day.jdate_only }}"
-                                           class="btn btn-success btn-sm px-3 py-1 shadow-sm"
-                                           title="دانلود اکسل فقط {{ day.jdate_str }}"
+                                           class="btn btn-sm btn-outline-success"
                                            onclick="event.stopPropagation(); event.preventDefault(); window.location=this.href;">
                                            <i class="fas fa-file-excel me-1"></i> اکسل
                                         </a>
-
                                     </div>
                                 </div>
                             </button>
                         </h2>
-<!--                        <a href="?export_date={{ day.jdate_only }}" class="btn btn-outline-success btn-sm">-->
-<!--                            اکسل این روز-->
-<!--                        </a>-->
                         <div id="collapse-{{ forloop.counter }}"
                              class="accordion-collapse collapse {% if day.is_today %}show{% endif %}"
-                             aria-labelledby="heading-{{ forloop.counter }}"
                              data-bs-parent="#kitchenReportAccordion">
-                            <div class="accordion-body">
-
+                            <div class="accordion-body p-4">
                                 {% if day.foods %}
                                     <div class="table-responsive">
-                                        <table class="table table-bordered table-striped text-center align-middle">
-                                            <thead class="table-dark">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
                                                 <tr>
-                                                    <th style="width: 40%;">نام غذا</th>
-                                                    <th style="width: 20%;">سهمیه (پرسنلی)</th>
-                                                    <th style="width: 20%;">آزاد (اضافه)</th>
-                                                    <th style="width: 20%;" class="bg-success text-white">مجموع کل</th>
+                                                    <th>نام غذا</th>
+                                                    <th class="text-center">سهمیه پرسنلی</th>
+                                                    <th class="text-center">آزاد</th>
+                                                    <th class="text-center">مجموع</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {% for food in day.foods %}
                                                 <tr>
-                                                    <td class="fw-bold text-start">{{ food.food_name }}</td>
-                                                    <td>{{ food.quota_count }}</td>
-                                                    <td>{{ food.extra_count }}</td>
-                                                    <td class="fw-bold fs-5 text-success">{{ food.total_count }}</td>
+                                                    <td class="fw-medium">{{ food.food_name }}</td>
+                                                    <td class="text-center">{{ food.quota_count|default:"—" }}</td>
+                                                    <td class="text-center">{{ food.extra_count|default:"—" }}</td>
+                                                    <td class="text-center total-cell fs-5">{{ food.total_count|default:"—" }}</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
                                         </table>
                                     </div>
                                 {% else %}
-                                    <div class="text-center text-muted py-3">
-                                        <i class="fas fa-coffee mb-2"></i><br>
-                                        هیچ غذایی برای این روز در منو ثبت نشده است.
+                                    <div class="text-center text-muted py-5">
+                                        <i class="fas fa-utensils-slash fa-2x mb-3 d-block opacity-50"></i>
+                                        منویی برای این روز ثبت نشده است
                                     </div>
                                 {% endif %}
-
                             </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
-
             {% endif %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// کد جاوااسکریپت قبلی بدون تغییر اساسی (فقط تمیزتر)
+$(document).ready(function() {
+    jalaliDatepicker.startWatch({
+        time: false, persianDigits: true, dateFormat: 'YYYY/MM/DD',
+        showTodayBtn: true, showEmptyBtn: true
+    });
+
+    const $from = $('#from_date'), $to = $('#to_date'), $btn = $('#download-range-report');
+
+    function checkDates() {
+        $btn.prop('disabled', !($from.val().trim() && $to.val().trim()));
+    }
+
+    $from.on('change', checkDates);
+    $to.on('change', checkDates);
+
+    $btn.on('click', function() {
+        const fromVal = $from.val().trim(), toVal = $to.val().trim();
+        if (!fromVal || !toVal) return;
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('from_date', fromVal);
+        url.searchParams.set('to_date', toVal);
+        url.searchParams.set('export', 'range');
+        window.location = url;
+    });
+});
+</script>
 {% endblock %}

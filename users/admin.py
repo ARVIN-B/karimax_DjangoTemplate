@@ -13,6 +13,11 @@ from .models import (
     Subdepartment,
 )
 
+from django.utils.translation import gettext_lazy as _     # ← این خط مهم است
+from django.forms import NumberInput
+from django.db.models import Count
+from django.db import models
+
 
 class RoleFilter(admin.SimpleListFilter):
     title = "نقش"
@@ -48,27 +53,101 @@ class FactoryAdmin(admin.ModelAdmin):
         "manager",
         "created_at",
         "department_count",
-        "is_committee",
         "employee_count",
+        "reservation_close_time_display",  # ← ستون جدید برای نمایش خوانا
+        "is_committee",
     ]
-    search_fields = ["name", "location", "holding"]
-    list_filter = ["holding", "created_at", "is_committee"]  # اضافه holding به فیلتر
+
+    list_filter = ["holding", "is_committee", "created_at"]
+
+    search_fields = ["name", "location", "holding__name"]
+
     readonly_fields = ["created_at"]
 
+    # گروه‌بندی فیلدها در فرم ادمین
+    fieldsets = (
+        (
+            _("اطلاعات اصلی"),
+            {
+                "fields": (
+                    "name",
+                    "location",
+                    "holding",
+                    "manager",
+                    "is_committee",
+                    "linked_factory",
+                )
+            },
+        ),
+        (
+            _("زمان بسته شدن رزرو غذا"),
+            {
+                "fields": ("close_food_res_time_H", "close_food_res_time_M"),
+                "description": _(
+                    """
+                ساعت و دقیقه‌ای که رزرو غذا برای این کارخانه بسته می‌شود.
+                <br>• ساعت: ۰ تا ۲۳
+                <br>• دقیقه: ۰ تا ۵۹
+            """
+                ),
+            },
+        ),
+        (
+            _("اطلاعات سیستمی"),
+            {
+                "fields": ("created_at",),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    # برای نمایش بهتر در لیست
+    def reservation_close_time_display(self, obj):
+        h = obj.close_food_res_time_H
+        m = obj.close_food_res_time_M
+        return f"{h:02d}:{m:02d}"
+
+    reservation_close_time_display.short_description = "ساعت بسته شدن رزرو"
+    reservation_close_time_display.admin_order_field = "close_food_res_time_H"
+
+    formfield_overrides = {
+        models.IntegerField: {
+            "widget": NumberInput(
+                attrs={
+                    "min": 0,
+                    # "max": 23 if "close_food_res_time_H" else 59,
+                    "style": "width: 80px;",
+                }
+            )
+        },
+    }
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        field = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name in ('close_food_res_time_H', 'close_food_res_time_M'):
+            max_val = 23 if db_field.name.endswith('_H') else 59
+            field.widget.attrs['max'] = str(max_val)
+        return field
+
+    # تعداد بخش‌ها
     def department_count(self, obj):
         return obj.departments.count()
 
-    department_count.short_description = "مجموع بخش‌ها"
+    department_count.short_description = "تعداد بخش‌ها"
 
+    # تعداد کل کارمندان (بهبود یافته)
     def employee_count(self, obj):
-        # جمع کارمندان از تمام بخش‌ها و زیربخش‌ها
-        total = 0
-        for dept in obj.departments.all():
-            for subdept in dept.subdepartments.all():
-                total += subdept.assigned_employees.count()
+        # روش بهینه‌تر با QuerySet
+        from django.db.models import Count
+
+        total = (
+            obj.departments.aggregate(
+                total_employees=Count("subdepartments__assigned_employees")
+            )["total_employees"]
+            or 0
+        )
         return total
 
-    employee_count.short_description = "مجموع کارمندان"
+    employee_count.short_description = "تعداد کارمندان"
 
 
 @admin.register(Holding)

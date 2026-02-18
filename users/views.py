@@ -44,8 +44,8 @@ from .models import (
     FoodItem,
     FoodReservation,
     participation_upload_path,
-    close_food_res_time_H,
-    close_food_res_time_M,
+    default_close_food_res_time_H,
+    default_close_food_res_time_M,
     start_today_food_comment_time_H,
     start_today_food_comment_time_M,
     OrgUnit,
@@ -2086,6 +2086,18 @@ def restaurant_management_dashboard(request):
     # 1. دریافت اطلاعات نقش و جایگاه فعلی از سشن
     role_name = request.session.get("current_role")
     subdepartment_id = request.session.get("current_subdepartment_id")
+    factory_id = request.session.get("current_factory_id")
+
+    close_food_res_time_H = (
+        Factory.objects.filter(id=factory_id).first().close_food_res_time_H
+        if factory_id
+        else 0
+    )
+    close_food_res_time_M = (
+        Factory.objects.filter(id=factory_id).first().close_food_res_time_M
+        if factory_id
+        else 0
+    )
 
     # 2. بررسی دسترسی
     if role_name != "supervisor" or not subdepartment_id:
@@ -2164,10 +2176,7 @@ def restaurant_management_dashboard(request):
 
             # تبدیل به تاریخ شمسی
             j_date = jdatetime.date.fromgregorian(date=current_day_date)
-
-            # 🌟 اصلاح شده: استفاده از لیست فارسی بجای %A 🌟
             jdate_str = f"{persian_day_names[i]} {j_date.strftime('%Y/%m/%d')}"
-
             day_menu_items = menu_items.filter(day_persian=day_code)
 
             foods_data = []
@@ -2178,7 +2187,6 @@ def restaurant_management_dashboard(request):
                         reservation_date=current_day_date,
                         is_canceled=False,
                     )
-
                     factory_quantity = (
                         reservations.aggregate(total=Sum("factory_quantity"))["total"]
                         or 0
@@ -2191,7 +2199,6 @@ def restaurant_management_dashboard(request):
                         or 0
                     )
                     total_count = factory_quantity + free_quantity + guest_quantity
-
                     foods_data.append(
                         {
                             "food_name": item.food.name,
@@ -2201,6 +2208,17 @@ def restaurant_management_dashboard(request):
                             "total_count": total_count,
                         }
                     )
+                    
+            is_reservation_time = False
+            if current_day_date == today_gdate:
+
+                tehran_aware_datetime = timezone.localtime(timezone.now())
+                is_reservation_time = tehran_aware_datetime.time() < time(
+                    close_food_res_time_H, close_food_res_time_M
+                )
+            elif current_day_date > today_gdate:
+
+                is_reservation_time = True
 
             weekly_report_data.append(
                 {
@@ -2209,13 +2227,11 @@ def restaurant_management_dashboard(request):
                     "jdate_only": j_date.strftime("%Y/%m/%d"),
                     "is_today": current_day_date == today_gdate,
                     "foods": foods_data,
+                    "is_reservation_time": is_reservation_time,
                 }
             )
 
-    export_date_str = request.GET.get("export_date") or request.GET.get(
-        "date"
-    )  # هر دو رو قبول کن
-
+    export_date_str = request.GET.get("export_date") or request.GET.get("date")
     if export_date_str:
         try:
             jy, jm, jd = map(int, export_date_str.split("/"))
@@ -2284,9 +2300,26 @@ def restaurant_management_dashboard(request):
         "restaurant_name": restaurant.name,
         "latest_menu_info": latest_menu_info,
         "weekly_data": weekly_report_data,
+        "close_food_res_time_H": close_food_res_time_H,
+        "close_food_res_time_M": close_food_res_time_M,
     }
 
     return render(request, "users/restaurant_management_dashboard.html", context)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 PERSIAN_WEEK_DAYS = [
@@ -2397,6 +2430,26 @@ def food_reservation_view(request):
             request, "کارخانه شما مشخص نشده است. لطفا با بخش هوش مصنوعی تماس بگیرید."
         )
         return redirect("users:dashboard")
+
+    close_food_res_time_H = (
+        factory.close_food_res_time_H
+        if (
+            factory.close_food_res_time_H
+            and factory.close_food_res_time_H >= 0
+            and factory.close_food_res_time_H < 24
+        )
+        else default_close_food_res_time_H
+    )
+    close_food_res_time_M = (
+        factory.close_food_res_time_M
+        if (
+            factory.close_food_res_time_M
+            and factory.close_food_res_time_M >= 0
+            and factory.close_food_res_time_M < 60
+        )
+        else default_close_food_res_time_M
+    )
+    # print(f"********** {close_food_res_time_H}")
 
     days_until_saturday = today_jdate.weekday()
     week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
