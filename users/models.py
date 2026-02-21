@@ -100,7 +100,6 @@ class Factory(models.Model):
 
     def __str__(self):
         return self.name
-    
 
     def clean(self):
         """
@@ -110,16 +109,14 @@ class Factory(models.Model):
 
         # بررسی ساعت
         if not (0 <= self.close_food_res_time_H < 24):
-            errors['close_food_res_time_H'] = ValidationError(
-                _("ساعت باید بین 0 تا 23 باشد."),
-                code='invalid_hour'
+            errors["close_food_res_time_H"] = ValidationError(
+                _("ساعت باید بین 0 تا 23 باشد."), code="invalid_hour"
             )
 
         # بررسی دقیقه
         if not (0 <= self.close_food_res_time_M < 60):
-            errors['close_food_res_time_M'] = ValidationError(
-                _("دقیقه باید بین ۰ تا ۵۹ باشد."),
-                code='invalid_minute'
+            errors["close_food_res_time_M"] = ValidationError(
+                _("دقیقه باید بین ۰ تا ۵۹ باشد."), code="invalid_minute"
             )
 
         if errors:
@@ -127,7 +124,7 @@ class Factory(models.Model):
 
     def save(self, *args, **kwargs):
         # قبل از ذخیره، اعتبارسنجی را اجرا می‌کنیم
-        self.full_clean()           # ← این خط مهم است
+        self.full_clean()  # ← این خط مهم است
         super().save(*args, **kwargs)
 
 
@@ -992,9 +989,12 @@ class FoodReservation(models.Model):
         if self.reservation_date == today_gdate:
 
             tehran_aware_datetime = timezone.localtime(timezone.now())
-            is_reservation_time_passed = tehran_aware_datetime.time() > time(
-                close_food_res_time_H, close_food_res_time_M
-            )
+
+            # todo
+
+            # is_reservation_time_passed = tehran_aware_datetime.time() > time(
+            #     close_food_res_time_H, close_food_res_time_M
+            # )
             # if is_reservation_time_passed:
             #     raise ValidationError(
             #         "رزرو غذا برای امروز فقط تا ساعت ۱۰ صبح امکان‌پذیر است."

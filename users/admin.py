@@ -13,7 +13,7 @@ from .models import (
     Subdepartment,
 )
 
-from django.utils.translation import gettext_lazy as _     # ← این خط مهم است
+from django.utils.translation import gettext_lazy as _
 from django.forms import NumberInput
 from django.db.models import Count
 from django.db import models
@@ -343,26 +343,20 @@ class EmployeeAdmin(UserAdmin):
             {"fields": ("assigned_subdepartments", "roles"), "classes": ("collapse",)},
         ),
         (
-            "مجوزها",
+            "مجوزهای مربوط به سلف",
             {
                 "fields": (
-                    "is_active",
-                    "is_staff",
-                    "is_superuser",
-                    "is_first_login",
-                    "can_reserve_for_others",
-                    "can_serve_foods",
                     "unlimit_reservation",
+                    "can_serve_foods",
                     "can_reserve_management_food",
-                    "factory_bimeh",
-                    "holding_bimeh",
+                    "can_reserve_for_others",
+                    # ← گروه جدید برای محدودیت‌های عددی
+                    "guest_limit_reservation_for_others",
+                    "free_limit_reservation_for_others",
+                    "factory_limit_reservation_for_others",
                 ),
                 "classes": ("collapse",),
             },
-        ),
-        (
-            "تاریخ‌ها",
-            {"fields": ("last_login", "date_joined"), "classes": ("collapse",)},
         ),
         (
             "تحویل‌گیرنده غذا",
@@ -374,6 +368,24 @@ class EmployeeAdmin(UserAdmin):
                 ),
             },
         ),
+        (
+            "مجوزهای دیگر",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "is_first_login",
+                    "factory_bimeh",
+                    "holding_bimeh",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "تاریخ‌ها",
+            {"fields": ("last_login", "date_joined"), "classes": ("collapse",)},
+        ),
     )
 
     # --- فرم ایجاد ---
@@ -384,14 +396,18 @@ class EmployeeAdmin(UserAdmin):
                 "classes": ("wide",),
                 "fields": (
                     "national_id",
-                    "personnel_code",  # اضافه شد
+                    "personnel_code",
                     "first_name",
                     "last_name",
                     "phone_number",
                     "assigned_subdepartments",
                     "roles",
-                    "can_serve_foods",
                     "unlimit_reservation",
+                    "can_reserve_for_others",
+                    "guest_limit_reservation_for_others",
+                    "free_limit_reservation_for_others",
+                    "factory_limit_reservation_for_others",
+                    "can_serve_foods",
                     "can_reserve_management_food",
                     "factory_bimeh",
                     "holding_bimeh",
@@ -425,6 +441,9 @@ class EmployeeAdmin(UserAdmin):
         "is_superuser",
         "is_first_login",
         "can_reserve_for_others",
+        "guest_limit_res_for_others_display",
+        "free_limit_res_for_others_display",
+        "factory_limit_res_for_others_display",
         "date_joined",
         "food_receiver_role_display",
         "food_receiver_location",
@@ -457,12 +476,50 @@ class EmployeeAdmin(UserAdmin):
         "is_superuser",
         "is_first_login",
         "can_reserve_for_others",
+        "guest_limit_res_for_others_display",
+        "free_limit_res_for_others_display",
+        "factory_limit_res_for_others_display",
         "date_joined",
         "food_receiver_role",
         "food_receiver_factory",
         "food_receiver_holding",
         # 'personnel_code' رو نمی‌ذاریم چون فیلتر روی CharField معنی نداره (مگر با SimpleListFilter)
     ]
+    # ویجت مناسب برای فیلدهای عددی (مثل ساعت رزرو کارخانه)
+    formfield_overrides = {
+        models.IntegerField: {
+            "widget": NumberInput(
+                attrs={
+                    "min": 0,
+                    "style": "width: 120px; text-align: center;",
+                }
+            )
+        },
+    }
+
+    def guest_limit_res_for_others_display(self, obj):
+        return obj.guest_limit_reservation_for_others
+
+    guest_limit_res_for_others_display.short_description = "محدودیت مهمان"
+    guest_limit_res_for_others_display.admin_order_field = "guest_limit_reservation_for_others"
+
+    def free_limit_res_for_others_display(self, obj):
+        return obj.free_limit_reservation_for_others
+
+    free_limit_res_for_others_display.short_description = "محدودیت آزاد"
+    free_limit_res_for_others_display.admin_order_field = "free_limit_reservation_for_others"
+
+    def factory_limit_res_for_others_display(self, obj):
+        return obj.factory_limit_reservation_for_others
+
+    factory_limit_res_for_others_display.short_description = "محدودیت سهمیه‌ای"
+    factory_limit_res_for_others_display.admin_order_field = "factory_limit_reservation_for_others"
+
+
+
+
+
+
 
     ordering = ["personnel_code", "last_name", "first_name"]  # مرتب‌سازی بهتر
     readonly_fields = ["date_joined", "last_login"]
