@@ -534,9 +534,7 @@
             if (!state) return; // اگر state نبود، چیزی نکن
 
             // جمع کل رزروهای فعلی (همه کارخانه‌ها) از state
-            let totalFactory = 0;
-            let totalFree    = 0;
-            let totalGuest   = 0;
+            let totalFactory = 0, totalFree = 0, totalGuest = 0;
 
             state.existing_reservations.forEach(res => {
                 totalFactory += res.factory_quantity || 0;
@@ -549,41 +547,59 @@
             const maxGuest   = parseInt(container.data('max-guest'))   || 0;
 
             let overType = null;
-            if (totalFactory > maxFactory) overType = 'factory';
-            else if (totalFree    > maxFree)    overType = 'free';
-            else if (totalGuest   > maxGuest)   overType = 'guest';
+            let excess = 0;
+
+            if (totalFactory > maxFactory) {
+                overType = 'factory';
+                excess = totalFactory - maxFactory;
+            } else if (totalFree > maxFree) {
+                overType = 'free';
+                excess = totalFree - maxFree;
+            } else if (totalGuest > maxGuest) {
+                overType = 'guest';
+                excess = totalGuest - maxGuest;
+            }
 
             if (overType && changedSlot) {
-                const currentQty = parseInt(changedSlot.find('.quantity-input').val()) || 0;
-                const slotType   = changedSlot.attr('data-price-type');
-
+                const slotType = changedSlot.attr('data-price-type');
                 if (slotType === overType) {
-                    const excess = totalFactory - maxFactory; // یا برای نوع مربوطه
+                    const currentQty = parseInt(changedSlot.find('.quantity-input').val()) || 0;
                     const newQty = Math.max(0, currentQty - excess);
+
                     changedSlot.find('.quantity-input').val(newQty);
+
+                    // پیام به کاربر
+                    const typeName = {
+                        'factory': 'سهمیه',
+                        'free':    'آزاد',
+                        'guest':   'مهمان'
+                    }[overType];
 
                     Swal.fire({
                         icon: 'warning',
                         title: 'محدودیت ثبت',
-                        text: `حداکثر مجاز برای ${overType === 'factory' ? 'سهمیه' : overType === 'free' ? 'آزاد' : 'مهمان'} ${maxFactory} عدد است.\nتعداد به ${newQty} تنظیم شد.`,
+                        text: `حداکثر مجاز برای ${typeName} ${ 
+                            overType === 'factory' ? maxFactory : 
+                            overType === 'free'    ? maxFree    : maxGuest 
+                        } عدد است.\nتعداد به ${newQty} تنظیم شد.`,
                         confirmButtonText: 'باشه'
                     });
 
-                    // آپدیت state بعد از تغییر qty
+                    // مهم: بعد از تغییر مقدار، state را آپدیت کن
                     syncSlotToDataReservations(changedSlot, state);
                 }
             }
 
             // محاسبه باقی‌مانده واقعی (کل state)
-            const restFactory = maxFactory - totalFactory;
-            const restFree    = maxFree    - totalFree;
-            const restGuest   = maxGuest   - totalGuest;
+            const restFactory = Math.max(0, maxFactory - totalFactory);
+            const restFree    = Math.max(0, maxFree    - totalFree);
+            const restGuest   = Math.max(0, maxGuest   - totalGuest);
 
             container.find('.remaining-display').html(`
                 باقی‌مانده → 
-                سهمیه: <strong>${restFactory < 0 ? 0 : restFactory}</strong> |
-                آزاد: <strong>${restFree < 0 ? 0 : restFree}</strong> |
-                مهمان: <strong>${restGuest < 0 ? 0 : restGuest}</strong>
+                سهمیه: <strong>${restFactory}</strong> |
+                آزاد: <strong>${restFree}</strong> |
+                مهمان: <strong>${restGuest}</strong>
             `);
 
             // مرتب‌سازی دوباره

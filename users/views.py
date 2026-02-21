@@ -3143,6 +3143,14 @@ def get_employee_reservation_info(request):
 @transaction.atomic
 @login_required
 def food_reservation_for_others(request):
+
+    today_gdate = date.today()
+    today_jdate = jdatetime.date.today()
+
+    max_factory_quantity_for_others = (request.user.factory_limit_reservation_for_others)
+    max_free_quantity_for_others = (request.user.free_limit_reservation_for_others)
+    max_guest_quantity_for_others = (request.user.guest_limit_reservation_for_others)
+    
     if request.method == "POST":
         action = request.POST.get("action")
 
@@ -3150,8 +3158,6 @@ def food_reservation_for_others(request):
 
             # مرحله ۱: parse خام به شکل employee → لیست سفارش‌ها
             raw_orders = defaultdict(list)
-
-            print(f"************ {request.POST}")
 
             for key, value_list in request.POST.lists():
                 if not key.startswith("full_reservations["):
@@ -3175,7 +3181,7 @@ def food_reservation_for_others(request):
             # مرحله ۲: merge سفارش‌ها برای هر کارمند (غذای یکسان → جمع مقادیر)
             merged_reservations = defaultdict(list)
 
-            print(f"ordersssssssssssssss{orders}")
+            # print(f"ordersssssssssssssss{orders}")
 
             for employee_id, orders in raw_orders.items():
                 food_map = defaultdict(
@@ -3221,7 +3227,7 @@ def food_reservation_for_others(request):
                         order.get("guest_quantity", 0)
                     )
 
-                print(f"food mapppppppppppppp{food_map}")
+                # print(f"food mapppppppppppppp{food_map}")
                 # تبدیل به لیست نهایی (فقط مواردی که حداقل یک مقدار > 0 دارند)
                 for food_id, qtys in food_map.items():
                     total_qty = sum(qtys.values())
@@ -3257,6 +3263,40 @@ def food_reservation_for_others(request):
                 except Employee.DoesNotExist:
                     messages.error(request, f"کارمند با شناسه {employee_id} یافت نشد.")
                     continue
+
+
+
+
+                can_guest = employee.unlimit_reservation
+                can_management = employee.can_reserve_management_food
+
+                total_factory_res = 0
+                total_free_res = 0
+                total_guest_res = 0
+
+                all_existing_reservations_qs = FoodReservation.objects.filter(
+                    employee=employee,
+                    reservation_date=today_gdate,  # تبدیل به میلادی
+                    is_canceled=False,
+                ).select_related("menu_item__food", "menu_item__weekly_menu__restaurant")
+
+                for res in all_existing_reservations_qs:
+                    total_factory_res = total_factory_res + int(res.factory_quantity)
+                    total_free_res = total_free_res + int(res.free_quantity)
+                    total_guest_res = total_guest_res + int(res.guest_quantity)
+
+                rest_of_factory = max_factory_quantity_for_others - total_factory_res
+                rest_of_free = max_free_quantity_for_others - total_free_res
+                rest_of_guest = max_guest_quantity_for_others - total_guest_res
+                
+
+
+
+
+
+
+
+
 
                 for item in items:
                     food_id = item["food_choice"]
@@ -3296,18 +3336,47 @@ def food_reservation_for_others(request):
                         related_factory_id=factory_id,
                     ).first()
 
+
+                    factory_quantity = 0
+                    free_quantity = 0
+                    guest_quantity = 0
+
+                    # آپدیت (جمع با مقادیر قبلی - اگر لازم است)
+                    if int(item["factory_quantity"]) < rest_of_factory:
+                        factory_quantity = int(item["factory_quantity"])
+                        rest_of_factory = (rest_of_factory - int(item["factory_quantity"])) if (rest_of_factory - int(item["factory_quantity"])) >= 0 else 0
+                    else:
+                        factory_quantity = rest_of_factory
+                        rest_of_factory = 0
+
+                    if int(item["free_quantity"]) < rest_of_free:
+                        free_quantity = int(item["free_quantity"])
+                        rest_of_free = (rest_of_free - int(item["free_quantity"])) if (rest_of_free - int(item["free_quantity"])) >= 0 else 0
+                    else:
+                        free_quantity = rest_of_free
+                        rest_of_free = 0
+
+                    if int(item["guest_quantity"]) < rest_of_guest:
+                        guest_quantity = int(item["guest_quantity"])
+                        rest_of_guest = (rest_of_guest - int(item["guest_quantity"])) if (rest_of_guest - int(item["guest_quantity"])) >= 0 else 0
+                    else:
+                        guest_quantity = rest_of_guest
+                        rest_of_guest = 0
+
+
+
                     total_price = (
-                        (menu_item.food.factory_price * int(item["factory_quantity"]))
-                        + (menu_item.food.free_price * int(item["free_quantity"]))
-                        + (menu_item.food.guest_price * int(item["guest_quantity"]))
+                        (menu_item.food.factory_price * factory_quantity)
+                        + (menu_item.food.free_price * free_quantity)
+                        + (menu_item.food.guest_price * guest_quantity)
                     )
 
                     reservation_is_canceled = 0
 
                     if (
-                        (int(item["factory_quantity"]) == 0)
-                        and (int(item["free_quantity"]) == 0)
-                        and (int(item["guest_quantity"]) == 0)
+                        (factory_quantity == 0)
+                        and (free_quantity == 0)
+                        and (guest_quantity == 0)
                     ):
                         reservation_is_canceled = 1
 
@@ -3317,15 +3386,13 @@ def food_reservation_for_others(request):
                             existing.is_canceled = reservation_is_canceled
 
                         else:
-                            # آپدیت (جمع با مقادیر قبلی - اگر لازم است)
-                            existing.factory_quantity = int(item["factory_quantity"])
-                            existing.free_quantity = int(item["free_quantity"])
-                            existing.guest_quantity = int(item["guest_quantity"])
+                            existing.factory_quantity = factory_quantity
+                            existing.free_quantity = free_quantity
+                            existing.guest_quantity = guest_quantity
                             existing.factory_price = menu_item.food.factory_price
                             existing.free_price = menu_item.food.free_price
                             existing.guest_price = menu_item.food.guest_price
                             existing.total_price = total_price
-                            # قیمت‌ها را اینجا محاسبه یا آپدیت کن (اگر لازم)
 
                         existing.save()
                     else:
@@ -3334,9 +3401,9 @@ def food_reservation_for_others(request):
                             employee=employee,
                             menu_item=menu_item,
                             reservation_date=today,
-                            factory_quantity=int(item["factory_quantity"]),
-                            free_quantity=int(item["free_quantity"]),
-                            guest_quantity=int(item["guest_quantity"]),
+                            factory_quantity=factory_quantity,
+                            free_quantity=free_quantity,
+                            guest_quantity=guest_quantity,
                             factory_price=menu_item.food.factory_price,
                             free_price=menu_item.food.free_price,
                             guest_price=menu_item.food.guest_price,
