@@ -97,7 +97,6 @@ from collections import defaultdict
 import re
 
 
-
 if sys.platform == "win32":
     os.system("chcp 65001 >nul")  # تغییر کدپیج کنسول به UTF-8
 
@@ -2200,8 +2199,6 @@ def restaurant_management_dashboard(request):
 
         filename = f"گزارش_کارخانه_{factory_name}_در بازه زمانی_{from_date_str.replace('/', '-')}_تا_{to_date_str.replace('/', '-')}"
 
-
-        
         # نسخه امن برای هدر
         encoded_filename = quote(filename)
 
