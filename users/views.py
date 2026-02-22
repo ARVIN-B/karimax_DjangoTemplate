@@ -3251,7 +3251,7 @@ def food_reservation_for_others(request):
 
                 all_existing_reservations_qs = FoodReservation.objects.filter(
                     employee=employee,
-                    reservation_date=today_gdate,  # تبدیل به میلادی
+                    reservation_date=today_gdate,
                     is_canceled=False,
                 ).select_related(
                     "menu_item__food", "menu_item__weekly_menu__restaurant"
