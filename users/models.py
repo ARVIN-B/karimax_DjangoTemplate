@@ -990,16 +990,6 @@ class FoodReservation(models.Model):
 
             tehran_aware_datetime = timezone.localtime(timezone.now())
 
-            # todo
-
-            # is_reservation_time_passed = tehran_aware_datetime.time() > time(
-            #     close_food_res_time_H, close_food_res_time_M
-            # )
-            # if is_reservation_time_passed:
-            #     raise ValidationError(
-            #         "رزرو غذا برای امروز فقط تا ساعت ۱۰ صبح امکان‌پذیر است."
-            #     )
-
         # فقط روزهای منو (شنبه تا پنج‌شنبه یا جمعه اگر منو داشت)
         if self.menu_item.weekly_menu.week_start_date > self.reservation_date:
             raise ValidationError("این غذا برای این تاریخ در منو موجود نیست.")

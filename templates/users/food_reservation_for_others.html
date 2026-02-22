@@ -86,13 +86,6 @@
 {% block extra_js %}
 
 <script>
-
-    // window.onerror = function(msg, url, line) {
-    //     $('#debug-output').append(
-    //         '\n\nJS ERROR:\n' + msg + '\nLine: ' + line
-    //     );
-    // };
-
     
     const URLS = {
         searchEmployees: "{% url 'users:search_employees' %}",
@@ -181,8 +174,6 @@
                 data: { q: employeeId },
                 dataType: "json",
                 success: function (data) {
-
-                    // $('#debug-output').text(JSON.stringify(data, null, 2));
 
                     // اگر برای این کارمند state نداریم → بساز
                     if (!employeeReservationStates[employeeId]) {

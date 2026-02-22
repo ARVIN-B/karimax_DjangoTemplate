@@ -2998,9 +2998,12 @@ def get_employee_reservation_info(request):
 
         available_menus = []
         available_factories = []
+        # menu_list = []
 
         for factory in factories:
 
+            # available_menus = []
+            # available_factories = []
             menu_list = []
 
             can_reserve_management_food = employee.can_reserve_management_food
@@ -3096,6 +3099,7 @@ def get_employee_reservation_info(request):
                         }
                     )
 
+        # print(f"******************{total_factory_res}")
         return JsonResponse(
             {
                 "found": True,
@@ -3162,6 +3166,8 @@ def food_reservation_for_others(request):
             # مرحله ۲: merge سفارش‌ها برای هر کارمند (غذای یکسان → جمع مقادیر)
             merged_reservations = defaultdict(list)
 
+            # print(f"ordersssssssssssssss{orders}")
+
             for employee_id, orders in raw_orders.items():
                 food_map = defaultdict(
                     lambda: {
@@ -3206,6 +3212,7 @@ def food_reservation_for_others(request):
                         order.get("guest_quantity", 0)
                     )
 
+                # print(f"food mapppppppppppppp{food_map}")
                 # تبدیل به لیست نهایی (فقط مواردی که حداقل یک مقدار > 0 دارند)
                 for food_id, qtys in food_map.items():
                     total_qty = sum(qtys.values())
@@ -3251,7 +3258,7 @@ def food_reservation_for_others(request):
 
                 all_existing_reservations_qs = FoodReservation.objects.filter(
                     employee=employee,
-                    reservation_date=today_gdate,
+                    reservation_date=today_gdate,  # تبدیل به میلادی
                     is_canceled=False,
                 ).select_related(
                     "menu_item__food", "menu_item__weekly_menu__restaurant"
@@ -3413,7 +3420,14 @@ def food_reservation_for_others(request):
                     reservation_date=date.today(),
                     is_canceled=False,
                 )
+                # if price_type == 'factory':
+                #     reservation.factory_quantity = max(0, reservation.factory_quantity - quantity)
+                # elif price_type == 'free':
+                #     reservation.free_quantity = max(0, reservation.free_quantity - quantity)
+                # elif price_type == 'guest':
+                #     reservation.guest_quantity = max(0, reservation.guest_quantity - quantity)
 
+                # if reservation.factory_quantity == 0 and reservation.free_quantity == 0 and reservation.guest_quantity == 0:
                 reservation.is_canceled = True
                 reservation.save()
 
@@ -5652,8 +5666,6 @@ def manage_bimeh(request):
                 if not depen.exists():
                     continue
 
-                # print(f"aaaaaaaaaaa{depen}")
-
             # --- اطلاعات مشترک ---
             bimeh = (
                 emp.bimeh.first()
@@ -5694,7 +5706,10 @@ def manage_bimeh(request):
                 organizational_unit = emp.department.name if emp.department else ""
 
             # --- اضافه کردن خود کارمند (بیمه‌شده اصلی) ---
-            # print(f"************{bimeh}")
+            # factory_ids, management_tree_1, is_holding_manager, managing_holdings_ids = get_factory_ids()
+            factory_name = related_factories.first().name
+            # print(factory_name)
+
             data_rows.append(
                 {
                     "ردیف بیمه شده": "",  # خالی می‌ماند یا می‌تونی شماره‌گذاری کنی
@@ -5764,6 +5779,7 @@ def manage_bimeh(request):
                     "کد کشور(فقط برای اتباع خارجی)": (
                         bimeh.country.code if bimeh and bimeh.country else ""
                     ),
+                    "نام کارخانه کارمند اصلی": factory_name,
                 }
             )
 
@@ -5862,6 +5878,7 @@ def manage_bimeh(request):
                         "کد کشور(فقط برای اتباع خارجی)": (
                             dep.country.code if dep.country else ""
                         ),
+                        "نام کارخانه کارمند اصلی": factory_name,
                     }
                 )
 
@@ -5912,6 +5929,10 @@ def manage_bimeh(request):
             (
                 "کد کشور(فقط برای اتباع خارجی)",
                 [row["کد کشور(فقط برای اتباع خارجی)"] for row in data_rows],
+            ),
+            (
+                "نام کارخانه کارمند اصلی",
+                [row["نام کارخانه کارمند اصلی"] for row in data_rows],
             ),
         ]
 
