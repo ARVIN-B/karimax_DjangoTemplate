@@ -1,4 +1,4 @@
-import jdatetime
+﻿import jdatetime
 import mimetypes
 import sys
 import pandas as pd
@@ -88,12 +88,14 @@ from chat_bot.chat_bot import chat_with_bot
 
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from urllib.parse import quote
 
 from django.core.serializers.json import DjangoJSONEncoder
 import json
 from autogen_agentchat.messages import TextMessage
 from collections import defaultdict
 import re
+
 
 
 if sys.platform == "win32":
@@ -1977,12 +1979,24 @@ def manage_self_menu(request):
         rows_free_qty = []
         rows_guest_qty = []
         rows_total_price = []
+        reserver = []
 
         total_debt = 0
 
         for res in reservations:
             jalali_date = jdatetime.date.fromgregorian(date=res.reservation_date)
             day_name = jalali_date.strftime("%A")  # شنبه، یکشنبه و...
+
+            if str(res.reserved_by) != "0":
+                employee = Employee.objects.filter(id=int(res.reserved_by)).first()
+                if employee:
+                    reserver_name = employee.full_name
+                else:
+                    reserver_name = "ناشناس"
+            else:
+                reserver_name = (
+                    Employee.objects.filter(id=res.employee_id).first().full_name
+                )
 
             rows_date.append(jalali_date.strftime("%Y/%m/%d"))
             rows_day.append(day_name)
@@ -1992,6 +2006,7 @@ def manage_self_menu(request):
             rows_free_qty.append(res.free_quantity)
             rows_guest_qty.append(res.guest_quantity)
             rows_total_price.append(res.total_price)
+            reserver.append(reserver_name)
 
             total_debt += res.total_price
 
@@ -2005,6 +2020,7 @@ def manage_self_menu(request):
             ("تعداد آزاد", rows_free_qty),
             ("تعداد مهمان", rows_guest_qty),
             ("هزینه کل سفارش (ریال)", rows_total_price),
+            ("رزرو کننده", reserver),
         ]
 
         today = jdatetime.date.today().strftime("%Y-%m-%d")
@@ -2109,6 +2125,90 @@ def restaurant_management_dashboard(request):
     if not restaurant.is_restaurant:
         messages.error(request, "زیربخش فعلی شما به عنوان رستوران تعریف نشده است.")
         return redirect("users:dashboard")
+
+    export_mode = request.GET.get("export")
+
+    # Export by custom jalali date range from dashboard button
+    if export_mode == "range":
+        factory_name = (
+            Factory.objects.filter(id=factory_id).first().name
+            if factory_id
+            else "unkwon_factory"
+        )
+        from_date_str = (request.GET.get("from_date") or "").strip()
+        to_date_str = (request.GET.get("to_date") or "").strip()
+
+        if not from_date_str or not to_date_str:
+            messages.error(request, "تاریخ شروع و پایان را وارد کنید.")
+            return redirect("users:restaurant_management_dashboard")
+
+        try:
+            from_jy, from_jm, from_jd = map(int, from_date_str.split("/"))
+            to_jy, to_jm, to_jd = map(int, to_date_str.split("/"))
+            from_gdate = jdatetime.date(from_jy, from_jm, from_jd).togregorian()
+            to_gdate = jdatetime.date(to_jy, to_jm, to_jd).togregorian()
+        except Exception:
+            messages.error(request, "فرمت تاریخ نامعتبر است.")
+            return redirect("users:restaurant_management_dashboard")
+
+        if from_gdate > to_gdate:
+            from_gdate, to_gdate = to_gdate, from_gdate
+            from_date_str, to_date_str = to_date_str, from_date_str
+
+        range_rows = (
+            FoodReservation.objects.filter(
+                menu_item__weekly_menu__restaurant=restaurant,
+                reservation_date__range=(from_gdate, to_gdate),
+                is_canceled=False,
+            )
+            .values("reservation_date", "menu_item__food__name")
+            .annotate(
+                quota_count=Sum("factory_quantity"),
+                extra_count=Sum("free_quantity"),
+                guest_count=Sum("guest_quantity"),
+            )
+            .order_by("reservation_date", "menu_item__food__name")
+        )
+
+        col_days, col_dates, col_foods = [], [], []
+        col_quota, col_extra, col_guest, col_total = [], [], [], []
+
+        for row in range_rows:
+            gdate = row["reservation_date"]
+            jdate = jdatetime.date.fromgregorian(date=gdate)
+            quota_count = row.get("quota_count") or 0
+            extra_count = row.get("extra_count") or 0
+            guest_count = row.get("guest_count") or 0
+
+            col_days.append(jdate.strftime("%A"))
+            col_dates.append(jdate.strftime("%Y/%m/%d"))
+            col_foods.append(row.get("menu_item__food__name") or "---")
+            col_quota.append(quota_count)
+            col_extra.append(extra_count)
+            col_guest.append(guest_count)
+            col_total.append(quota_count + extra_count + guest_count)
+
+        data_columns = [
+            ("روز هفته", col_days),
+            ("تاریخ", col_dates),
+            ("نام غذا", col_foods),
+            ("تعداد سهمیه (پرسنلی)", col_quota),
+            ("تعداد آزاد", col_extra),
+            ("تعداد مهمان", col_guest),
+            ("مجموع کل", col_total),
+        ]
+
+        filename = f"گزارش_کارخانه_{factory_name}_در بازه زمانی_{from_date_str.replace('/', '-')}_تا_{to_date_str.replace('/', '-')}"
+
+
+        
+        # نسخه امن برای هدر
+        encoded_filename = quote(filename)
+
+        report_title = f"گزارش رزرو غذا - {restaurant.name} - بازه {from_date_str} تا {to_date_str}"
+        return export_to_excel(
+            columns=data_columns, filename=encoded_filename, report_title=report_title
+        )
 
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
