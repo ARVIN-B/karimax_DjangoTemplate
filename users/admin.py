@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.admin.widgets import FilteredSelectMultiple
+from django import forms
 from django.utils.html import format_html
 from .models import (
     Employee,
@@ -318,10 +320,98 @@ class PermissionLevelAdmin(admin.ModelAdmin):
 admin.site.register(PermissionLevel, PermissionLevelAdmin)
 
 
+class EmployeeManagementAssignmentsForm(forms.ModelForm):
+    managed_holdings_assignments = forms.ModelMultipleChoiceField(
+        queryset=Holding.objects.none(),
+        required=False,
+        label="هلدینگ‌های مدیریتی (managers)",
+        widget=FilteredSelectMultiple("هلدینگ‌ها", is_stacked=False),
+    )
+    managed_factories_assignments = forms.ModelMultipleChoiceField(
+        queryset=Factory.objects.none(),
+        required=False,
+        label="کارخانه‌های مدیریتی (managers)",
+        widget=FilteredSelectMultiple("کارخانه‌ها", is_stacked=False),
+    )
+    managed_departments_assignments = forms.ModelMultipleChoiceField(
+        queryset=Department.objects.none(),
+        required=False,
+        label="بخش‌های مدیریتی (managers)",
+        widget=FilteredSelectMultiple("بخش‌ها", is_stacked=False),
+    )
+    supervised_subdepartments_assignments = forms.ModelMultipleChoiceField(
+        queryset=Subdepartment.objects.none(),
+        required=False,
+        label="زیربخش‌های سرپرستی (supervisors)",
+        widget=FilteredSelectMultiple("زیربخش‌ها", is_stacked=False),
+    )
+
+    class Meta:
+        model = Employee
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["managed_holdings_assignments"].queryset = Holding.objects.order_by(
+            "name"
+        )
+        self.fields["managed_factories_assignments"].queryset = Factory.objects.order_by(
+            "name"
+        )
+        self.fields[
+            "managed_departments_assignments"
+        ].queryset = Department.objects.order_by("name")
+        self.fields[
+            "supervised_subdepartments_assignments"
+        ].queryset = Subdepartment.objects.order_by("name")
+
+        if self.instance and self.instance.pk:
+            self.fields["managed_holdings_assignments"].initial = (
+                self.instance.managed_holdings_m2m.all()
+            )
+            self.fields["managed_factories_assignments"].initial = (
+                self.instance.managed_factories_m2m.all()
+            )
+            self.fields["managed_departments_assignments"].initial = (
+                self.instance.managed_departments_m2m.all()
+            )
+            self.fields["supervised_subdepartments_assignments"].initial = (
+                self.instance.supervised_subdepartments_m2m.all()
+            )
+
+    def _save_management_assignments(self):
+        if not self.instance.pk:
+            return
+
+        self.instance.managed_holdings_m2m.set(
+            self.cleaned_data.get("managed_holdings_assignments")
+        )
+        self.instance.managed_factories_m2m.set(
+            self.cleaned_data.get("managed_factories_assignments")
+        )
+        self.instance.managed_departments_m2m.set(
+            self.cleaned_data.get("managed_departments_assignments")
+        )
+        self.instance.supervised_subdepartments_m2m.set(
+            self.cleaned_data.get("supervised_subdepartments_assignments")
+        )
+
+    def save(self, commit=True):
+        instance = super().save(commit=commit)
+        if commit:
+            self._save_management_assignments()
+        return instance
+
+    def save_m2m(self):
+        super().save_m2m()
+        self._save_management_assignments()
+
+
 @admin.register(Employee)
 class EmployeeAdmin(UserAdmin):
     add_form_template = "admin/users/employee_add_form.html"
     change_form_template = "admin/users/employee_change_form.html"
+    form = EmployeeManagementAssignmentsForm
 
     # --- فرم ویرایش ---
     fieldsets = (
@@ -341,6 +431,18 @@ class EmployeeAdmin(UserAdmin):
         (
             "اطلاعات سازمانی",
             {"fields": ("assigned_subdepartments", "roles"), "classes": ("collapse",)},
+        ),
+        (
+            "انتساب‌های مدیریتی جدید",
+            {
+                "fields": (
+                    "managed_holdings_assignments",
+                    "managed_factories_assignments",
+                    "managed_departments_assignments",
+                    "supervised_subdepartments_assignments",
+                ),
+                "classes": ("collapse",),
+            },
         ),
         (
             "مجوزهای مربوط به سلف",
@@ -558,6 +660,27 @@ class EmployeeAdmin(UserAdmin):
         return "-"
 
     food_receiver_location.short_description = "محل تحویل‌گیری"
+
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+
+        obj = form.instance
+        if not obj or not obj.pk:
+            return
+
+        obj.managed_holdings_m2m.set(
+            form.cleaned_data.get("managed_holdings_assignments", [])
+        )
+        obj.managed_factories_m2m.set(
+            form.cleaned_data.get("managed_factories_assignments", [])
+        )
+        obj.managed_departments_m2m.set(
+            form.cleaned_data.get("managed_departments_assignments", [])
+        )
+        obj.supervised_subdepartments_m2m.set(
+            form.cleaned_data.get("supervised_subdepartments_assignments", [])
+        )
 
 
 @admin.register(Participation)
