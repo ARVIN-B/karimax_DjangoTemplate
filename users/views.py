@@ -177,10 +177,13 @@ def login_view(request):
                         is_committee = factory.is_committee
 
                 elif selected_role_name == "department_manager":
-                    department = Department.objects.filter(manager=user).first()
 
+                    # MARK: Self Managers Check : Done
                     department = Department.objects.filter(
-                        Q(manager=user) | Q(manager_2=user) | Q(manager_3=user)
+                        Q(manager=user)
+                        | Q(managers=user)
+                        | Q(manager_2=user)
+                        | Q(manager_3=user)
                     ).first()
                     if department:
 
@@ -193,16 +196,20 @@ def login_view(request):
                         )
                         is_committee = department.is_committee
 
-                        if department.manager == user:
+                        if (
+                            department.manager == user
+                            or department.managers.filter(id=user.id).exists()
+                        ):
                             real_role = "department_manager"
                         elif department.manager_2 == user:
                             real_role = "department_manager_2"
                         elif department.manager_3 == user:
                             real_role = "department_manager_3"
 
+                # MARK: Restaurant Supervisor Check : Done
                 elif selected_role_name == "supervisor":
                     subdepartment = Subdepartment.objects.filter(
-                        supervisor=user
+                        Q(supervisor=user) | Q(supervisors=user)
                     ).first()
                     if subdepartment:
                         subdepartment_id = subdepartment.id
@@ -256,17 +263,18 @@ def build_management_tree(user):
     هر سطح دارای 'role' اگر کاربر مدیر/سرپرست آن سطح باشد.
     """
 
+    # MARK: Self Managers and Restaurant Supervisor Check : Done
     # پیدا کردن تمام هلدینگ‌های مرتبط (جایی که کاربر در آن یا زیرمجموعه نقش دارد)
     related_holdings = (
         Holding.objects.filter(
             Q(manager=user)
             | Q(factories__manager=user)
             | Q(factories__departments__manager=user)
-            | Q(
-                factories__departments__manager_2=user
-            )  # 🌟 جدید: اضافه کردن manager_2 و manager_3 برای department
+            | Q(factories__departments__managers=user)
+            | Q(factories__departments__manager_2=user)
             | Q(factories__departments__manager_3=user)
             | Q(factories__departments__subdepartments__supervisor=user)
+            | Q(factories__departments__subdepartments__supervisors=user)
             | Q(factories__departments__subdepartments__assigned_employees=user)
         )
         .distinct()
@@ -283,17 +291,18 @@ def build_management_tree(user):
             "factories": [],
         }
 
+        # MARK: Self Managers and Restaurant Supervisor Check : Done
         # کارخانه‌های مرتبط در این هلدینگ
         related_factories = (
             Factory.objects.filter(holding=holding)
             .filter(
                 Q(manager=user)
                 | Q(departments__manager=user)
-                | Q(
-                    departments__manager_2=user
-                )  # 🌟 جدید: اضافه کردن manager_2 و manager_3
+                | Q(departments__managers=user)
+                | Q(departments__manager_2=user)
                 | Q(departments__manager_3=user)
                 | Q(departments__subdepartments__supervisor=user)
+                | Q(departments__subdepartments__supervisors=user)
                 | Q(departments__subdepartments__assigned_employees=user)
             )
             .distinct()
@@ -308,16 +317,17 @@ def build_management_tree(user):
                 "departments": [],
             }
 
+            # MARK: Self Managers and Restaurant Supervisor Check : Done
             # بخش‌های مرتبط در این کارخانه
             related_departments = (
                 Department.objects.filter(factory=factory)
                 .filter(
                     Q(manager=user)
-                    | Q(
-                        manager_2=user
-                    )  # 🌟 جدید: اضافه کردن manager_2 و manager_3 به فیلتر
+                    | Q(managers=user)
+                    | Q(manager_2=user)
                     | Q(manager_3=user)
                     | Q(subdepartments__supervisor=user)
+                    | Q(subdepartments__supervisors=user)
                     | Q(subdepartments__assigned_employees=user)
                 )
                 .distinct()
@@ -325,12 +335,15 @@ def build_management_tree(user):
             )
 
             for department in related_departments:
+
+                # MARK: Self Managers Check : Done
                 department_dict = {
                     "id": department.id,
                     "name": department.name,
                     "role": (
                         "department_manager"
                         if department.manager == user
+                        or department.managers.filter(id=user.id).exists()
                         or department.manager_2 == user
                         or department.manager_3 == user
                         else None
@@ -339,7 +352,12 @@ def build_management_tree(user):
                     "subdepartments": [],
                 }
                 roles = []
-                if department.manager == user:
+
+                # MARK: Self Managers Check : Done
+                if (
+                    department.manager == user
+                    or department.managers.filter(id=user.id).exists()
+                ):
                     roles.append("department_manager")
                 if department.is_committee:
                     if department.manager_2 == user:
@@ -348,17 +366,25 @@ def build_management_tree(user):
                         roles.append("department_manager_3")
                 department_dict["roles"] = roles if roles else None
 
+                # MARK: Restaurant Supervisor Check : Done
                 # زیربخش‌های مرتبط در این بخش
                 related_subdepartments = (
                     Subdepartment.objects.filter(department=department)
-                    .filter(Q(supervisor=user) | Q(assigned_employees=user))
+                    .filter(
+                        Q(supervisor=user)
+                        | Q(supervisors=user)
+                        | Q(assigned_employees=user)
+                    )
                     .distinct()
                     .order_by("name")
                 )
 
                 for subdepartment in related_subdepartments:
                     roles = []
-                    if subdepartment.supervisor == user:
+                    if (
+                        subdepartment.supervisor == user
+                        or subdepartment.supervisors.filter(id=user.id).exists()
+                    ):
                         roles.append("supervisor")
                     if user in subdepartment.assigned_employees.all():
                         roles.append("employee")
@@ -452,8 +478,14 @@ def switch_role(request):
             messages.error(request, "department_id الزامی است.")
             return redirect("users:dashboard")
 
+        # MARK: Self Managers Check : Done
         if real_role == "department_manager":
-            department = get_object_or_404(Department, id=department_id, manager=user)
+            # department = get_object_or_404(Department, id=department_id, manager=user)
+            department = get_object_or_404(
+                Department,
+                Q(manager=user) | Q(managers=user),
+                id=department_id,
+            )
         elif real_role == "department_manager_2":
             department = get_object_or_404(Department, id=department_id, manager_2=user)
         elif real_role == "department_manager_3":
@@ -474,8 +506,10 @@ def switch_role(request):
         if not subdepartment_id:
             messages.error(request, "subdepartment_id الزامی است.")
             return redirect("users:dashboard")
+
+        # MARK: Restaurant Supervisor Check : Done
         subdepartment = get_object_or_404(
-            Subdepartment, id=subdepartment_id, supervisor=user
+            Subdepartment, Q(supervisor=user) | Q(supervisors=user), id=subdepartment_id
         )
         department_id = subdepartment.department.id
         factory_id = subdepartment.department.factory.id
@@ -1394,22 +1428,26 @@ def management_dashboard(request):
 
     participations = participations[:PARTICIPATIONS_PER_LOAD]
 
-    # user_is_self_manager = Department.objects.filter(
-    #     manager=request.user,
-    #     is_self=True
-    # ).exists()
-
     user_is_self_manager = False
+
+    # MARK: Self Managers Check : Done
     if (
-        Department.objects.filter(id=department_id, is_self=True, manager=request.user)
+        Department.objects.filter(
+            Q(id=department_id),
+            Q(is_self=True),
+            Q(manager=request.user) | Q(managers=request.user),
+        )
         and role_name == "department_manager"
     ):
         user_is_self_manager = True
 
+    # MARK: Restaurant Managers Check : Done
     user_is_restaurant = False
     if (
         Subdepartment.objects.filter(
-            id=subdepartment_id, is_restaurant=True, supervisor=request.user
+            Q(id=subdepartment_id),
+            Q(is_restaurant=True),
+            Q(supervisor=request.user) | Q(supervisors=request.user),
         )
         and role_name == "supervisor"
     ):
@@ -1542,18 +1580,26 @@ def manage_self_menu(request):
 
     can_download_other_factories_resers = True
 
+    # MARK: Self Managers Check : Done
     # دسترسی فقط برای مدیر سلف
-    if not Department.objects.filter(manager=request.user, is_self=True).exists():
+    if not Department.objects.filter(
+        Q(manager=request.user) | Q(managers=request.user), is_self=True
+    ).exists():
         messages.error(request, "شما دسترسی به مدیریت منوی سلف ندارید.")
         return redirect("users:management_dashboard")
 
+    # MARK: Restaurant Managers and Self Managers Check : Done
     # رستوران‌ها
-    restaurants = Subdepartment.objects.filter(
-        department__manager=request.user,
-        department_id=department_id,
-        department__is_self=True,
-        is_restaurant=True,
-    ).select_related("department__factory")
+    restaurants = (
+        Subdepartment.objects.filter(
+            Q(department__manager=request.user) | Q(department__managers=request.user),
+            department_id=department_id,
+            department__is_self=True,
+            is_restaurant=True,
+        )
+        .select_related("department__factory")
+        .distinct()
+    )
 
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
@@ -2119,6 +2165,7 @@ def restaurant_management_dashboard(request):
         messages.error(request, "شما دسترسی به داشبورد مدیریت رستوران را ندارید.")
         return redirect("users:dashboard")
 
+    # MARK: Restaurant Supervisor Check : nothing changed
     restaurant = get_object_or_404(Subdepartment, id=subdepartment_id)
 
     if not restaurant.is_restaurant:
@@ -2927,16 +2974,20 @@ def food_reservation_view(request):
 
 
 def get_factory_ids(employee):
+
+    # MARK: Self Managers and Restaurant Supervisor Check : Done
     related_holdings = (
         Holding.objects.filter(
             Q(manager=employee)
             | Q(factories__manager=employee)
             | Q(factories__departments__manager=employee)
+            | Q(factories__departments__managers=employee)
             | Q(
                 factories__departments__manager_2=employee
             )  # 🌟 جدید: اضافه کردن manager_2 و manager_3 برای department
             | Q(factories__departments__manager_3=employee)
             | Q(factories__departments__subdepartments__supervisor=employee)
+            | Q(factories__departments__subdepartments__supervisors=employee)
             | Q(factories__departments__subdepartments__assigned_employees=employee)
         )
         .distinct()
@@ -2963,16 +3014,17 @@ def get_factory_ids(employee):
             managing_holdings_ids.append(holding.id)
 
         # کارخانه‌های مرتبط در این هلدینگ
+        # MARK: Self Managers and Restaurant Supervisor Check : Done
         related_factories = (
             Factory.objects.filter(holding=holding)
             .filter(
                 Q(manager=employee)
                 | Q(departments__manager=employee)
-                | Q(
-                    departments__manager_2=employee
-                )  # 🌟 جدید: اضافه کردن manager_2 و manager_3
+                | Q(departments__managers=employee)
+                | Q(departments__manager_2=employee)
                 | Q(departments__manager_3=employee)
                 | Q(departments__subdepartments__supervisor=employee)
+                | Q(departments__subdepartments__supervisors=employee)
                 | Q(departments__subdepartments__assigned_employees=employee)
             )
             .distinct()
@@ -2986,10 +3038,10 @@ def get_factory_ids(employee):
             }
             factory_ids.append(factory.id)
 
-        holding_dict["factories"].append(factory_dict)
+            holding_dict["factories"].append(factory_dict)
 
-    if holding_dict:
-        management_tree_1.append(holding_dict)
+        if holding_dict:
+            management_tree_1.append(holding_dict)
 
     return factory_ids, management_tree_1, is_holding_manager, managing_holdings_ids
 
@@ -5734,23 +5786,29 @@ def manage_bimeh(request):
             related_factories = Factory.objects.filter()
 
             if factory_bimeh:
+                # MARK: Self Managers and Restaurant Supervisor Check : Done
                 related_factories = related_factories.filter(id=factory_id).filter(
                     Q(manager=emp)
                     | Q(departments__manager=emp)
+                    | Q(departments__managers=emp)
                     | Q(departments__manager_2=emp)
                     | Q(departments__manager_3=emp)
                     | Q(departments__subdepartments__supervisor=emp)
+                    | Q(departments__subdepartments__supervisors=emp)
                     | Q(departments__subdepartments__assigned_employees=emp)
                 )
             if holding_bimeh and selected_factory_id:
+                # MARK: Self Managers and Restaurant Supervisor Check : Done
                 related_factories = related_factories.filter(
                     id=selected_factory_id
                 ).filter(
                     Q(manager=emp)
                     | Q(departments__manager=emp)
+                    | Q(departments__managers=emp)
                     | Q(departments__manager_2=emp)
                     | Q(departments__manager_3=emp)
                     | Q(departments__subdepartments__supervisor=emp)
+                    | Q(departments__subdepartments__supervisors=emp)
                     | Q(departments__subdepartments__assigned_employees=emp)
                 )
 

@@ -49,6 +49,12 @@ class Holding(models.Model):
         related_name="managed_holdings",
         verbose_name="مدیر هلدینگ",
     )
+    managers = models.ManyToManyField(
+        "Employee",
+        blank=True,
+        related_name="managed_holdings_m2m",
+        verbose_name="مدیران هلدینگ",
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
 
     class Meta:
@@ -69,6 +75,12 @@ class Factory(models.Model):
         blank=True,
         related_name="managed_factories",
         verbose_name="مدیر کارخانه",
+    )
+    managers = models.ManyToManyField(
+        "Employee",
+        blank=True,
+        related_name="managed_factories_m2m",
+        verbose_name="مدیران کارخانه",
     )
     holding = models.ForeignKey(
         Holding,
@@ -143,6 +155,12 @@ class Department(models.Model):
         blank=True,
         related_name="managed_departments",
         verbose_name="مدیر بخش",
+    )
+    managers = models.ManyToManyField(
+        "Employee",
+        blank=True,
+        related_name="managed_departments_m2m",
+        verbose_name="مدیران بخش",
     )
     manager_2 = models.ForeignKey(
         "Employee",
@@ -226,6 +244,12 @@ class Subdepartment(models.Model):
         blank=True,
         related_name="supervised_subdepartments",
         verbose_name="سرپرست زیربخش",
+    )
+    supervisors = models.ManyToManyField(
+        "Employee",
+        blank=True,
+        related_name="supervised_subdepartments_m2m",
+        verbose_name="سرپرستان زیربخش",
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
 
