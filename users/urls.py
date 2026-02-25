@@ -7,6 +7,11 @@ app_name = "users"
 
 urlpatterns = [
     path("login/", views.login_view, name="login"),
+    path(
+        "forgot-password-stub/",
+        views.forgot_password_stub_view,
+        name="forgot_password_stub",
+    ),
     path("users/", views.dashboard, name="dashboard"),
     path("profile/<int:user_id>/", views.user_profile, name="user_profile"),
     path("register/", views.register_user, name="register_user"),

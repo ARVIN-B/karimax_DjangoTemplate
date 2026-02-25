@@ -100,6 +100,9 @@
                         <small id="password_help" class="form-text text-muted">رمز عبور حداقل 8 کاراکتر باشد</small>
                     </div>
                     <button type="submit" class="btn btn-primary w-100 mb-3" aria-label="ورود به سیستم">ورود</button>
+                    <div class="text-center">
+                        <a href="#" id="forgot-password-link" class="small">فراموشی رمز عبور</a>
+                    </div>
                 </form>
             </div>
         </div>
@@ -112,10 +115,73 @@
     document.addEventListener('DOMContentLoaded', function () {
         const passwordInput = document.getElementById('password');
         const toggleButton = document.querySelector('.password-toggle');
+        const forgotPasswordLink = document.getElementById('forgot-password-link');
+        const csrfTokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+
         toggleButton.addEventListener('click', function () {
             const type = passwordInput.type === 'password' ? 'text' : 'password';
             passwordInput.type = type;
             toggleButton.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+        });
+
+        forgotPasswordLink.addEventListener('click', async function (e) {
+            e.preventDefault();
+
+            const result = await Swal.fire({
+                title: 'فراموشی رمز عبور',
+                text: 'کد ملی خود را وارد کنید',
+                input: 'text',
+                inputAttributes: {
+                    maxlength: 10,
+                    inputmode: 'numeric',
+                    dir: 'ltr'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'ارسال',
+                cancelButtonText: 'لغو',
+                preConfirm: (value) => {
+                    const nationalId = (value || '').trim();
+                    if (!/^\d{10}$/.test(nationalId)) {
+                        Swal.showValidationMessage('کد ملی باید 10 رقم باشد.');
+                        return false;
+                    }
+                    return nationalId;
+                }
+            });
+
+            if (!result.value) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('national_id', result.value);
+
+            try {
+                const response = await fetch("{% url 'users:forgot_password_stub' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfTokenInput ? csrfTokenInput.value : ''
+                    },
+                    body: formData
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.message || 'ارسال کد تأیید با مشکل مواجه شد. لطفاً دوباره تلاش کنید.');
+                }
+
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'ارسال شد',
+                    text: data.message || 'کد تأیید با موفقیت ارسال شد.'
+                });
+            } catch (error) {
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'خطا',
+                    text: error.message || 'خطا در ارسال کد تأیید'
+                });
+            }
         });
     });
 </script>

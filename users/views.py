@@ -81,6 +81,7 @@ from .forms import (
 from datetime import datetime, timedelta, time, date
 import speech_recognition as sr
 import os
+import requests
 from STT_full_file.speech_recognition_full_file import STT_full_file_wave, STT_full_file
 from text_summarizer.text_summarizer import summarizer
 from save_to_word_pdf.save_w_p import save_as_word, save_as_pdf
@@ -107,6 +108,8 @@ if sys.platform == "win32":
 
 PARTICIPATIONS_PER_LOAD = 1000
 BASE_COST_PER_PARTICIPATION = 500000
+PARSGREEN_SEND_OTP_URL = "https://sms.parsgreen.ir/Apiv2/Message/SendOtp"
+PARSGREEN_DEFAULT_API_KEY = "0E1A21CA-3729-40DD-A37C-387E3CB5982C"
 
 
 def login_view(request):
@@ -250,6 +253,146 @@ def login_view(request):
         else:
             messages.error(request, "کد ملی یا رمز عبور اشتباه است.")
     return render(request, "users/login.html")
+
+
+def _normalize_mobile_number(raw_phone):
+    if not raw_phone:
+        return None
+
+    phone = str(raw_phone).strip().replace(" ", "").replace("-", "")
+
+    if phone.startswith("+98"):
+        phone = "0" + phone[3:]
+    elif phone.startswith("0098"):
+        phone = "0" + phone[4:]
+    elif phone.startswith("98"):
+        phone = "0" + phone[2:]
+
+    if not phone.isdigit():
+        return None
+
+    if len(phone) != 11 or not phone.startswith("09"):
+        return None
+
+    return phone
+
+
+def _send_parsgreen_otp(mobile, otp_code):
+    api_key = (getattr(settings, "PARSGREEN_SMS_API_KEY", "") or "").strip()
+    if not api_key:
+        api_key = PARSGREEN_DEFAULT_API_KEY
+
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": f"basic apikey:{api_key}",
+    }
+    payload = {
+        "Mobile": mobile,
+        "SmsCode": otp_code,
+        "AddName": True,
+    }
+
+    try:
+        response = requests.post(
+            PARSGREEN_SEND_OTP_URL,
+            headers=headers,
+            json=payload,
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        return False, "خطا در ارتباط با سامانه پیامکی.", {"exception": str(exc)}
+
+    try:
+        data = response.json()
+    except ValueError:
+        data = {}
+
+    success = (
+        response.status_code < 400
+        and bool(data.get("R_Success"))
+        and int(data.get("R_Code", 0)) == 0
+    )
+    if success:
+        return True, data.get("R_Message") or "کد OTP با موفقیت ارسال شد.", data
+
+    return False, data.get("R_Message") or "ارسال OTP ناموفق بود.", data
+
+
+def forgot_password_stub_view(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "message": "متد نامعتبر است."}, status=405)
+
+    national_id = (request.POST.get("national_id") or "").strip()
+    if not re.fullmatch(r"\d{10}", national_id):
+        return JsonResponse(
+            {"ok": False, "message": "کد ملی باید ۱۰ رقم باشد."},
+            status=400,
+        )
+
+    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
+    if not employee:
+        return JsonResponse(
+            {"ok": False, "message": "کاربری با این کد ملی یافت نشد."},
+            status=404,
+        )
+
+    raw_phone = (employee.phone_number or "").strip()
+    if not raw_phone:
+        return JsonResponse(
+            {"ok": False, "message": "برای این کاربر شماره موبایل ثبت نشده است."},
+            status=400,
+        )
+
+    mobile = _normalize_mobile_number(raw_phone)
+    if not mobile:
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": "شماره موبایل نامعتبر است. باید 11 رقمی و با 09 شروع شود.",
+            },
+            status=400,
+        )
+
+    otp_code = get_random_string(5, allowed_chars="0123456789")
+    sent, provider_message, provider_data = _send_parsgreen_otp(mobile, otp_code)
+
+    print(
+        "forgot_password_stub_view:",
+        {
+            "national_id": national_id,
+            "raw_phone": raw_phone,
+            "normalized_phone": mobile,
+            "otp_code": otp_code,
+            "sent": sent,
+            "provider_message": provider_message,
+            "provider_data": provider_data,
+        },
+    )
+
+    if not sent:
+        status_code = 503 if "exception" in provider_data else 400
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": provider_message,
+                "debug": provider_data if settings.DEBUG else None,
+            },
+            status=status_code,
+        )
+
+    response_data = {
+        "ok": True,
+        "message": provider_message,
+    }
+    if settings.DEBUG and request.POST.get("debug") == "1":
+        response_data["debug"] = {
+            "normalized_phone": mobile,
+            "otp_code": otp_code,
+            "provider_data": provider_data,
+        }
+
+    return JsonResponse(response_data)
 
 
 # 🌟 جدید: تابع کمکی برای ساخت درخت نقش‌های مدیریتی
