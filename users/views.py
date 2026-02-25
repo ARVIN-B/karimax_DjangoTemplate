@@ -8,6 +8,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.hashers import make_password
 from django import forms
@@ -109,10 +110,13 @@ if sys.platform == "win32":
 
 PARTICIPATIONS_PER_LOAD = 1000
 BASE_COST_PER_PARTICIPATION = 500000
+PARSGREEN_SEND_SMS_URL = "https://sms.parsgreen.ir/Apiv2/Message/SendSms"
 PARSGREEN_SEND_OTP_URL = "https://sms.parsgreen.ir/Apiv2/Message/SendOtp"
 PARSGREEN_DEFAULT_API_KEY = "0E1A21CA-3729-40DD-A37C-387E3CB5982C"
 FORGOT_PASSWORD_SESSION_KEY = "forgot_password_otp_state"
+FORGOT_PASSWORD_VERIFIED_SESSION_KEY = "forgot_password_verified_state"
 FORGOT_PASSWORD_OTP_EXPIRE_SECONDS = 180
+FORGOT_PASSWORD_VERIFIED_EXPIRE_SECONDS = 600
 
 
 def _resolve_login_backend(user):
@@ -189,7 +193,10 @@ def _login_user_and_initialize_session(request, user):
                 department.factory.holding.id if department.factory.holding else None
             )
             is_committee = department.is_committee
-            if department.manager == user or department.managers.filter(id=user.id).exists():
+            if (
+                department.manager == user
+                or department.managers.filter(id=user.id).exists()
+            ):
                 real_role = "department_manager"
             elif department.manager_2 == user:
                 real_role = "department_manager_2"
@@ -264,46 +271,118 @@ def _normalize_mobile_number(raw_phone):
     return phone
 
 
-def _send_parsgreen_otp(mobile, otp_code):
+def _build_password_reset_sms_body(otp_code, origin_host):
+    host = (origin_host or "karimax.ir").strip()
+    host = host.split(":")[0].lower()
+    if not host:
+        host = "karimax.ir"
+
+    return "\n".join(
+        [
+            "karimax.ir",
+            f"کد تایید بازیابی رمز عبور: {otp_code}",
+            "اعتبار کد: 3 دقیقه",
+            f"@{host} #{otp_code}",
+        ]
+    )
+
+
+def _send_parsgreen_otp(mobile, otp_code, origin_host=None):
     api_key = (getattr(settings, "PARSGREEN_SMS_API_KEY", "") or "").strip()
     if not api_key:
         api_key = PARSGREEN_DEFAULT_API_KEY
+
+    sms_number = (
+        getattr(settings, "PARSGREEN_SMS_NUMBER", "")
+        or getattr(settings, "PARSGREEN_SMS_SENDER", "")
+        or ""
+    )
+    sms_number = str(sms_number).strip()
 
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "Authorization": f"basic apikey:{api_key}",
     }
-    payload = {
+    custom_sms_error = None
+
+    if sms_number:
+        custom_payload = {
+            "SmsBody": _build_password_reset_sms_body(otp_code, origin_host),
+            "Mobiles": [mobile],
+            "SmsNumber": sms_number,
+        }
+
+        try:
+            response = requests.post(
+                PARSGREEN_SEND_SMS_URL,
+                headers=headers,
+                json=custom_payload,
+                timeout=15,
+            )
+        except requests.RequestException as exc:
+            custom_sms_error = {"exception": str(exc)}
+        else:
+            try:
+                data = response.json()
+            except ValueError:
+                data = {}
+
+            success_count_raw = data.get("SuccessCount", None)
+            try:
+                success_count_ok = (
+                    success_count_raw is None or int(success_count_raw) >= 1
+                )
+            except (TypeError, ValueError):
+                success_count_ok = True
+
+            custom_success = (
+                response.status_code < 400
+                and bool(data.get("R_Success"))
+                and int(data.get("R_Code", 0)) == 0
+                and success_count_ok
+            )
+            if custom_success:
+                return True, "کد تایید ارسال شد.", data
+
+            custom_sms_error = data or {"status_code": response.status_code}
+
+    otp_payload = {
         "Mobile": mobile,
         "SmsCode": otp_code,
         "AddName": True,
     }
-
     try:
-        response = requests.post(
+        otp_response = requests.post(
             PARSGREEN_SEND_OTP_URL,
             headers=headers,
-            json=payload,
+            json=otp_payload,
             timeout=15,
         )
     except requests.RequestException as exc:
-        return False, "خطا در ارتباط با سامانه پیامکی.", {"exception": str(exc)}
+        data = {"exception": str(exc)}
+        if custom_sms_error:
+            data["custom_sms_error"] = custom_sms_error
+        return False, "خطا در ارتباط با سامانه پیامکی.", data
 
     try:
-        data = response.json()
+        otp_data = otp_response.json()
     except ValueError:
-        data = {}
+        otp_data = {}
 
-    success = (
-        response.status_code < 400
-        and bool(data.get("R_Success"))
-        and int(data.get("R_Code", 0)) == 0
+    otp_success = (
+        otp_response.status_code < 400
+        and bool(otp_data.get("R_Success"))
+        and int(otp_data.get("R_Code", 0)) == 0
     )
-    if success:
-        return True, data.get("R_Message") or "کد OTP با موفقیت ارسال شد.", data
+    if otp_success:
+        if custom_sms_error:
+            otp_data["fallback_used"] = True
+        return True, "کد تایید ارسال شد.", otp_data
 
-    return False, data.get("R_Message") or "ارسال OTP ناموفق بود.", data
+    if custom_sms_error:
+        otp_data["custom_sms_error"] = custom_sms_error
+    return False, otp_data.get("R_Message") or "ارسال OTP ناموفق بود.", otp_data
 
 
 def forgot_password_stub_view(request):
@@ -341,9 +420,11 @@ def forgot_password_stub_view(request):
             status=400,
         )
 
-    # otp_code = get_random_string(5, allowed_chars="0123456789")
+    otp_code = get_random_string(5, allowed_chars="0123456789")
     otp_code = "12345"
-    sent, provider_message, provider_data = _send_parsgreen_otp(mobile, otp_code)
+    sent, provider_message, provider_data = _send_parsgreen_otp(
+        mobile, otp_code, request.get_host()
+    )
 
     print(
         "forgot_password_stub_view:",
@@ -377,6 +458,7 @@ def forgot_password_stub_view(request):
         ).isoformat(),
         "attempts": 0,
     }
+    request.session.pop(FORGOT_PASSWORD_VERIFIED_SESSION_KEY, None)
     request.session.modified = True
 
     response_data = {
@@ -423,7 +505,9 @@ def forgot_password_verify_stub_view(request):
     try:
         expires_at = datetime.fromisoformat(expires_at_raw)
         if timezone.is_naive(expires_at):
-            expires_at = timezone.make_aware(expires_at, timezone.get_current_timezone())
+            expires_at = timezone.make_aware(
+                expires_at, timezone.get_current_timezone()
+            )
     except (TypeError, ValueError):
         request.session.pop(FORGOT_PASSWORD_SESSION_KEY, None)
         return JsonResponse(
@@ -464,17 +548,107 @@ def forgot_password_verify_stub_view(request):
             status=404,
         )
 
-    # employee.is_first_login = True
-    # employee.save(update_fields=["is_first_login"])
     request.session.pop(FORGOT_PASSWORD_SESSION_KEY, None)
-
-    _login_user_and_initialize_session(request, employee)
+    request.session[FORGOT_PASSWORD_VERIFIED_SESSION_KEY] = {
+        "national_id": national_id,
+        "expires_at": (
+            timezone.now() + timedelta(seconds=FORGOT_PASSWORD_VERIFIED_EXPIRE_SECONDS)
+        ).isoformat(),
+    }
+    request.session.modified = True
 
     return JsonResponse(
         {
             "ok": True,
-            "message": "کد تایید شد.",
-            "redirect_url": reverse("users:change_password"),
+            "message": "کد تایید شد. رمز عبور جدید را وارد کنید.",
+        }
+    )
+
+
+def forgot_password_set_password_stub_view(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "message": "متد نامعتبر است."}, status=405)
+
+    national_id = (request.POST.get("national_id") or "").strip()
+    new_password = (request.POST.get("new_password") or "").strip()
+    confirm_password = (request.POST.get("confirm_password") or "").strip()
+
+    if not re.fullmatch(r"\d{10}", national_id):
+        return JsonResponse(
+            {"ok": False, "message": "کد ملی باید ۱۰ رقم باشد."},
+            status=400,
+        )
+
+    if not new_password:
+        return JsonResponse(
+            {"ok": False, "message": "رمز عبور جدید را وارد کنید."},
+            status=400,
+        )
+
+    if new_password != confirm_password:
+        return JsonResponse(
+            {"ok": False, "message": "رمز عبور و تکرار آن یکسان نیست."},
+            status=400,
+        )
+
+    verified_state = request.session.get(FORGOT_PASSWORD_VERIFIED_SESSION_KEY) or {}
+    if not verified_state or verified_state.get("national_id") != national_id:
+        return JsonResponse(
+            {"ok": False, "message": "ابتدا کد تایید را به‌درستی وارد کنید."},
+            status=400,
+        )
+
+    expires_at_raw = verified_state.get("expires_at")
+    try:
+        expires_at = datetime.fromisoformat(expires_at_raw)
+        if timezone.is_naive(expires_at):
+            expires_at = timezone.make_aware(
+                expires_at, timezone.get_current_timezone()
+            )
+    except (TypeError, ValueError):
+        request.session.pop(FORGOT_PASSWORD_VERIFIED_SESSION_KEY, None)
+        return JsonResponse(
+            {"ok": False, "message": "درخواست بازیابی نامعتبر است."},
+            status=400,
+        )
+
+    if timezone.now() > expires_at:
+        request.session.pop(FORGOT_PASSWORD_VERIFIED_SESSION_KEY, None)
+        return JsonResponse(
+            {"ok": False, "message": "زمان ثبت رمز جدید به پایان رسیده است."},
+            status=400,
+        )
+
+    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
+    if not employee:
+        request.session.pop(FORGOT_PASSWORD_VERIFIED_SESSION_KEY, None)
+        return JsonResponse(
+            {"ok": False, "message": "کاربر یافت نشد."},
+            status=404,
+        )
+
+    try:
+        validate_password(new_password, user=employee)
+    except ValidationError as exc:
+        return JsonResponse(
+            {"ok": False, "message": " ".join(exc.messages)},
+            status=400,
+        )
+
+    employee.set_password(new_password)
+    employee.is_first_login = False
+    employee.save(update_fields=["password", "is_first_login"])
+
+    request.session.pop(FORGOT_PASSWORD_VERIFIED_SESSION_KEY, None)
+    request.session.pop(FORGOT_PASSWORD_SESSION_KEY, None)
+    request.session.modified = True
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "message": "رمز عبور با موفقیت تغییر کرد. با رمز جدید وارد شوید.",
+            "redirect_url": reverse("users:login"),
+            "national_id": national_id,
         }
     )
 

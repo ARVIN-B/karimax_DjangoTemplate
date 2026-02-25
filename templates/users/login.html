@@ -116,8 +116,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const passwordInput = document.getElementById('password');
     const toggleButton = document.querySelector('.password-toggle');
     const forgotPasswordLink = document.getElementById('forgot-password-link');
+    const nationalIdInput = document.getElementById('national_id');
     const csrfTokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
     const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+    let otpAbortController = null;
 
     toggleButton.addEventListener('click', function () {
         const type = passwordInput.type === 'password' ? 'text' : 'password';
@@ -126,6 +128,25 @@ document.addEventListener('DOMContentLoaded', function () {
             ? '<i class="fas fa-eye"></i>'
             : '<i class="fas fa-eye-slash"></i>';
     });
+
+    function fillOtpInputs(rawCode) {
+        const digits = (rawCode || '').replace(/\D/g, '').slice(0, 5);
+        if (!digits) {
+            return;
+        }
+
+        const inputs = Array.from(document.querySelectorAll('.otp-digit'));
+        digits.split('').forEach((char, index) => {
+            if (inputs[index]) {
+                inputs[index].value = char;
+            }
+        });
+
+        const focusIndex = Math.min(digits.length, inputs.length - 1);
+        if (inputs[focusIndex]) {
+            inputs[focusIndex].focus();
+        }
+    }
 
     function setupOtpInputs() {
         const inputs = Array.from(document.querySelectorAll('.otp-digit'));
@@ -137,9 +158,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
         inputs.forEach((input, index) => {
             input.addEventListener('input', function (event) {
-                const digit = (event.target.value || '').replace(/\D/g, '').slice(0, 1);
-                event.target.value = digit;
-                if (digit && index < inputs.length - 1) {
+                const cleaned = (event.target.value || '').replace(/\D/g, '');
+
+                if (!cleaned) {
+                    event.target.value = '';
+                    return;
+                }
+
+                if (cleaned.length > 1) {
+                    event.target.value = cleaned[0];
+                    for (let i = 1; i < cleaned.length && (index + i) < inputs.length; i += 1) {
+                        inputs[index + i].value = cleaned[i];
+                    }
+                    const focusIndex = Math.min(index + cleaned.length, inputs.length - 1);
+                    inputs[focusIndex].focus();
+                    return;
+                }
+
+                event.target.value = cleaned;
+                if (index < inputs.length - 1) {
                     inputs[index + 1].focus();
                 }
             });
@@ -167,13 +204,126 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function startWebOtpListener() {
+        const canUseWebOtp = window.isSecureContext
+            && 'OTPCredential' in window
+            && navigator.credentials
+            && typeof navigator.credentials.get === 'function';
+
+        if (!canUseWebOtp) {
+            return;
+        }
+
+        otpAbortController = new AbortController();
+        const timeoutId = setTimeout(() => {
+            if (otpAbortController) {
+                otpAbortController.abort();
+            }
+        }, 60000);
+
+        navigator.credentials.get({
+            otp: { transport: ['sms'] },
+            signal: otpAbortController.signal
+        }).then((otp) => {
+            if (otp && otp.code) {
+                fillOtpInputs(otp.code);
+            }
+        }).catch(() => {
+        }).finally(() => {
+            clearTimeout(timeoutId);
+        });
+    }
+
+    async function openSetPasswordModal(nationalId) {
+        const setPasswordResult = await Swal.fire({
+            title: 'رمز عبور جدید',
+            html: `
+                <div class="text-start">
+                    <label for="new-password-input" class="form-label">رمز عبور جدید</label>
+                    <input id="new-password-input" type="password" class="form-control mb-3" autocomplete="new-password" />
+                    <label for="confirm-password-input" class="form-label">تکرار رمز عبور جدید</label>
+                    <input id="confirm-password-input" type="password" class="form-control" autocomplete="new-password" />
+                    <small class="text-muted d-block mt-2">حداقل ۶ کاراکتر</small>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'ثبت رمز جدید',
+            cancelButtonText: 'انصراف',
+            focusConfirm: false,
+            showLoaderOnConfirm: true,
+            allowOutsideClick: () => !Swal.isLoading(),
+            preConfirm: async () => {
+                const newPassword = (document.getElementById('new-password-input').value || '').trim();
+                const confirmPassword = (document.getElementById('confirm-password-input').value || '').trim();
+
+                if (!newPassword || !confirmPassword) {
+                    Swal.showValidationMessage('رمز عبور جدید و تکرار آن الزامی است.');
+                    return false;
+                }
+
+                if (newPassword.length < 6) {
+                    Swal.showValidationMessage('رمز عبور باید حداقل ۶ کاراکتر باشد.');
+                    return false;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    Swal.showValidationMessage('رمز عبور و تکرار آن یکسان نیست.');
+                    return false;
+                }
+
+                const formData = new FormData();
+                formData.append('national_id', nationalId);
+                formData.append('new_password', newPassword);
+                formData.append('confirm_password', confirmPassword);
+
+                try {
+                    const response = await fetch("{% url 'users:forgot_password_set_password_stub' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken },
+                        body: formData
+                    });
+
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || !data.ok) {
+                        Swal.showValidationMessage(data.message || 'ثبت رمز عبور جدید ناموفق بود.');
+                        return false;
+                    }
+
+                    return data;
+                } catch (error) {
+                    Swal.showValidationMessage('خطا در ارتباط با سرور.');
+                    return false;
+                }
+            }
+        });
+
+        if (!setPasswordResult.isConfirmed || !setPasswordResult.value) {
+            return;
+        }
+
+        await Swal.fire({
+            icon: 'success',
+            title: 'انجام شد',
+            text: setPasswordResult.value.message || 'رمز عبور با موفقیت تغییر کرد.'
+        });
+
+        if (nationalIdInput) {
+            nationalIdInput.value = nationalId;
+            nationalIdInput.focus();
+        }
+
+        if (passwordInput) {
+            passwordInput.value = '';
+        }
+    }
+
     async function openOtpModal(nationalId) {
         const verifyResult = await Swal.fire({
             title: 'کد تایید',
             html: `
                 <p class="mb-3">کد ۵ رقمی ارسال شده را وارد کنید.</p>
                 <div style="display:flex;justify-content:center;gap:8px;direction:ltr;">
-                    <input class="otp-digit form-control text-center" type="text" inputmode="numeric" maxlength="1" style="width:48px;height:48px;font-size:22px;padding:0;" />
+                    <input class="otp-digit form-control text-center" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" style="width:48px;height:48px;font-size:22px;padding:0;" />
                     <input class="otp-digit form-control text-center" type="text" inputmode="numeric" maxlength="1" style="width:48px;height:48px;font-size:22px;padding:0;" />
                     <input class="otp-digit form-control text-center" type="text" inputmode="numeric" maxlength="1" style="width:48px;height:48px;font-size:22px;padding:0;" />
                     <input class="otp-digit form-control text-center" type="text" inputmode="numeric" maxlength="1" style="width:48px;height:48px;font-size:22px;padding:0;" />
@@ -186,7 +336,16 @@ document.addEventListener('DOMContentLoaded', function () {
             focusConfirm: false,
             showLoaderOnConfirm: true,
             allowOutsideClick: () => !Swal.isLoading(),
-            didOpen: setupOtpInputs,
+            didOpen: () => {
+                setupOtpInputs();
+                startWebOtpListener();
+            },
+            willClose: () => {
+                if (otpAbortController) {
+                    otpAbortController.abort();
+                    otpAbortController = null;
+                }
+            },
             preConfirm: async () => {
                 const otpCode = Array.from(document.querySelectorAll('.otp-digit'))
                     .map((input) => input.value || '')
@@ -223,8 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         if (verifyResult.isConfirmed && verifyResult.value) {
-            const redirectUrl = verifyResult.value.redirect_url || "{% url 'users:change_password' %}";
-            window.location.href = redirectUrl;
+            await openSetPasswordModal(nationalId);
         }
     }
 
