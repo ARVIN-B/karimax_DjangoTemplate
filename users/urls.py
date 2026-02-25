@@ -12,6 +12,11 @@ urlpatterns = [
         views.forgot_password_stub_view,
         name="forgot_password_stub",
     ),
+    path(
+        "forgot-password-verify-stub/",
+        views.forgot_password_verify_stub_view,
+        name="forgot_password_verify_stub",
+    ),
     path("users/", views.dashboard, name="dashboard"),
     path("profile/<int:user_id>/", views.user_profile, name="user_profile"),
     path("register/", views.register_user, name="register_user"),

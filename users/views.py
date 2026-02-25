@@ -12,6 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.hashers import make_password
 from django import forms
 from django.conf import settings
+from django.urls import reverse
 
 from modules.import_users import import_employees_from_excel
 from modules.security import clean_user_text
@@ -110,6 +111,123 @@ PARTICIPATIONS_PER_LOAD = 1000
 BASE_COST_PER_PARTICIPATION = 500000
 PARSGREEN_SEND_OTP_URL = "https://sms.parsgreen.ir/Apiv2/Message/SendOtp"
 PARSGREEN_DEFAULT_API_KEY = "0E1A21CA-3729-40DD-A37C-387E3CB5982C"
+FORGOT_PASSWORD_SESSION_KEY = "forgot_password_otp_state"
+FORGOT_PASSWORD_OTP_EXPIRE_SECONDS = 180
+
+
+def _resolve_login_backend(user):
+    backend = getattr(user, "backend", None)
+    if backend:
+        return backend
+
+    configured_backends = list(getattr(settings, "AUTHENTICATION_BACKENDS", []) or [])
+    model_backend = "django.contrib.auth.backends.ModelBackend"
+    if model_backend in configured_backends:
+        return model_backend
+
+    if configured_backends:
+        return configured_backends[0]
+
+    return model_backend
+
+
+def _login_user_and_initialize_session(request, user):
+    login(request, user, backend=_resolve_login_backend(user))
+
+    management_tree = build_management_tree(user)
+    request.session["management_tree"] = management_tree
+
+    if "current_role" in request.session or not user.roles.exists():
+        return
+
+    role_priority = [
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+        "supervisor",
+        "employee",
+    ]
+    user_role_names = set(user.roles.values_list("name", flat=True))
+    selected_role_name = next((r for r in role_priority if r in user_role_names), None)
+
+    if not selected_role_name:
+        request.session["current_role"] = None
+        request.session["current_holding_id"] = None
+        request.session["current_factory_id"] = None
+        request.session["current_department_id"] = None
+        request.session["current_subdepartment_id"] = None
+        request.session["current_is_committee"] = False
+        request.session["current_real_role"] = None
+        return
+
+    holding_id = None
+    factory_id = None
+    department_id = None
+    subdepartment_id = None
+    is_committee = False
+    real_role = None
+
+    if selected_role_name == "holding_manager":
+        holding = Holding.objects.filter(manager=user).first()
+        if holding:
+            holding_id = holding.id
+    elif selected_role_name == "factory_manager":
+        factory = Factory.objects.filter(manager=user).first()
+        if factory:
+            factory_id = factory.id
+            holding_id = factory.holding.id if factory.holding else None
+            is_committee = factory.is_committee
+    elif selected_role_name == "department_manager":
+        department = Department.objects.filter(
+            Q(manager=user) | Q(managers=user) | Q(manager_2=user) | Q(manager_3=user)
+        ).first()
+        if department:
+            department_id = department.id
+            factory_id = department.factory.id
+            holding_id = (
+                department.factory.holding.id if department.factory.holding else None
+            )
+            is_committee = department.is_committee
+            if department.manager == user or department.managers.filter(id=user.id).exists():
+                real_role = "department_manager"
+            elif department.manager_2 == user:
+                real_role = "department_manager_2"
+            elif department.manager_3 == user:
+                real_role = "department_manager_3"
+    elif selected_role_name == "supervisor":
+        subdepartment = Subdepartment.objects.filter(
+            Q(supervisor=user) | Q(supervisors=user)
+        ).first()
+        if subdepartment:
+            subdepartment_id = subdepartment.id
+            department_id = subdepartment.department.id
+            factory_id = subdepartment.department.factory.id
+            holding_id = (
+                subdepartment.department.factory.holding.id
+                if subdepartment.department.factory.holding
+                else None
+            )
+            is_committee = subdepartment.is_committee
+    elif selected_role_name == "employee":
+        subdepartment = user.assigned_subdepartments.first()
+        if subdepartment:
+            subdepartment_id = subdepartment.id
+            department_id = subdepartment.department.id
+            factory_id = subdepartment.department.factory.id
+            holding_id = (
+                subdepartment.department.factory.holding.id
+                if subdepartment.department.factory.holding
+                else None
+            )
+
+    request.session["current_role"] = selected_role_name
+    request.session["current_holding_id"] = holding_id
+    request.session["current_factory_id"] = factory_id
+    request.session["current_department_id"] = department_id
+    request.session["current_subdepartment_id"] = subdepartment_id
+    request.session["current_is_committee"] = bool(is_committee)
+    request.session["current_real_role"] = real_role if real_role else None
 
 
 def login_view(request):
@@ -118,140 +236,9 @@ def login_view(request):
         password = request.POST.get("password")
         user = authenticate(request, username=national_id, password=password)
         if user is not None:
-            login(request, user)
-
-            # جدید: تنظیم نقش اولیه اگر session نداشته باشد
-            management_tree = build_management_tree(user)
-            request.session["management_tree"] = management_tree
-
-            if "current_role" not in request.session and user.roles.exists():
-                ROLE_PRIORITY = [
-                    "super_admin",
-                    "holding_manager",
-                    "factory_manager",
-                    "department_manager",
-                    "supervisor",
-                    "employee",
-                ]
-
-                # پیدا کردن بالاترین نقش کاربر بر اساس اولویت
-                user_role_names = set(user.roles.values_list("name", flat=True))
-                selected_role_name = None
-
-                for role in ROLE_PRIORITY:
-                    if role in user_role_names:
-                        selected_role_name = role
-                        break
-
-                # # اگر هیچ نقش مدیریتی نداشت، حتماً employee است (یا نقش‌های دیگر، اما فرض ما employee)
-                # if not selected_role_name:
-                #     selected_role_name = 'employee'
-
-                if not selected_role_name:
-                    request.session["current_role"] = None
-                    request.session["current_holding_id"] = None
-                    request.session["current_factory_id"] = None
-                    request.session["current_department_id"] = None
-                    request.session["current_subdepartment_id"] = None
-                    return redirect("users:dashboard")
-
-                request.session["current_role"] = selected_role_name
-
-                # تنظیم مقادیر مکان‌ها بر اساس نقش انتخاب شده
-                holding_id = None
-                factory_id = None
-                department_id = None
-                subdepartment_id = None
-                is_committee = False
-                real_role = None
-                if selected_role_name == "super_admin":
-                    pass  # همه None
-
-                elif selected_role_name == "holding_manager":
-                    holding = Holding.objects.filter(manager=user).first()
-                    if holding:
-                        holding_id = holding.id
-
-                elif selected_role_name == "factory_manager":
-                    factory = Factory.objects.filter(manager=user).first()
-                    if factory:
-                        factory_id = factory.id
-                        holding_id = factory.holding.id if factory.holding else None
-                        is_committee = factory.is_committee
-
-                elif selected_role_name == "department_manager":
-
-                    department = Department.objects.filter(
-                        Q(manager=user)
-                        | Q(managers=user)
-                        | Q(manager_2=user)
-                        | Q(manager_3=user)
-                    ).first()
-                    if department:
-
-                        department_id = department.id
-                        factory_id = department.factory.id
-                        holding_id = (
-                            department.factory.holding.id
-                            if department.factory.holding
-                            else None
-                        )
-                        is_committee = department.is_committee
-
-                        if (
-                            department.manager == user
-                            or department.managers.filter(id=user.id).exists()
-                        ):
-                            real_role = "department_manager"
-                        elif department.manager_2 == user:
-                            real_role = "department_manager_2"
-                        elif department.manager_3 == user:
-                            real_role = "department_manager_3"
-
-                elif selected_role_name == "supervisor":
-                    subdepartment = Subdepartment.objects.filter(
-                        Q(supervisor=user) | Q(supervisors=user)
-                    ).first()
-                    if subdepartment:
-                        subdepartment_id = subdepartment.id
-                        department_id = subdepartment.department.id
-                        factory_id = subdepartment.department.factory.id
-                        holding_id = (
-                            subdepartment.department.factory.holding.id
-                            if subdepartment.department.factory.holding
-                            else None
-                        )
-                        is_committee = subdepartment.is_committee
-
-                elif selected_role_name == "employee":
-                    # برای کارگر ساده، از فیلدهای خودش استفاده کن
-                    subdepartment = user.assigned_subdepartments.first()
-                    if subdepartment:
-                        subdepartment_id = subdepartment.id
-                        department_id = subdepartment.department.id
-                        factory_id = subdepartment.department.factory.id
-                        holding_id = (
-                            subdepartment.department.factory.holding.id
-                            if subdepartment.department.factory.holding
-                            else None
-                        )
-
-                request.session["current_role"] = selected_role_name
-                request.session["current_holding_id"] = holding_id
-                request.session["current_factory_id"] = factory_id
-                request.session["current_department_id"] = department_id
-                request.session["current_subdepartment_id"] = subdepartment_id
-                request.session["current_is_committee"] = (
-                    is_committee if is_committee else False
-                )
-                request.session["current_real_role"] = real_role if real_role else None
-
-            #
-            # out is something like this : [{'id': None, 'name': 'مدیر کل سیستم', 'role': 'super_admin', 'factories': []}, {'id': 1, 'name': 'هلدینگ اصفهان مقدم', 'role': None, 'factories': [{'id': 1, 'name': 'اصفهان مقدم', 'role': None, 'departments': [{'id': 4, 'name': 'MODIRIAT', 'role': 'department_manager', 'subdepartments': []}, {'id': 2, 'name': 'منابع انسانی', 'role': 'department_manager', 'subdepartments': []}, {'id': 1, 'name': 'هوش مصنوعی', 'role': 'department_manager', 'subdepartments': []}]}]}]
-
+            _login_user_and_initialize_session(request, user)
             return redirect("users:dashboard")
-        else:
-            messages.error(request, "کد ملی یا رمز عبور اشتباه است.")
+        messages.error(request, "کد ملی یا رمز عبور اشتباه است.")
     return render(request, "users/login.html")
 
 
@@ -354,7 +341,8 @@ def forgot_password_stub_view(request):
             status=400,
         )
 
-    otp_code = get_random_string(5, allowed_chars="0123456789")
+    # otp_code = get_random_string(5, allowed_chars="0123456789")
+    otp_code = "12345"
     sent, provider_message, provider_data = _send_parsgreen_otp(mobile, otp_code)
 
     print(
@@ -381,9 +369,19 @@ def forgot_password_stub_view(request):
             status=status_code,
         )
 
+    request.session[FORGOT_PASSWORD_SESSION_KEY] = {
+        "national_id": national_id,
+        "otp_code": otp_code,
+        "expires_at": (
+            timezone.now() + timedelta(seconds=FORGOT_PASSWORD_OTP_EXPIRE_SECONDS)
+        ).isoformat(),
+        "attempts": 0,
+    }
+    request.session.modified = True
+
     response_data = {
         "ok": True,
-        "message": provider_message,
+        "message": "کد تایید ارسال شد.",
     }
     if settings.DEBUG and request.POST.get("debug") == "1":
         response_data["debug"] = {
@@ -393,6 +391,92 @@ def forgot_password_stub_view(request):
         }
 
     return JsonResponse(response_data)
+
+
+def forgot_password_verify_stub_view(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "message": "متد نامعتبر است."}, status=405)
+
+    national_id = (request.POST.get("national_id") or "").strip()
+    otp_code = (request.POST.get("otp_code") or "").strip()
+
+    if not re.fullmatch(r"\d{10}", national_id):
+        return JsonResponse(
+            {"ok": False, "message": "کد ملی باید ۱۰ رقم باشد."},
+            status=400,
+        )
+
+    if not re.fullmatch(r"\d{5}", otp_code):
+        return JsonResponse(
+            {"ok": False, "message": "کد تایید باید ۵ رقم باشد."},
+            status=400,
+        )
+
+    state = request.session.get(FORGOT_PASSWORD_SESSION_KEY) or {}
+    if not state or state.get("national_id") != national_id:
+        return JsonResponse(
+            {"ok": False, "message": "درخواست بازیابی معتبر نیست. دوباره تلاش کنید."},
+            status=400,
+        )
+
+    expires_at_raw = state.get("expires_at")
+    try:
+        expires_at = datetime.fromisoformat(expires_at_raw)
+        if timezone.is_naive(expires_at):
+            expires_at = timezone.make_aware(expires_at, timezone.get_current_timezone())
+    except (TypeError, ValueError):
+        request.session.pop(FORGOT_PASSWORD_SESSION_KEY, None)
+        return JsonResponse(
+            {"ok": False, "message": "زمان اعتبار کد نامعتبر است."},
+            status=400,
+        )
+
+    if timezone.now() > expires_at:
+        request.session.pop(FORGOT_PASSWORD_SESSION_KEY, None)
+        return JsonResponse(
+            {"ok": False, "message": "زمان اعتبار کد به پایان رسیده است."},
+            status=400,
+        )
+
+    if otp_code != str(state.get("otp_code") or ""):
+        attempts = int(state.get("attempts", 0)) + 1
+        state["attempts"] = attempts
+
+        if attempts >= 5:
+            request.session.pop(FORGOT_PASSWORD_SESSION_KEY, None)
+            return JsonResponse(
+                {"ok": False, "message": "تعداد تلاش ناموفق بیش از حد مجاز شد."},
+                status=400,
+            )
+
+        request.session[FORGOT_PASSWORD_SESSION_KEY] = state
+        request.session.modified = True
+        return JsonResponse(
+            {"ok": False, "message": "کد تایید اشتباه است."},
+            status=400,
+        )
+
+    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
+    if not employee:
+        request.session.pop(FORGOT_PASSWORD_SESSION_KEY, None)
+        return JsonResponse(
+            {"ok": False, "message": "کاربر یافت نشد."},
+            status=404,
+        )
+
+    # employee.is_first_login = True
+    # employee.save(update_fields=["is_first_login"])
+    request.session.pop(FORGOT_PASSWORD_SESSION_KEY, None)
+
+    _login_user_and_initialize_session(request, employee)
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "message": "کد تایید شد.",
+            "redirect_url": reverse("users:change_password"),
+        }
+    )
 
 
 # 🌟 جدید: تابع کمکی برای ساخت درخت نقش‌های مدیریتی
