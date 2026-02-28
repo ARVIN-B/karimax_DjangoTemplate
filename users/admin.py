@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.forms import UserChangeForm
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django import forms
 from django.utils.html import format_html
@@ -320,7 +321,7 @@ class PermissionLevelAdmin(admin.ModelAdmin):
 admin.site.register(PermissionLevel, PermissionLevelAdmin)
 
 
-class EmployeeManagementAssignmentsForm(forms.ModelForm):
+class EmployeeManagementAssignmentsForm(UserChangeForm):
     managed_holdings_assignments = forms.ModelMultipleChoiceField(
         queryset=Holding.objects.none(),
         required=False,
@@ -346,7 +347,7 @@ class EmployeeManagementAssignmentsForm(forms.ModelForm):
         widget=FilteredSelectMultiple("زیربخش‌ها", is_stacked=False),
     )
 
-    class Meta:
+    class Meta(UserChangeForm.Meta):
         model = Employee
         fields = "__all__"
 
@@ -410,7 +411,6 @@ class EmployeeManagementAssignmentsForm(forms.ModelForm):
 @admin.register(Employee)
 class EmployeeAdmin(UserAdmin):
     add_form_template = "admin/users/employee_add_form.html"
-    change_form_template = "admin/users/employee_change_form.html"
     form = EmployeeManagementAssignmentsForm
 
     # --- فرم ویرایش ---

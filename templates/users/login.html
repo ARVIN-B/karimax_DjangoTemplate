@@ -1,340 +1,263 @@
-{% extends 'base.html' %} {% load static %} {% block title %}ورود به سیستم{%
-endblock %} {% block extra_css %}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ورود به سیستم{% endblock %}
+
+{% block extra_css %}
 <style>
-	.login-card {
-		animation: fadeIn 0.5s ease-in-out;
-		border-radius: 15px;
-	}
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-			transform: translateY(-20px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-	.password-toggle {
-		position: absolute;
-		left: 15px;
-		top: 50%;
-		transform: translateY(-50%);
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: #6c757d;
-		padding: 0;
-		font-size: 1.1rem;
-		transition: color 0.2s;
-	}
-	.password-toggle:hover {
-		color: #007bff;
-	}
-	.form-group {
-		position: relative;
-	}
-	.btn-primary {
-		transition:
-			background-color 0.3s,
-			transform 0.2s;
-	}
-	.btn-primary:hover {
-		background-color: #0056b3;
-		transform: translateY(-2px);
-	}
-	.form-control:focus {
-		border-color: #007bff;
-		box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-	}
-	@media (max-width: 576px) {
-		.login-card {
-			padding: 1rem;
-		}
-		.card-body {
-			padding: 1.5rem !important;
-		}
-	}
+    .login-card {
+        animation: fadeIn 0.5s ease-in-out;
+        border-radius: 15px;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .password-toggle {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #6c757d;
+        padding: 0;
+        font-size: 1.1rem;
+        transition: color 0.2s;
+    }
+    .password-toggle:hover {
+        color: #007bff;
+    }
+    .form-group {
+        position: relative;
+    }
+    .btn-primary {
+        transition: background-color 0.3s, transform 0.2s;
+    }
+    .btn-primary:hover {
+        background-color: #0056b3;
+        transform: translateY(-2px);
+    }
+    .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    @media (max-width: 576px) {
+        .login-card {
+            padding: 1rem;
+        }
+        .card-body {
+            padding: 1.5rem !important;
+        }
+    }
 </style>
-{% endblock %} {% block content %}
-<div
-	class="container d-flex justify-content-center align-items-center min-vh-100"
->
-	<div class="col-11 col-sm-9 col-md-7 col-lg-5 col-xl-4">
-		<div class="card shadow-sm border-0 login-card">
-			<div class="card-body p-4 p-md-5">
-				<!-- Logo -->
-				<div class="text-center mb-4">
-					<!--                <img src="{% static 'logo.png' %}" alt="Logo">-->
-					<img
-						src="{% static 'images/logo.png' %}"
-						alt="لوگوی سیستم"
-						class="img-fluid"
-						style="max-width: 180px"
-					/>
-				</div>
+{% endblock %}
 
-				<!-- Header -->
-				<h3 class="text-center mb-4">ورود به سیستم</h3>
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="col-11 col-sm-9 col-md-7 col-lg-5 col-xl-4">
+        <div class="card shadow-sm border-0 login-card">
+            <div class="card-body p-4 p-md-5">
+                <!-- Logo -->
+                <div class="text-center mb-4">
+<!--                <img src="{% static 'logo.png' %}" alt="Logo">-->
+                    <img src="{% static 'images/logo.png' %}" alt="لوگوی سیستم" class="img-fluid" style="max-width: 180px;">
+                </div>
 
-				<!-- Messages -->
-				{% if messages %} {% for message in messages %}
-				<div
-					class="alert alert-{{ message.tags }} alert-dismissible fade show"
-					role="alert"
-				>
-					<i
-						class="fas fa-{% if message.tags == 'success' %}check-circle {% elif message.tags == 'error' %}exclamation-triangle {% elif message.tags == 'warning' %}exclamation {% else %}info-circle {% endif %} me-2"
-					></i>
-					{{ message }}
-					<button
-						type="button"
-						class="btn-close"
-						data-bs-dismiss="alert"
-						aria-label="بستن"
-					></button>
-				</div>
-				{% endfor %} {% endif %}
+                <!-- Header -->
+                <h3 class="text-center mb-4">ورود به سیستم</h3>
 
-				<!-- Login Form -->
-				<form method="post" action="{% url 'users:login' %}">
-					{% csrf_token %}
-					<div class="mb-3 form-group">
-						<label for="national_id" class="form-label"
-							>کدملی</label
-						>
-						<input
-							type="text"
-							class="form-control"
-							id="national_id"
-							name="national_id"
-							pattern="[0-9]{10}"
-							required
-							aria-describedby="national_id_help"
-						/>
-						<small
-							id="national_id_help"
-							class="form-text text-muted"
-							>کد ملی 10 رقمی خود را وارد کنید</small
-						>
-					</div>
-					<div class="mb-3 form-group">
-						<label for="password" class="form-label"
-							>رمز عبور</label
-						>
-						<input
-							type="password"
-							class="form-control"
-							id="password"
-							name="password"
-							required
-							aria-describedby="password_help"
-						/>
-						<button
-							type="button"
-							class="password-toggle"
-							aria-label="نمایش/مخفی کردن رمز عبور"
-						>
-							<i class="fas fa-eye"></i>
-						</button>
-						<small id="password_help" class="form-text text-muted"
-							>رمز عبور حداقل 8 کاراکتر باشد</small
-						>
-					</div>
-					<button
-						type="submit"
-						class="btn btn-primary w-100 mb-3"
-						aria-label="ورود به سیستم"
-					>
-						ورود
-					</button>
-					<div class="text-center">
-						<a href="#" id="forgot-password-link" class="small"
-							>فراموشی رمز عبور</a
-						>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
+                <!-- Messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{% if message.tags == 'success' %}check-circle
+                                {% elif message.tags == 'error' %}exclamation-triangle
+                                {% elif message.tags == 'warning' %}exclamation
+                                {% else %}info-circle
+                                {% endif %} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="بستن"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Login Form -->
+                <form method="post" action="{% url 'users:login' %}">
+                    {% csrf_token %}
+                    <div class="mb-3 form-group">
+                        <label for="national_id" class="form-label">کدملی</label>
+                        <input type="text" class="form-control" id="national_id" name="national_id" pattern="[0-9]{10}" required aria-describedby="national_id_help">
+                        <small id="national_id_help" class="form-text text-muted">کد ملی 10 رقمی خود را وارد کنید</small>
+                    </div>
+                    <div class="mb-3 form-group">
+                        <label for="password" class="form-label">رمز عبور</label>
+                        <input type="password" class="form-control" id="password" name="password" required aria-describedby="password_help">
+                        <button type="button" class="password-toggle" aria-label="نمایش/مخفی کردن رمز عبور">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <small id="password_help" class="form-text text-muted">رمز عبور حداقل 8 کاراکتر باشد</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mb-3" aria-label="ورود به سیستم">ورود</button>
+                    <div class="text-center">
+                        <a href="#" id="forgot-password-link" class="small">فراموشی رمز عبور</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
-{% endblock %} {% block extra_js %}
+{% endblock %}
+
+{% block extra_js %}
 <script>
-	document.addEventListener("DOMContentLoaded", function () {
-		const passwordInput = document.getElementById("password");
-		const toggleButton = document.querySelector(".password-toggle");
-		const forgotPasswordLink = document.getElementById(
-			"forgot-password-link",
-		);
-		const nationalIdInput = document.getElementById("national_id");
-		const csrfTokenInput = document.querySelector(
-			'input[name="csrfmiddlewaretoken"]',
-		);
-		const csrfToken = csrfTokenInput ? csrfTokenInput.value : "";
-		let otpAbortController = null;
-		let pendingOtpCode = "";
+document.addEventListener('DOMContentLoaded', function () {
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.querySelector('.password-toggle');
+    const forgotPasswordLink = document.getElementById('forgot-password-link');
+    const nationalIdInput = document.getElementById('national_id');
+    const csrfTokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+    let otpAbortController = null;
+    let pendingOtpCode = '';
 
-		toggleButton.addEventListener("click", function () {
-			const type =
-				passwordInput.type === "password" ? "text" : "password";
-			passwordInput.type = type;
-			toggleButton.innerHTML =
-				type === "password"
-					? '<i class="fas fa-eye"></i>'
-					: '<i class="fas fa-eye-slash"></i>';
-		});
+    toggleButton.addEventListener('click', function () {
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+        toggleButton.innerHTML = type === 'password'
+            ? '<i class="fas fa-eye"></i>'
+            : '<i class="fas fa-eye-slash"></i>';
+    });
 
-		function getOtpInputs() {
-			const popup = Swal.getPopup();
-			if (!popup) {
-				return [];
-			}
-			return Array.from(popup.querySelectorAll(".otp-digit"));
-		}
+    function getOtpInputs() {
+        const popup = Swal.getPopup();
+        if (!popup) {
+            return [];
+        }
+        return Array.from(popup.querySelectorAll('.otp-digit'));
+    }
 
-		function fillOtpInputs(rawCode) {
-			const digits = (rawCode || "").replace(/\D/g, "").slice(0, 5);
-			if (!digits) {
-				return;
-			}
+    function fillOtpInputs(rawCode) {
+        const digits = (rawCode || '').replace(/\D/g, '').slice(0, 5);
+        if (!digits) {
+            return;
+        }
 
-			const inputs = getOtpInputs();
-			if (!inputs.length) {
-				pendingOtpCode = digits;
-				return;
-			}
+        const inputs = getOtpInputs();
+        if (!inputs.length) {
+            pendingOtpCode = digits;
+            return;
+        }
 
-			digits.split("").forEach((char, index) => {
-				if (inputs[index]) {
-					inputs[index].value = char;
-				}
-			});
+        digits.split('').forEach((char, index) => {
+            if (inputs[index]) {
+                inputs[index].value = char;
+            }
+        });
 
-			const focusIndex = Math.min(digits.length, inputs.length - 1);
-			if (inputs[focusIndex]) {
-				inputs[focusIndex].focus();
-			}
-		}
+        const focusIndex = Math.min(digits.length, inputs.length - 1);
+        if (inputs[focusIndex]) {
+            inputs[focusIndex].focus();
+        }
+    }
 
-		function setupOtpInputs() {
-			const inputs = getOtpInputs();
-			if (!inputs.length) {
-				return;
-			}
+    function setupOtpInputs() {
+        const inputs = getOtpInputs();
+        if (!inputs.length) {
+            return;
+        }
 
-			inputs[0].focus();
+        inputs[0].focus();
 
-			inputs.forEach((input, index) => {
-				input.addEventListener("input", function (event) {
-					const cleaned = (event.target.value || "").replace(
-						/\D/g,
-						"",
-					);
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', function (event) {
+                const cleaned = (event.target.value || '').replace(/\D/g, '');
 
-					if (!cleaned) {
-						event.target.value = "";
-						return;
-					}
+                if (!cleaned) {
+                    event.target.value = '';
+                    return;
+                }
 
-					if (cleaned.length > 1) {
-						event.target.value = cleaned[0];
-						for (
-							let i = 1;
-							i < cleaned.length && index + i < inputs.length;
-							i += 1
-						) {
-							inputs[index + i].value = cleaned[i];
-						}
-						const focusIndex = Math.min(
-							index + cleaned.length,
-							inputs.length - 1,
-						);
-						inputs[focusIndex].focus();
-						return;
-					}
+                if (cleaned.length > 1) {
+                    event.target.value = cleaned[0];
+                    for (let i = 1; i < cleaned.length && (index + i) < inputs.length; i += 1) {
+                        inputs[index + i].value = cleaned[i];
+                    }
+                    const focusIndex = Math.min(index + cleaned.length, inputs.length - 1);
+                    inputs[focusIndex].focus();
+                    return;
+                }
 
-					event.target.value = cleaned;
-					if (index < inputs.length - 1) {
-						inputs[index + 1].focus();
-					}
-				});
+                event.target.value = cleaned;
+                if (index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
 
-				input.addEventListener("keydown", function (event) {
-					if (
-						event.key === "Backspace" &&
-						!input.value &&
-						index > 0
-					) {
-						inputs[index - 1].focus();
-					}
-				});
+            input.addEventListener('keydown', function (event) {
+                if (event.key === 'Backspace' && !input.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
 
-				input.addEventListener("paste", function (event) {
-					event.preventDefault();
-					const pasted = (event.clipboardData.getData("text") || "")
-						.replace(/\D/g, "")
-						.slice(0, inputs.length);
-					if (!pasted) {
-						return;
-					}
-					pasted.split("").forEach((char, i) => {
-						if (inputs[i]) {
-							inputs[i].value = char;
-						}
-					});
-					const focusIndex = Math.min(
-						pasted.length,
-						inputs.length - 1,
-					);
-					inputs[focusIndex].focus();
-				});
-			});
+            input.addEventListener('paste', function (event) {
+                event.preventDefault();
+                const pasted = (event.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, inputs.length);
+                if (!pasted) {
+                    return;
+                }
+                pasted.split('').forEach((char, i) => {
+                    if (inputs[i]) {
+                        inputs[i].value = char;
+                    }
+                });
+                const focusIndex = Math.min(pasted.length, inputs.length - 1);
+                inputs[focusIndex].focus();
+            });
+        });
 
-			if (pendingOtpCode) {
-				const code = pendingOtpCode;
-				pendingOtpCode = "";
-				fillOtpInputs(code);
-			}
-		}
+        if (pendingOtpCode) {
+            const code = pendingOtpCode;
+            pendingOtpCode = '';
+            fillOtpInputs(code);
+        }
+    }
 
-		function startWebOtpListener() {
-			const canUseWebOtp =
-				window.isSecureContext &&
-				"OTPCredential" in window &&
-				navigator.credentials &&
-				typeof navigator.credentials.get === "function";
+    function startWebOtpListener() {
+        const canUseWebOtp = window.isSecureContext
+            && 'OTPCredential' in window
+            && navigator.credentials
+            && typeof navigator.credentials.get === 'function';
 
-			if (!canUseWebOtp) {
-				return;
-			}
+        if (!canUseWebOtp) {
+            return;
+        }
 
-			otpAbortController = new AbortController();
-			const timeoutId = setTimeout(() => {
-				if (otpAbortController) {
-					otpAbortController.abort();
-				}
-			}, 60000);
+        otpAbortController = new AbortController();
+        const timeoutId = setTimeout(() => {
+            if (otpAbortController) {
+                otpAbortController.abort();
+            }
+        }, 60000);
 
-			navigator.credentials
-				.get({
-					otp: { transport: ["sms"] },
-					signal: otpAbortController.signal,
-				})
-				.then((otp) => {
-					if (otp && otp.code) {
-						fillOtpInputs(otp.code);
-					}
-				})
-				.catch(() => {})
-				.finally(() => {
-					clearTimeout(timeoutId);
-				});
-		}
+        navigator.credentials.get({
+            otp: { transport: ['sms'] },
+            signal: otpAbortController.signal
+        }).then((otp) => {
+            if (otp && otp.code) {
+                fillOtpInputs(otp.code);
+            }
+        }).catch(() => {
+        }).finally(() => {
+            clearTimeout(timeoutId);
+        });
+    }
 
-		async function openSetPasswordModal(nationalId) {
-			const setPasswordResult = await Swal.fire({
-				title: "رمز عبور جدید",
-				html: `
+    async function openSetPasswordModal(nationalId) {
+        const setPasswordResult = await Swal.fire({
+            title: 'رمز عبور جدید',
+            html: `
                 <div class="text-start">
                     <label for="new-password-input" class="form-label">رمز عبور جدید</label>
                     <input id="new-password-input" type="password" class="form-control mb-3" autocomplete="new-password" />
@@ -343,100 +266,81 @@ endblock %} {% block extra_css %}
                     <small class="text-muted d-block mt-2">حداقل ۶ کاراکتر</small>
                 </div>
             `,
-				showCancelButton: true,
-				confirmButtonText: "ثبت رمز جدید",
-				cancelButtonText: "انصراف",
-				focusConfirm: false,
-				showLoaderOnConfirm: true,
-				allowOutsideClick: () => !Swal.isLoading(),
-				preConfirm: async () => {
-					const newPassword = (
-						document.getElementById("new-password-input").value ||
-						""
-					).trim();
-					const confirmPassword = (
-						document.getElementById("confirm-password-input")
-							.value || ""
-					).trim();
+            showCancelButton: true,
+            confirmButtonText: 'ثبت رمز جدید',
+            cancelButtonText: 'انصراف',
+            focusConfirm: false,
+            showLoaderOnConfirm: true,
+            allowOutsideClick: () => !Swal.isLoading(),
+            preConfirm: async () => {
+                const newPassword = (document.getElementById('new-password-input').value || '').trim();
+                const confirmPassword = (document.getElementById('confirm-password-input').value || '').trim();
 
-					if (!newPassword || !confirmPassword) {
-						Swal.showValidationMessage(
-							"رمز عبور جدید و تکرار آن الزامی است.",
-						);
-						return false;
-					}
+                if (!newPassword || !confirmPassword) {
+                    Swal.showValidationMessage('رمز عبور جدید و تکرار آن الزامی است.');
+                    return false;
+                }
 
-					if (newPassword.length < 6) {
-						Swal.showValidationMessage(
-							"رمز عبور باید حداقل ۶ کاراکتر باشد.",
-						);
-						return false;
-					}
+                if (newPassword.length < 6) {
+                    Swal.showValidationMessage('رمز عبور باید حداقل ۶ کاراکتر باشد.');
+                    return false;
+                }
 
-					if (newPassword !== confirmPassword) {
-						Swal.showValidationMessage(
-							"رمز عبور و تکرار آن یکسان نیست.",
-						);
-						return false;
-					}
+                if (newPassword !== confirmPassword) {
+                    Swal.showValidationMessage('رمز عبور و تکرار آن یکسان نیست.');
+                    return false;
+                }
 
-					const formData = new FormData();
-					formData.append("national_id", nationalId);
-					formData.append("new_password", newPassword);
-					formData.append("confirm_password", confirmPassword);
+                const formData = new FormData();
+                formData.append('national_id', nationalId);
+                formData.append('new_password', newPassword);
+                formData.append('confirm_password', confirmPassword);
 
-					try {
-						const response = await fetch(
-							"{% url 'users:forgot_password_set_password_stub' %}",
-							{
-								method: "POST",
-								headers: { "X-CSRFToken": csrfToken },
-								body: formData,
-							},
-						);
+                try {
+                    const response = await fetch("{% url 'users:forgot_password_set_password_stub' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken },
+                        body: formData
+                    });
 
-						const data = await response.json().catch(() => ({}));
-						if (!response.ok || !data.ok) {
-							Swal.showValidationMessage(
-								data.message || "ثبت رمز عبور جدید ناموفق بود.",
-							);
-							return false;
-						}
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || !data.ok) {
+                        Swal.showValidationMessage(data.message || 'ثبت رمز عبور جدید ناموفق بود.');
+                        return false;
+                    }
 
-						return data;
-					} catch (error) {
-						Swal.showValidationMessage("خطا در ارتباط با سرور.");
-						return false;
-					}
-				},
-			});
+                    return data;
+                } catch (error) {
+                    Swal.showValidationMessage('خطا در ارتباط با سرور.');
+                    return false;
+                }
+            }
+        });
 
-			if (!setPasswordResult.isConfirmed || !setPasswordResult.value) {
-				return;
-			}
+        if (!setPasswordResult.isConfirmed || !setPasswordResult.value) {
+            return;
+        }
 
-			await Swal.fire({
-				icon: "success",
-				title: "انجام شد",
-				text:
-					setPasswordResult.value.message ||
-					"رمز عبور با موفقیت تغییر کرد.",
-			});
+        await Swal.fire({
+            icon: 'success',
+            title: 'انجام شد',
+            text: setPasswordResult.value.message || 'رمز عبور با موفقیت تغییر کرد.'
+        });
 
-			if (nationalIdInput) {
-				nationalIdInput.value = nationalId;
-				nationalIdInput.focus();
-			}
+        if (nationalIdInput) {
+            nationalIdInput.value = nationalId;
+            nationalIdInput.focus();
+        }
 
-			if (passwordInput) {
-				passwordInput.value = "";
-			}
-		}
+        if (passwordInput) {
+            passwordInput.value = '';
+        }
+    }
 
-		async function openOtpModal(nationalId) {
-			const verifyResult = await Swal.fire({
-				title: "کد تایید",
-				html: `
+    async function openOtpModal(nationalId) {
+        const verifyResult = await Swal.fire({
+            title: 'کد تایید',
+            html: `
                 <p class="mb-3">کد ۵ رقمی ارسال شده را وارد کنید.</p>
                 <div style="display:flex;justify-content:center;gap:8px;direction:ltr;">
                     <input class="otp-digit form-control text-center" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" style="width:48px;height:48px;font-size:22px;padding:0;" />
@@ -446,128 +350,116 @@ endblock %} {% block extra_css %}
                     <input class="otp-digit form-control text-center" type="text" inputmode="numeric" maxlength="1" style="width:48px;height:48px;font-size:22px;padding:0;" />
                 </div>
             `,
-				showCancelButton: true,
-				confirmButtonText: "تایید",
-				cancelButtonText: "انصراف",
-				focusConfirm: false,
-				showLoaderOnConfirm: true,
-				allowOutsideClick: () => !Swal.isLoading(),
-				didOpen: () => {
-					setupOtpInputs();
-					startWebOtpListener();
-				},
-				willClose: () => {
-					if (otpAbortController) {
-						otpAbortController.abort();
-						otpAbortController = null;
-					}
-				},
-				preConfirm: async () => {
-					const otpCode = getOtpInputs()
-						.map((input) => input.value || "")
-						.join("");
+            showCancelButton: true,
+            confirmButtonText: 'تایید',
+            cancelButtonText: 'انصراف',
+            focusConfirm: false,
+            showLoaderOnConfirm: true,
+            allowOutsideClick: () => !Swal.isLoading(),
+            didOpen: () => {
+                setupOtpInputs();
+                startWebOtpListener();
+            },
+            willClose: () => {
+                if (otpAbortController) {
+                    otpAbortController.abort();
+                    otpAbortController = null;
+                }
+            },
+            preConfirm: async () => {
+                const otpCode = getOtpInputs()
+                    .map((input) => input.value || '')
+                    .join('');
 
-					if (!/^\d{5}$/.test(otpCode)) {
-						Swal.showValidationMessage(
-							"کد تایید باید ۵ رقمی باشد.",
-						);
-						return false;
-					}
+                if (!/^\d{5}$/.test(otpCode)) {
+                    Swal.showValidationMessage('کد تایید باید ۵ رقمی باشد.');
+                    return false;
+                }
 
-					const formData = new FormData();
-					formData.append("national_id", nationalId);
-					formData.append("otp_code", otpCode);
+                const formData = new FormData();
+                formData.append('national_id', nationalId);
+                formData.append('otp_code', otpCode);
 
-					try {
-						const response = await fetch(
-							"{% url 'users:forgot_password_verify_stub' %}",
-							{
-								method: "POST",
-								headers: { "X-CSRFToken": csrfToken },
-								body: formData,
-							},
-						);
+                try {
+                    const response = await fetch("{% url 'users:forgot_password_verify_stub' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken },
+                        body: formData
+                    });
 
-						const data = await response.json().catch(() => ({}));
-						if (!response.ok || !data.ok) {
-							Swal.showValidationMessage(
-								data.message || "تایید کد ناموفق بود.",
-							);
-							return false;
-						}
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || !data.ok) {
+                        Swal.showValidationMessage(data.message || 'تایید کد ناموفق بود.');
+                        return false;
+                    }
 
-						return data;
-					} catch (error) {
-						Swal.showValidationMessage("خطا در ارتباط با سرور.");
-						return false;
-					}
-				},
-			});
+                    return data;
+                } catch (error) {
+                    Swal.showValidationMessage('خطا در ارتباط با سرور.');
+                    return false;
+                }
+            }
+        });
 
-			if (verifyResult.isConfirmed && verifyResult.value) {
-				await openSetPasswordModal(nationalId);
-			}
-		}
+        if (verifyResult.isConfirmed && verifyResult.value) {
+            await openSetPasswordModal(nationalId);
+        }
+    }
 
-		forgotPasswordLink.addEventListener("click", async function (event) {
-			event.preventDefault();
+    forgotPasswordLink.addEventListener('click', async function (event) {
+        event.preventDefault();
 
-			const requestResult = await Swal.fire({
-				title: "فراموشی رمز عبور",
-				text: "کد ملی ۱۰ رقمی خود را وارد کنید.",
-				input: "text",
-				inputAttributes: {
-					maxlength: 10,
-					inputmode: "numeric",
-					dir: "ltr",
-				},
-				showCancelButton: true,
-				confirmButtonText: "ارسال کد",
-				cancelButtonText: "انصراف",
-				showLoaderOnConfirm: true,
-				allowOutsideClick: () => !Swal.isLoading(),
-				preConfirm: async (value) => {
-					const nationalId = (value || "").trim();
-					if (!/^\d{10}$/.test(nationalId)) {
-						Swal.showValidationMessage("کد ملی باید ۱۰ رقم باشد.");
-						return false;
-					}
+        const requestResult = await Swal.fire({
+            title: 'فراموشی رمز عبور',
+            text: 'کد ملی ۱۰ رقمی خود را وارد کنید.',
+            input: 'text',
+            inputAttributes: {
+                maxlength: 10,
+                inputmode: 'numeric',
+                dir: 'ltr'
+            },
+            showCancelButton: true,
+            confirmButtonText: 'ارسال کد',
+            cancelButtonText: 'انصراف',
+            showLoaderOnConfirm: true,
+            allowOutsideClick: () => !Swal.isLoading(),
+            preConfirm: async (value) => {
+                const nationalId = (value || '').trim();
+                if (!/^\d{10}$/.test(nationalId)) {
+                    Swal.showValidationMessage('کد ملی باید ۱۰ رقم باشد.');
+                    return false;
+                }
 
-					const formData = new FormData();
-					formData.append("national_id", nationalId);
+                const formData = new FormData();
+                formData.append('national_id', nationalId);
 
-					try {
-						const response = await fetch(
-							"{% url 'users:forgot_password_stub' %}",
-							{
-								method: "POST",
-								headers: { "X-CSRFToken": csrfToken },
-								body: formData,
-							},
-						);
+                try {
+                    const response = await fetch("{% url 'users:forgot_password_stub' %}", {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken },
+                        body: formData
+                    });
 
-						const data = await response.json().catch(() => ({}));
-						if (!response.ok || !data.ok) {
-							Swal.showValidationMessage(
-								data.message || "ارسال کد تایید ناموفق بود.",
-							);
-							return false;
-						}
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || !data.ok) {
+                        Swal.showValidationMessage(data.message || 'ارسال کد تایید ناموفق بود.');
+                        return false;
+                    }
 
-						return { nationalId: nationalId };
-					} catch (error) {
-						Swal.showValidationMessage("خطا در ارتباط با سرور.");
-						return false;
-					}
-				},
-			});
+                    return { nationalId: nationalId };
+                } catch (error) {
+                    Swal.showValidationMessage('خطا در ارتباط با سرور.');
+                    return false;
+                }
+            }
+        });
 
-			if (!requestResult.isConfirmed || !requestResult.value) {
-				return;
-			}
+        if (!requestResult.isConfirmed || !requestResult.value) {
+            return;
+        }
 
-			await openOtpModal(requestResult.value.nationalId);
-		});
-	});
+        await openOtpModal(requestResult.value.nationalId);
+    });
+});
 </script>
 {% endblock %}
