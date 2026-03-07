@@ -249,6 +249,21 @@ def login_view(request):
     return render(request, "users/login.html")
 
 
+def logout_view(request):
+    """خروج کاربر از سیستم و پاک کردن تاریخچه چت از سشن."""
+
+    if "chat_history" in request.session:
+        del request.session["chat_history"]
+
+    # ✅ ۲. خروج کاربر از سیستم (حذف سشن اصلی)
+    logout(request)
+
+    # نمایش پیام موفقیت
+    # messages.success(request, "شما با موفقیت از حساب کاربری خارج شدید.")
+
+    return redirect("users:login")
+
+
 def _normalize_mobile_number(raw_phone):
     if not raw_phone:
         return None
@@ -421,7 +436,7 @@ def forgot_password_stub_view(request):
         )
 
     otp_code = get_random_string(5, allowed_chars="0123456789")
-    otp_code = "12345"
+    # otp_code = "12345"
     sent, provider_message, provider_data = _send_parsgreen_otp(
         mobile, otp_code, request.get_host()
     )
@@ -945,15 +960,24 @@ def switch_role(request):
 @login_required
 def dashboard(request):
 
-    role_name = request.session["current_role"]
-    holding_id = request.session["current_holding_id"]
-    factory_id = request.session["current_factory_id"]
-    department_id = request.session["current_department_id"]
-    subdepartment_id = request.session["current_subdepartment_id"]
-    user = request.user
-    management_tree = request.session.get("management_tree", [])
-    is_committee = request.session["current_is_committee"]
-    real_role_name = request.GET.get("current_real_role")
+    try:
+        role_name = request.session["current_role"]
+        holding_id = request.session["current_holding_id"]
+        factory_id = request.session["current_factory_id"]
+        department_id = request.session["current_department_id"]
+        subdepartment_id = request.session["current_subdepartment_id"]
+        user = request.user
+        management_tree = request.session.get("management_tree", [])
+        is_committee = request.session["current_is_committee"]
+        real_role_name = request.GET.get("current_real_role")
+    except Exception as e:
+        messages.error(
+            request,
+            "متاسفانه در سامانه برای شما نقش و قسمت تعریف نشده است ، لطفا با واحد هوش مصنوعی تماس حاصل بفرمایید. 09136304789",
+        )
+        return logout_view(request)
+        # return render(request,"users:logout_view")
+        # return redirect("users:logout_view")
 
     current_role = None
     current_role_name = request.session.get("current_role")
@@ -2088,10 +2112,11 @@ def manage_self_menu(request):
         # if can_download_other_factories_resers:
         # factory_id = [1,9,12,11]
         # factory_id = [12]
+        factory_id = [factory_id]
 
         # دریافت تمام رستوران‌های مربوط به این کارخانه
         restaurants = Subdepartment.objects.filter(
-            is_restaurant=True, department__factory_id=factory_id
+            is_restaurant=True, department__factory_id__in=factory_id
         ).order_by("name")
 
         employees = Employee.objects.filter(is_active=True)
@@ -2105,7 +2130,7 @@ def manage_self_menu(request):
                     menu_item__weekly_menu__restaurant=restaurant,
                     reservation_date__gte=strt_gregorian_date,
                     reservation_date__lte=end_gregorian_date,
-                    related_factory_id=factory_id,
+                    related_factory_id__in=factory_id,
                     is_canceled=0,
                 ).aggregate(
                     total=Sum("factory_quantity")
@@ -2142,7 +2167,7 @@ def manage_self_menu(request):
         for emp in employees:
             reservations = FoodReservation.objects.filter(
                 employee=emp,
-                related_factory_id=factory_id,
+                related_factory_id__in=factory_id,
                 reservation_date__gte=strt_gregorian_date,
                 reservation_date__lte=end_gregorian_date,
                 is_canceled=0,
@@ -5766,21 +5791,6 @@ def send_message(request):
         )
 
     return JsonResponse({"error": "متد نامعتبر"}, status=405)
-
-
-def logout_view(request):
-    """خروج کاربر از سیستم و پاک کردن تاریخچه چت از سشن."""
-
-    if "chat_history" in request.session:
-        del request.session["chat_history"]
-
-    # ✅ ۲. خروج کاربر از سیستم (حذف سشن اصلی)
-    logout(request)
-
-    # نمایش پیام موفقیت
-    messages.success(request, "شما با موفقیت از حساب کاربری خارج شدید.")
-
-    return redirect("users:login_view")
 
 
 @login_required

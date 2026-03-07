@@ -94,17 +94,14 @@
                                 {% endif %}
 
 
-
-
-
-
-
                                 {% if has_management_access %}
                                     <a href="{% url 'users:management_dashboard' %}" class="btn btn-primary mb-3 w-100 w-md-auto">داشبورد مدیریتی</a>
                                 {% endif %}
-                                    <a href="{% url 'users:food_delivery_page' %}" class="btn btn-primary mb-3 w-100 w-md-auto">تحویل غذا</a>
+
+                                <a href="{% url 'users:submit_participation' %}" class="btn btn-primary mb-3 w-100 w-md-auto">ثبت مشارکت جدید</a>
+
                                 {% if food_receiver_role %}
-                                    <a href="{% url 'users:submit_participation' %}" class="btn btn-primary mb-3 w-100 w-md-auto">ثبت مشارکت جدید</a>
+                                    <a href="{% url 'users:food_delivery_page' %}" class="btn btn-primary mb-3 w-100 w-md-auto">تحویل غذا</a>
                                 {% endif %}
                                 <!-- <a href="{% url 'users:chat_page' %}" class="btn btn-primary mb-3 w-100 w-md-auto"><i class="fas fa-robot"></i> چت‌بات</a> -->
                                 <a href="#" class="btn btn-primary mb-3 w-100 w-md-auto"><i class="fas fa-robot"></i> چت‌بات</a>
