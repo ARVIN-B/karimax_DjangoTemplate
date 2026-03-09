@@ -471,6 +471,40 @@ class Employee(AbstractUser):
         default=False, verbose_name="اجازه سفارش غذای ویژه"
     )
 
+    # manage employees
+
+    manage_sub_employees = models.BooleanField(
+        default=False, verbose_name="مجوز مدیریت پرسنل زیر مجموعه"
+    )
+
+    manage_holdings_members = models.ManyToManyField(
+        Holding,
+        related_name="manage_holdings_members",
+        blank=True,
+        verbose_name="مدیریت افراد این هلدینگ ها",
+    )
+
+    manage_factories_members = models.ManyToManyField(
+        Holding,
+        related_name="manage_factories_members",
+        blank=True,
+        verbose_name="مدیریت افراد این کارخانه ها",
+    )
+
+    manage_departments_members = models.ManyToManyField(
+        Holding,
+        related_name="manage_departments_members",
+        blank=True,
+        verbose_name="مدیریت افراد این بخش ها",
+    )
+
+    manage_subdepartments_members = models.ManyToManyField(
+        Holding,
+        related_name="manage_subdepartments_members",
+        blank=True,
+        verbose_name="مدیریت افراد این زیر بخش ها",
+    )
+
     USERNAME_FIELD = "national_id"
     REQUIRED_FIELDS = ["first_name", "last_name", "phone_number"]
 

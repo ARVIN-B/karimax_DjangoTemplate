@@ -80,6 +80,19 @@
 
 
 
+
+                                <div class="col-12 col-md-3">
+                                    <label class="form-label"><i class="fas fa-search me-1"></i> نام، کد ملی یا کد پرسنلی کارمند</label>
+                                    <select id="employee-search" name="search" class="form-select form-select-lg shadow-sm">
+                                        <option value="">-- شروع به تایپ کنید... --</option>
+                                    </select>
+                                </div>
+
+
+
+
+
+
                                 <div class="col-12 col-md-6">
                                     <div class="bg-light border rounded p-3" style="background-color: #ced4da !important;">
                                         <div class="row g-3">
@@ -256,12 +269,12 @@
                                                 <td>{{ participation.get_item_type_display }}</td>
                                                 <td>{{ participation.created_at|date:"Y-m-d" }}</td>
                                                 <td>
-<!--                                                    {% if participation.status == 'pending' and participation.attachment %}-->
-<!--                                                        <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-primary mb-1">عملیات</a>-->
-<!--                                                    {% endif %}-->
-<!--                                                    {% if participation.text_content %}-->
-<!--                                                        <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-success mb-1">عملیات</a>-->
-<!--                                                    {% endif %}-->
+                                                    <!-- {% if participation.status == 'pending' and participation.attachment %} -->
+                                                        <!-- <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-primary mb-1">عملیات</a> -->
+                                                    <!-- {% endif %} -->
+                                                    <!-- {% if participation.text_content %} -->
+                                                        <!-- <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-success mb-1">عملیات</a> -->
+                                                    <!-- {% endif %} -->
                                                     {% if role_name == 'supervisor' and participation.status == 'supervisor_review' or role_name == 'department_manager' and participation.status == 'manager_review' %}
                                                         <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-info mb-1">بررسی</a>
                                                     {% endif %}
@@ -272,9 +285,9 @@
                                                         <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-info mb-1">مشاهده مشارکت</a>
                                                     {% endif %}
 
-<!--                                                    {% if participation.feedback and participation.status == 'rejected' and participation.user == user %}-->
-<!--                                                        <span class="badge bg-danger">رد شده - {{ participation.feedback }}</span>-->
-<!--                                                    {% endif %}-->
+                                                    <!-- {% if participation.feedback and participation.status == 'rejected' and participation.user == user %} -->
+                                                        <!-- <span class="badge bg-danger">رد شده - {{ participation.feedback }}</span> -->
+                                                    <!-- {% endif %} -->
                                                 </td>
                                                 <td>{{ participation.get_status_display }}</td>
                                             </tr>
@@ -502,6 +515,61 @@
 
 
     </script>
+    <script>
+        $(document).ready(function() {
+
+            
+            // ----------------------------------------------------------------
+            // فعال‌سازی Select2
+            // ----------------------------------------------------------------
+            $('#employee-search').on('select2:select', function(e) {
+                const employeeId = e.params.data.id;
+                $('#export-single-btn')
+                    .prop('disabled', false)
+                    .data('employee-id', employeeId);
+            });
+
+            $('#employee-search').on('select2:clear', function() {
+                $('#export-single-btn').prop('disabled', true).removeData('employee-id');
+            });
+
+            $('#employee-search').select2({
+                placeholder: "جستجوی کارمند (نام، کد ملی یا کد پرسنلی)...",
+                allowClear: true,
+                ajax: {
+                    url: "{% url 'users:search_employees' %}",
+                    dataType: 'json',
+                    delay: 300,
+                    data: function(params) {
+                        return { q: params.term || '' };
+                    },
+                    processResults: function(data) {
+                        return { results: data };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 2,
+                escapeMarkup: function(markup) {
+                    return markup;
+                },
+                templateResult: function(item) {
+                    if (item.loading) return item.text;
+                    return `<div>
+                                <strong>${item.text}</strong><br>
+                                <small class="text-muted">
+                                    کد ملی: ${item.national_id} | کد پرسنلی: ${item.personnel_code || 'ندارد'}
+                                </small>
+                            </div>`;
+                },
+                templateSelection: function(item) {
+                    return item.text || item.national_id || item.text;
+                }
+            });
+        });
+    </script>
+
+
+
     <script>
         const hierarchyData = {
             holdings: {{ holdings_json|safe }},
