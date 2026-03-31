@@ -99,14 +99,14 @@ def export_to_excel(
         summary_title_cell.alignment = Alignment(horizontal="right")
 
         # اگر ستون‌های رستوران داریم، عنوان خلاصه را Merge می‌کنیم
-        if len(columns) > 8:  # اگر ستون‌های رستوران وجود دارند
-            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=8)
+        if len(columns) > 10:  # اگر ستون‌های رستوران وجود دارند
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
 
         row += 1
 
         # داده‌های خلاصه هر رستوران
         # شروع از ستون 9 (ستون I) زیرا 8 ستون اول داریم
-        for i, restaurant in enumerate(restaurant_stats.values(), start=9):
+        for i, restaurant in enumerate(restaurant_stats.values(), start=10):
             if i <= len(columns):  # مطمئن شویم ستون وجود دارد
                 col_letter = get_column_letter(i)
                 cell = ws[f"{col_letter}{row}"]

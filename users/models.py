@@ -505,6 +505,23 @@ class Employee(AbstractUser):
         verbose_name="مدیریت افراد این زیر بخش ها",
     )
 
+    # manage_special_employees = models.ManyToManyField(Employee, related_name="", blank=True, verbose_name="")
+    manage_special_employees = models.ManyToManyField(
+        'self',
+        symmetrical=True,
+        blank=True,
+        related_name='managed_special_employees',
+        verbose_name="مدیریت کارکنان ویژه"
+    )
+
+
+
+
+
+    center_of_charge = models.CharField(
+        max_length=200, null=True, blank=True, verbose_name="مرکز هزینه"
+    )
+
     USERNAME_FIELD = "national_id"
     REQUIRED_FIELDS = ["first_name", "last_name", "phone_number"]
 

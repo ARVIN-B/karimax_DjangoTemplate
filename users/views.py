@@ -173,21 +173,25 @@ def _login_user_and_initialize_session(request, user):
     real_role = None
 
     if selected_role_name == "holding_manager":
-        holding = Holding.objects.filter(manager=user).first()
+        holding = Holding.objects.filter(managers=user).first()
         if holding:
             holding_id = holding.id
     elif selected_role_name == "factory_manager":
-        factory = Factory.objects.filter(manager=user).first()
+        factory = Factory.objects.filter(managers=user).first()
         if factory:
             factory_id = factory.id
             holding_id = factory.holding.id if factory.holding else None
             is_committee = factory.is_committee
 
-    # MARK: management todo
+    
     elif selected_role_name == "department_manager":
+
+        # MARK: committee todo
         department = Department.objects.filter(
-            Q(manager=user) | Q(managers=user) | Q(manager_2=user) | Q(manager_3=user)
+            Q(managers=user) | Q(manager_2=user) | Q(manager_3=user)
         ).first()
+        # MARK: committee todo end
+
         if department:
             department_id = department.id
             factory_id = department.factory.id
@@ -195,21 +199,18 @@ def _login_user_and_initialize_session(request, user):
                 department.factory.holding.id if department.factory.holding else None
             )
             is_committee = department.is_committee
-            if (
-                department.manager == user
-                or department.managers.filter(id=user.id).exists()
-            ):
+
+            # MARK: committee todo
+            if (department.managers.filter(id=user.id).exists()):
                 real_role = "department_manager"
             elif department.manager_2 == user:
                 real_role = "department_manager_2"
             elif department.manager_3 == user:
                 real_role = "department_manager_3"
+            # MARK: committee todo end
 
     elif selected_role_name == "supervisor":
-        subdepartment = Subdepartment.objects.filter(
-            Q(supervisor=user) | Q(supervisors=user)
-        ).first()
-        # MARK: management todo end
+        subdepartment = Subdepartment.objects.filter(Q(supervisors=user)).first()
         if subdepartment:
             subdepartment_id = subdepartment.id
             department_id = subdepartment.department.id
@@ -683,22 +684,23 @@ def build_management_tree(user):
 
     # پیدا کردن تمام هلدینگ‌های مرتبط (جایی که کاربر در آن یا زیرمجموعه نقش دارد)
 
-    # MARK: management todo
+    # MARK: committee todo
     related_holdings = (
         Holding.objects.filter(
-            Q(manager=user)
-            | Q(factories__manager=user)
-            | Q(factories__departments__manager=user)
+            Q(managers=user)
+            | Q(factories__managers=user)
+            # | Q(factories__departments__manager=user)
             | Q(factories__departments__managers=user)
             | Q(factories__departments__manager_2=user)
             | Q(factories__departments__manager_3=user)
-            | Q(factories__departments__subdepartments__supervisor=user)
+            # | Q(factories__departments__subdepartments__supervisor=user)
             | Q(factories__departments__subdepartments__supervisors=user)
             | Q(factories__departments__subdepartments__assigned_employees=user)
         )
         .distinct()
         .order_by("name")
     )
+    # MARK: committee todo end
 
     management_tree_1 = []
 
@@ -706,60 +708,68 @@ def build_management_tree(user):
         holding_dict = {
             "id": holding.id,
             "name": holding.name,
-            "role": "holding_manager" if holding.manager == user else None,
+            "role": "holding_manager" if holding.managers.filter(id=user.id).exists() else None,
             "factories": [],
         }
+
+
+        # MARK: committee todo
 
         # کارخانه‌های مرتبط در این هلدینگ
         related_factories = (
             Factory.objects.filter(holding=holding)
             .filter(
-                Q(manager=user)
-                | Q(departments__manager=user)
+                Q(managers=user)
+                # | Q(departments__manager=user)
                 | Q(departments__managers=user)
                 | Q(departments__manager_2=user)
                 | Q(departments__manager_3=user)
-                | Q(departments__subdepartments__supervisor=user)
+                # | Q(departments__subdepartments__supervisor=user)
                 | Q(departments__subdepartments__supervisors=user)
                 | Q(departments__subdepartments__assigned_employees=user)
             )
             .distinct()
             .order_by("name")
         )
+        # MARK: committee todo end
 
         for factory in related_factories:
             factory_dict = {
                 "id": factory.id,
                 "name": factory.name,
-                "role": "factory_manager" if factory.manager == user else None,
+                "role": "factory_manager" if factory.managers.filter(id=user.id).exists() else None,
                 "departments": [],
             }
+
+            # MARK: committee todo
 
             # بخش‌های مرتبط در این کارخانه
             related_departments = (
                 Department.objects.filter(factory=factory)
                 .filter(
-                    Q(manager=user)
-                    | Q(managers=user)
+                    # Q(manager=user) |
+                    Q(managers=user)
                     | Q(manager_2=user)
                     | Q(manager_3=user)
-                    | Q(subdepartments__supervisor=user)
+                    # | Q(subdepartments__supervisor=user)
                     | Q(subdepartments__supervisors=user)
                     | Q(subdepartments__assigned_employees=user)
                 )
                 .distinct()
                 .order_by("name")
             )
+            # MARK: committee todo end
 
             for department in related_departments:
 
+                # MARK: committee todo
                 department_dict = {
                     "id": department.id,
                     "name": department.name,
                     "role": (
                         "department_manager"
-                        if department.manager == user
-                        or department.managers.filter(id=user.id).exists()
+                        if # department.manager == user or
+                        department.managers.filter(id=user.id).exists()
                         or department.manager_2 == user
                         or department.manager_3 == user
                         else None
@@ -770,8 +780,8 @@ def build_management_tree(user):
                 roles = []
 
                 if (
-                    department.manager == user
-                    or department.managers.filter(id=user.id).exists()
+                    # department.manager == user or
+                    department.managers.filter(id=user.id).exists()
                 ):
                     roles.append("department_manager")
                 if department.is_committee:
@@ -780,13 +790,14 @@ def build_management_tree(user):
                     if department.manager_3 == user:
                         roles.append("department_manager_3")
                 department_dict["roles"] = roles if roles else None
+                # MARK: committee todo end
 
                 # زیربخش‌های مرتبط در این بخش
                 related_subdepartments = (
                     Subdepartment.objects.filter(department=department)
                     .filter(
-                        Q(supervisor=user)
-                        | Q(supervisors=user)
+                        # Q(supervisor=user) |
+                        Q(supervisors=user)
                         | Q(assigned_employees=user)
                     )
                     .distinct()
@@ -796,10 +807,9 @@ def build_management_tree(user):
                 for subdepartment in related_subdepartments:
                     roles = []
                     if (
-                        subdepartment.supervisor == user
-                        or subdepartment.supervisors.filter(id=user.id).exists()
+                        # subdepartment.supervisor == user or
+                        subdepartment.supervisors.filter(id=user.id).exists()
                     ):
-                        # MARK: management todo end
                         roles.append("supervisor")
                     if user in subdepartment.assigned_employees.all():
                         roles.append("employee")
@@ -871,8 +881,7 @@ def switch_role(request):
             messages.error(request, "holding_id الزامی است.")
             return redirect("users:dashboard")
 
-        # MARK: management todo
-        holding = get_object_or_404(Holding, id=holding_id, manager=user)
+        holding = get_object_or_404(Holding, id=holding_id, managers=user)
         if factory_id or department_id or subdepartment_id:
             messages.error(request, "برای holding_manager فقط holding_id معتبر است.")
             return redirect("users:dashboard")
@@ -880,7 +889,7 @@ def switch_role(request):
         if not factory_id:
             messages.error(request, "factory_id الزامی است.")
             return redirect("users:dashboard")
-        factory = get_object_or_404(Factory, id=factory_id, manager=user)
+        factory = get_object_or_404(Factory, id=factory_id, managers=user)
         holding_id = factory.holding.id if factory.holding else None
         is_committee = factory.is_committee if factory.is_committee else False
         if department_id or subdepartment_id:
@@ -899,14 +908,19 @@ def switch_role(request):
             # department = get_object_or_404(Department, id=department_id, manager=user)
             department = get_object_or_404(
                 Department,
-                Q(manager=user) | Q(managers=user),
+                # Q(manager=user) | 
+                Q(managers=user),
                 id=department_id,
             )
+
+        # MARK: committee todo
         elif real_role == "department_manager_2":
             department = get_object_or_404(Department, id=department_id, manager_2=user)
         elif real_role == "department_manager_3":
             department = get_object_or_404(Department, id=department_id, manager_3=user)
-        # department = get_object_or_404(Department, id=department_id, manager=user)
+        # MARK: committee todo end
+        
+        
         factory_id = department.factory.id
         holding_id = (
             department.factory.holding.id if department.factory.holding else None
@@ -924,10 +938,9 @@ def switch_role(request):
             return redirect("users:dashboard")
 
         subdepartment = get_object_or_404(
-            Subdepartment, Q(supervisor=user) | Q(supervisors=user), id=subdepartment_id
+            Subdepartment, # Q(supervisor=user) | 
+            Q(supervisors=user), id=subdepartment_id
         )
-
-        # MARK: management todo end
 
         department_id = subdepartment.department.id
         factory_id = subdepartment.department.factory.id
@@ -1865,13 +1878,12 @@ def management_dashboard(request):
 
     user_is_self_manager = False
 
-    # MARK: management todo
-
     if (
         Department.objects.filter(
             Q(id=department_id),
             Q(is_self=True),
-            Q(manager=request.user) | Q(managers=request.user),
+            # Q(manager=request.user) | 
+            Q(managers=request.user),
         )
         and role_name == "department_manager"
     ):
@@ -1882,12 +1894,11 @@ def management_dashboard(request):
         Subdepartment.objects.filter(
             Q(id=subdepartment_id),
             Q(is_restaurant=True),
-            Q(supervisor=request.user) | Q(supervisors=request.user),
+            # Q(supervisor=request.user) | 
+            Q(supervisors=request.user),
         )
         and role_name == "supervisor"
     ):
-        # MARK: management todo end
-
         user_is_restaurant = True
 
     can_import_excel = role_name == "super_admin"
@@ -2018,10 +2029,10 @@ def manage_self_menu(request):
 
     can_download_other_factories_resers = True
 
-    # MARK: management todo
     # دسترسی فقط برای مدیر سلف
     if not Department.objects.filter(
-        Q(manager=request.user) | Q(managers=request.user), is_self=True
+        # Q(manager=request.user) | 
+        Q(managers=request.user), is_self=True
     ).exists():
         messages.error(request, "شما دسترسی به مدیریت منوی سلف ندارید.")
         return redirect("users:management_dashboard")
@@ -2029,7 +2040,8 @@ def manage_self_menu(request):
     # رستوران‌ها
     restaurants = (
         Subdepartment.objects.filter(
-            Q(department__manager=request.user) | Q(department__managers=request.user),
+            # Q(department__manager=request.user) | 
+            Q(department__managers=request.user),
             department_id=department_id,
             department__is_self=True,
             is_restaurant=True,
@@ -2037,8 +2049,6 @@ def manage_self_menu(request):
         .select_related("department__factory")
         .distinct()
     )
-
-    # MARK: management todo end
 
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
@@ -2138,9 +2148,9 @@ def manage_self_menu(request):
         end_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
 
         # if can_download_other_factories_resers:
-        # factory_id = [1,9,12,11]
+        factory_id = [1,9,12,11]
         # factory_id = [12]
-        factory_id = [factory_id]
+        # factory_id = [factory_id]
 
         # دریافت تمام رستوران‌های مربوط به این کارخانه
         restaurants = Subdepartment.objects.filter(
@@ -2182,6 +2192,7 @@ def manage_self_menu(request):
         rows_phone = []
         rows_total_debt_raw = []  # عدد خام
         rows_total_debt_formatted = []  # با کاما و ریال
+        rows_center_of_charge = []
 
         rows_total_factory_qty = []
         rows_total_free_qty = []
@@ -2250,6 +2261,8 @@ def manage_self_menu(request):
             rows_total_debt_formatted.append(
                 f"{total_debt:,} ریال" if total_debt > 0 else "بدون بدهی"
             )
+            
+            rows_center_of_charge.append(emp.center_of_charge or "نامشخص")
 
         # مرتب‌سازی بر اساس مبلغ بدهی (نزولی)
 
@@ -2265,7 +2278,9 @@ def manage_self_menu(request):
                     rows_total_free_qty,
                     rows_total_guest_qty,
                     rows_total_debt_formatted,
+                    rows_center_of_charge,
                     *[restaurant_columns[restaurant.id] for restaurant in restaurants],
+
                 )
             )
 
@@ -2286,9 +2301,10 @@ def manage_self_menu(request):
             rows_total_free_qty = sorted_data[6]
             rows_total_guest_qty = sorted_data[7]
             rows_total_debt_formatted = sorted_data[8]
+            rows_center_of_charge = sorted_data[9]
 
             restaurant_sorted_columns = {}
-            for i, restaurant in enumerate(restaurants, start=9):
+            for i, restaurant in enumerate(restaurants, start=10):
                 restaurant_sorted_columns[restaurant.id] = sorted_data[i]
 
             # ستون‌های نهایی
@@ -2301,6 +2317,7 @@ def manage_self_menu(request):
                 ("تعداد سفارشات آزاد", rows_total_free_qty),
                 ("تعداد سفارشات مهمان", rows_total_guest_qty),
                 ("مبلغ بدهی", list(rows_total_debt_formatted)),
+                ("مرکز هزینه", list(rows_center_of_charge)),
             ]
 
             for restaurant in restaurants:
@@ -3412,18 +3429,20 @@ def food_reservation_view(request):
 
 def get_factory_ids(employee):
 
-    # MARK: management todo
+    # MARK: committee todo
     related_holdings = (
         Holding.objects.filter(
-            Q(manager=employee)
-            | Q(factories__manager=employee)
-            | Q(factories__departments__manager=employee)
+            # Q(manager=employee) |
+            Q(managers=employee)
+            # | Q(factories__manager=employee)
+            | Q(factories__managers=employee)
+            # | Q(factories__departments__manager=employee)
             | Q(factories__departments__managers=employee)
             | Q(
                 factories__departments__manager_2=employee
             )  # 🌟 جدید: اضافه کردن manager_2 و manager_3 برای department
             | Q(factories__departments__manager_3=employee)
-            | Q(factories__departments__subdepartments__supervisor=employee)
+            # | Q(factories__departments__subdepartments__supervisor=employee)
             | Q(factories__departments__subdepartments__supervisors=employee)
             | Q(factories__departments__subdepartments__assigned_employees=employee)
         )
@@ -3440,26 +3459,26 @@ def get_factory_ids(employee):
         holding_dict = {
             "id": holding.id,
             "name": holding.name,
-            "role": "holding_manager" if holding.manager == employee else None,
+            "role": "holding_manager" if holding.managers.filter(id=employee.id).exists() else None,
             "factories": [],
         }
 
-        if is_holding_manager == False and holding.manager == employee:
+        if is_holding_manager == False and holding.managers.filter(id=employee.id).exists():
             is_holding_manager = True
 
-        if holding.manager == employee:
+        if holding.managers.filter(id=employee.id).exists():
             managing_holdings_ids.append(holding.id)
 
         # کارخانه‌های مرتبط در این هلدینگ
         related_factories = (
             Factory.objects.filter(holding=holding)
             .filter(
-                Q(manager=employee)
-                | Q(departments__manager=employee)
+                Q(managers=employee)
+                # | Q(departments__manager=employee)
                 | Q(departments__managers=employee)
                 | Q(departments__manager_2=employee)
                 | Q(departments__manager_3=employee)
-                | Q(departments__subdepartments__supervisor=employee)
+                # | Q(departments__subdepartments__supervisor=employee)
                 | Q(departments__subdepartments__supervisors=employee)
                 | Q(departments__subdepartments__assigned_employees=employee)
             )
@@ -3470,16 +3489,15 @@ def get_factory_ids(employee):
             factory_dict = {
                 "id": factory.id,
                 "name": factory.name,
-                "role": "factory_manager" if factory.manager == employee else None,
+                "role": "factory_manager" if factory.managers.filter(id=employee.id).exists() else None,
             }
             factory_ids.append(factory.id)
-
             holding_dict["factories"].append(factory_dict)
 
         if holding_dict:
             management_tree_1.append(holding_dict)
 
-    # MARK: management todo end
+    # MARK: committee todo end
 
     return factory_ids, management_tree_1, is_holding_manager, managing_holdings_ids
 
@@ -4178,21 +4196,19 @@ def user_management(request):
         "super_admin",
         "holding_manager",
         "factory_manager",
+        "department_manager",
+        "supervisor",
     ]
 
-    if not role_name in ["super_admin", "holding_manager", "factory_manager"]:
+    if not management_access:
         raise PermissionDenied("شما مجاز به دسترسی به این بخش نیستید.")
 
-    """مدیریت کاربران - فقط برای super_admin, holding_manager, factory_manager"""
+    """مدیریت کاربران - فقط برای super_admin, holding_manager, factory_manager, department_manager, supervisor"""
     # چک دسترسی
     user_role = request.user.roles.values_list("name", flat=True)
 
     print(user_role)
-    if not any(
-        role in ["super_admin", "holding_manager", "factory_manager"]
-        for role in user_role
-    ):
-        raise PermissionDenied("شما مجاز به دسترسی به این بخش نیستید.")
+    
 
     form = ManagementFilterForm(request.GET or None)
 
@@ -4201,21 +4217,19 @@ def user_management(request):
         employees = Employee.objects.all()
     elif "holding_manager" in user_role:
 
-        # MARK: management todo
-        managed_holding = Holding.objects.filter(manager=request.user).first()
+        managed_holding = Holding.objects.filter(managers=request.user).first()
         employees = (
             Employee.objects.filter(holding=managed_holding)
             if managed_holding
             else Employee.objects.none()
         )
     elif "factory_manager" in user_role:
-        managed_factory = Factory.objects.filter(manager=request.user).first()
+        managed_factory = Factory.objects.filter(managers=request.user).first()
         employees = (
             Employee.objects.filter(factory=managed_factory)
             if managed_factory
             else Employee.objects.none()
         )
-        # MARK: management todo end
 
     else:
         employees = Employee.objects.none()
@@ -4421,15 +4435,12 @@ def evaluation_panel(request):
     if "super_admin" in user_role:
         evaluations = Evaluation.objects.all()
     elif "department_manager" in user_role:
-
-        # MARK: management todo
-        managed_department = Department.objects.filter(manager=request.user).first()
+        managed_department = Department.objects.filter(managers=request.user).first()
         evaluations = (
             Evaluation.objects.filter(user__department=managed_department)
             if managed_department
             else Evaluation.objects.none()
         )
-        # MARK: management todo end
 
     if form.is_valid():
         period = form.cleaned_data.get("period")
@@ -4672,15 +4683,14 @@ def process_participation(request, participation_id):
                 participation.save()
                 messages.success(request, "متن با موفقیت ویرایش شد.")
 
-            # MARK: management todo
+
+            # MARK: send paricipation to next level needs to check (supervisor --> supervisors)
+
+            # also: management todo
             if "employee" in role_name:
                 subdepartment_supervisor = None
                 if subdepartment_id and subdepartment_id != None:
-                    subdepartment_supervisor = (
-                        Subdepartment.objects.filter(id=subdepartment_id)
-                        .first()
-                        .supervisor
-                    )
+                    subdepartment_supervisor = (Subdepartment.objects.filter(id=subdepartment_id).first().supervisor)
                 # MARK: management todo end
 
                 if subdepartment_supervisor and subdepartment_supervisor != None:
@@ -4997,6 +5007,9 @@ def search_org_units(request):
             )
 
     # MARK: management todo
+    # also: manager --> managers
+
+
     # هلدینگ‌ها
     holdings = Holding.objects.filter(
         Q(name__icontains=q)
@@ -5593,7 +5606,6 @@ def review_participation(request, participation_id):
         "manager_review": "department_manager",
     }
 
-    # MARK: management in committee todo
     left_manager_review = []
     if not participation.manager_status:
         left_manager_review.append("department_manager")
@@ -5601,7 +5613,6 @@ def review_participation(request, participation_id):
         left_manager_review.append("department_manager_2")
     if not participation.manager_3_status:
         left_manager_review.append("department_manager_3")
-    # MARK: management todo end
 
     # if (participation.status not in allowed_roles or role_name != allowed_roles[participation.status]):
     #     raise PermissionDenied("شما اجازه بررسی این مشارکت را ندارید.")
@@ -5626,6 +5637,7 @@ def review_participation(request, participation_id):
 
                 if is_committee:
                     # MARK: management in committee todo
+                    # MARK: here
                     if real_role in left_manager_review:
                         if real_role == "department_manager":
                             participation.manager_status = "approved"
