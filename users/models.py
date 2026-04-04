@@ -507,16 +507,12 @@ class Employee(AbstractUser):
 
     # manage_special_employees = models.ManyToManyField(Employee, related_name="", blank=True, verbose_name="")
     manage_special_employees = models.ManyToManyField(
-        'self',
+        "self",
         symmetrical=True,
         blank=True,
-        related_name='managed_special_employees',
-        verbose_name="مدیریت کارکنان ویژه"
+        related_name="managed_special_employees",
+        verbose_name="مدیریت کارکنان ویژه",
     )
-
-
-
-
 
     center_of_charge = models.CharField(
         max_length=200, null=True, blank=True, verbose_name="مرکز هزینه"

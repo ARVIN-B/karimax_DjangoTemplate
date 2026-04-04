@@ -18,8 +18,8 @@ from .models import (
 
 from django.utils.translation import gettext_lazy as _
 from django.forms import NumberInput
-from django.db.models import Count
 from django.db import models
+from django.db.models import Count
 
 
 class RoleFilter(admin.SimpleListFilter):
@@ -47,13 +47,54 @@ class RoleFilter(admin.SimpleListFilter):
         return queryset
 
 
+@admin.register(Holding)
+class HoldingAdmin(admin.ModelAdmin):
+    list_display = [
+        "name",
+        "location",
+        # "manager",
+        # "managers",
+        "created_at",
+        "factory_count",
+    ]
+    search_fields = ["name", "location"]
+    list_filter = ["created_at"]
+    readonly_fields = ["created_at"]
+    fieldsets = (
+        (
+            _("اطلاعات اصلی"),
+            {
+                "fields": (
+                    "name",
+                    "location",
+                    "managers",
+                    "manager",
+                )
+            },
+        ),
+        (
+            _("اطلاعات سیستمی"),
+            {
+                "fields": ("created_at",),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def factory_count(self, obj):
+        return obj.factories.count()
+
+    factory_count.short_description = "تعداد کارخانه‌ها"
+
+
 @admin.register(Factory)
 class FactoryAdmin(admin.ModelAdmin):
     list_display = [
         "name",
         "location",
         "holding",
-        "manager",
+        # "managers",
+        # "manager",
         "created_at",
         "department_count",
         "employee_count",
@@ -76,10 +117,19 @@ class FactoryAdmin(admin.ModelAdmin):
                     "name",
                     "location",
                     "holding",
+                    "managers",
                     "manager",
+                )
+            },
+        ),
+        (
+            _("تنظیمات مرتبط با کمیته ها"),
+            {
+                "fields": (
                     "is_committee",
                     "linked_factory",
-                )
+                ),
+                "classes": ("collapse",),
             },
         ),
         (
@@ -88,11 +138,12 @@ class FactoryAdmin(admin.ModelAdmin):
                 "fields": ("close_food_res_time_H", "close_food_res_time_M"),
                 "description": _(
                     """
-                ساعت و دقیقه‌ای که رزرو غذا برای این کارخانه بسته می‌شود.
-                <br>• ساعت: ۰ تا ۲۳
-                <br>• دقیقه: ۰ تا ۵۹
-            """
+                        ساعت و دقیقه‌ای که رزرو غذا برای این کارخانه بسته می‌شود.
+                        <br>• ساعت: ۰ تا ۲۳
+                        <br>• دقیقه: ۰ تا ۵۹
+                    """
                 ),
+                "classes": ("collapse",),
             },
         ),
         (
@@ -124,11 +175,12 @@ class FactoryAdmin(admin.ModelAdmin):
             )
         },
     }
+
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         field = super().formfield_for_dbfield(db_field, request, **kwargs)
-        if db_field.name in ('close_food_res_time_H', 'close_food_res_time_M'):
-            max_val = 23 if db_field.name.endswith('_H') else 59
-            field.widget.attrs['max'] = str(max_val)
+        if db_field.name in ("close_food_res_time_H", "close_food_res_time_M"):
+            max_val = 23 if db_field.name.endswith("_H") else 59
+            field.widget.attrs["max"] = str(max_val)
         return field
 
     # تعداد بخش‌ها
@@ -140,7 +192,6 @@ class FactoryAdmin(admin.ModelAdmin):
     # تعداد کل کارمندان (بهبود یافته)
     def employee_count(self, obj):
         # روش بهینه‌تر با QuerySet
-        from django.db.models import Count
 
         total = (
             obj.departments.aggregate(
@@ -153,19 +204,6 @@ class FactoryAdmin(admin.ModelAdmin):
     employee_count.short_description = "تعداد کارمندان"
 
 
-@admin.register(Holding)
-class HoldingAdmin(admin.ModelAdmin):
-    list_display = ["name", "location", "manager", "created_at", "factory_count"]
-    search_fields = ["name", "location"]
-    list_filter = ["created_at"]
-    readonly_fields = ["created_at"]
-
-    def factory_count(self, obj):
-        return obj.factories.count()
-
-    factory_count.short_description = "تعداد کارخانه‌ها"
-
-
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
     list_display = [
@@ -173,7 +211,8 @@ class DepartmentAdmin(admin.ModelAdmin):
         "factory",
         "holding_name",
         "factory_location",
-        "manager",
+        # "managers",
+        # "manager",
         "created_at",
         "subdepartment_count",
         "is_committee",
@@ -182,6 +221,46 @@ class DepartmentAdmin(admin.ModelAdmin):
     list_filter = ["factory__holding", "factory", "created_at", "is_committee"]
     search_fields = ["name", "factory__name", "factory__holding__name"]
     readonly_fields = ["created_at"]
+
+    fieldsets = (
+        (
+            _("اطلاعات اصلی"),
+            {
+                "fields": (
+                    "name",
+                    "factory",
+                    "managers",
+                    "manager",
+                )
+            },
+        ),
+        (
+            _("تنظیمات مرتبط با کمیته ها"),
+            {
+                "fields": (
+                    "is_committee",
+                    "manager_2",
+                    "manager_3",
+                    "linked_factory",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            _("تنظیمات مرتبط با رستوران و سلف"),
+            {
+                "fields": ("is_self",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            _("اطلاعات سیستمی"),
+            {
+                "fields": ("created_at",),
+                "classes": ("collapse",),
+            },
+        ),
+    )
 
     # --- نمایش نام هلدینگ ---
     def holding_name(self, obj):
@@ -225,7 +304,7 @@ class SubdepartmentAdmin(admin.ModelAdmin):
         "factory_name",
         "holding_name",
         "factory_location",
-        "supervisor",
+        # "supervisor",
         "created_at",
         "is_committee",
         "employee_count",
@@ -244,6 +323,44 @@ class SubdepartmentAdmin(admin.ModelAdmin):
         "department__factory__holding__name",
     ]
     readonly_fields = ["created_at"]
+
+    fieldsets = (
+        (
+            _("اطلاعات اصلی"),
+            {
+                "fields": (
+                    "name",
+                    "department",
+                    "supervisors",
+                    "supervisor",
+                )
+            },
+        ),
+        (
+            _("تنظیمات مرتبط با کمیته ها"),
+            {
+                "fields": (
+                    "is_committee",
+                    "linked_factory",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            _("تنظیمات مرتبط با رستوران و سلف"),
+            {
+                "fields": ("is_restaurant",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            _("اطلاعات سیستمی"),
+            {
+                "fields": ("created_at",),
+                "classes": ("collapse",),
+            },
+        ),
+    )
 
     def factory_name(self, obj):
         return (
@@ -356,15 +473,15 @@ class EmployeeManagementAssignmentsForm(UserChangeForm):
         self.fields["managed_holdings_assignments"].queryset = Holding.objects.order_by(
             "name"
         )
-        self.fields["managed_factories_assignments"].queryset = Factory.objects.order_by(
-            "name"
+        self.fields["managed_factories_assignments"].queryset = (
+            Factory.objects.order_by("name")
         )
-        self.fields[
-            "managed_departments_assignments"
-        ].queryset = Department.objects.order_by("name")
-        self.fields[
-            "supervised_subdepartments_assignments"
-        ].queryset = Subdepartment.objects.order_by("name")
+        self.fields["managed_departments_assignments"].queryset = (
+            Department.objects.order_by("name")
+        )
+        self.fields["supervised_subdepartments_assignments"].queryset = (
+            Subdepartment.objects.order_by("name")
+        )
 
         if self.instance and self.instance.pk:
             self.fields["managed_holdings_assignments"].initial = (
@@ -603,25 +720,25 @@ class EmployeeAdmin(UserAdmin):
         return obj.guest_limit_reservation_for_others
 
     guest_limit_res_for_others_display.short_description = "محدودیت مهمان"
-    guest_limit_res_for_others_display.admin_order_field = "guest_limit_reservation_for_others"
+    guest_limit_res_for_others_display.admin_order_field = (
+        "guest_limit_reservation_for_others"
+    )
 
     def free_limit_res_for_others_display(self, obj):
         return obj.free_limit_reservation_for_others
 
     free_limit_res_for_others_display.short_description = "محدودیت آزاد"
-    free_limit_res_for_others_display.admin_order_field = "free_limit_reservation_for_others"
+    free_limit_res_for_others_display.admin_order_field = (
+        "free_limit_reservation_for_others"
+    )
 
     def factory_limit_res_for_others_display(self, obj):
         return obj.factory_limit_reservation_for_others
 
     factory_limit_res_for_others_display.short_description = "محدودیت سهمیه‌ای"
-    factory_limit_res_for_others_display.admin_order_field = "factory_limit_reservation_for_others"
-
-
-
-
-
-
+    factory_limit_res_for_others_display.admin_order_field = (
+        "factory_limit_reservation_for_others"
+    )
 
     ordering = ["personnel_code", "last_name", "first_name"]  # مرتب‌سازی بهتر
     readonly_fields = ["date_joined", "last_login"]
@@ -660,7 +777,6 @@ class EmployeeAdmin(UserAdmin):
         return "-"
 
     food_receiver_location.short_description = "محل تحویل‌گیری"
-
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
