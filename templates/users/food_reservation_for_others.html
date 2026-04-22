@@ -26,13 +26,21 @@
                     <h5 class="text-primary fw-bold text-center mb-4">
                         <i class="fas fa-user-search me-2"></i>جستجوی کارمندان
                     </h5>
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">برای تاریخ (شمسی)</label>
+                            <input type="text" id="jdate" data-jdp class="form-control" placeholder="مثال: 1405/09/02">
+                        </div>
+                    </div>
+
                     <div class="row g-3 align-items-end">
                         <div class="col-md-12">
                             <label class="form-label fw-bold text-dark">
                                 <i class="fas fa-search me-1"></i> نام، کد ملی یا کد پرسنلی کارمند (چندانتخابی)
                             </label>
                             <select id="employee-search" class="form-select form-select-lg shadow-sm" multiple="multiple" style="width: 100%;">
-                                <option value="">-- شروع به تایپ کنید... --</option>
+                                <!-- <option value="">-- شروع به تایپ کنید... --</option> -->
                             </select>
                         </div>
                     </div>
@@ -49,6 +57,11 @@
                 style="direction:ltr; background:#000; color:#0f0; padding:15px; margin-bottom:20px; white-space:pre-wrap; font-size:13px;">
                 DEBUG OUTPUT
             </div> -->
+
+
+
+            
+
 
             <!-- جدول ردیف‌ها -->
             <form method="post" id="group-reservation-form">
@@ -74,18 +87,136 @@
                     <button type="button" id="submit-group-reservations" 
                             class="btn btn-success btn-lg shadow-lg">
                         <i class="fas fa-save me-2"></i>
-                        ثبت نهایی رزروهای گروهی
+                        ثبت نهایی رزروها
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 
 <script>
+    jalaliDatepicker.startWatch({
+        time: false,  // غیرفعال کردن انتخاب زمان
+        persianDigits: true,  // استفاده از اعداد فارسی
+        // minDate: 'today',  // حداقل تاریخ امروز
+        showTodayBtn: true,  // نمایش دکمه "امروز"
+        showEmptyBtn: true  // نمایش دکمه "پاک کردن"
+        
+    });
+    // const canReserve = {{ can_reserve_for_which_day }};
+
+   
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const jdateInput = document.getElementById('jdate');
+        const employeeSelect = document.getElementById('employee-search');
+        const submitBtn = document.getElementById('submit-group-reservations');
+        const employeeReservationStates = {};
+
+        const canReserveForWhichDay = {{ can_reserve_for_which_day|safe }};
+        const todayJalaliDate = "{{ today_jdate }}";
+        // console.log(canReserveForWhichDay)
+        // console.log(todayJalaliDate)
+
+        if (canReserveForWhichDay === 0) {
+            jdateInput.value = todayJalaliDate;
+            jdateInput.disabled = true;
+        } else {
+            // حالت عادی → فعال و قابل ویرایش
+            jdateInput.disabled = false;
+        }
+
+
+
+
+        function isValidJalaliDate(dateStr) {
+            const regex = /^(13\d{2}|14\d{2}|1500)\/(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])$/;
+            return regex.test(dateStr);
+        }
+        function checkDateAndToggleElements() {
+            const value = jdateInput.value.trim();
+
+            // console.log("jdateInput : ", jdateInput)
+
+            if (!isValidJalaliDate(value)) {
+                employeeSelect.disabled = true;
+                submitBtn.disabled = true;
+                submitBtn.innerText = "لطفا تاریخ را به طور صحیح وارد کنید";
+            } else {
+                employeeSelect.disabled = false;
+                submitBtn.disabled = false;
+                submitBtn.innerText = "ثبت نهایی رزروها";
+            }
+        }
+
+
+
+        jdateInput.addEventListener('input', function () {
+            checkDateAndToggleElements();
+
+            // ✅ خالی کردن select2
+            $('#employee-search').val(null).trigger('change');
+
+            // ✅ پاک کردن جدول کارمندان (اختیاری ولی توصیه‌شده)
+            $('#employees-table-body').empty();
+
+            // ✅ پاک کردن state داخلی (خیلی مهم)
+            for (const key in employeeReservationStates) {
+                delete employeeReservationStates[key];
+            }
+        });
+
+
+
+
+        // ✅ چک اولیه هنگام لود شدن صفحه
+        checkDateAndToggleElements();
+
+        // ✅ چک مداوم هنگام تغییر مقدار تاریخ
+        jdateInput.addEventListener('input', checkDateAndToggleElements);
+
+        employeeSelect.addEventListener('focus', () => {
+            if (employeeSelect.disabled) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'محدودیت ثبت',
+                    text: `حداکثر مجاز برای ${typeName} ${ 
+                        overType === 'factory' ? maxFactory : 
+                        overType === 'free'    ? maxFree    : maxGuest 
+                    } عدد است.\nتعداد به ${newQty} تنظیم شد.`,
+                    confirmButtonText: 'باشه'
+                });
+
+                jdateInput.focus();
+            }
+        });
+
+        submitBtn.addEventListener('click', () => {
+            if (submitBtn.disabled) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'محدودیت ثبت',
+                    text: `حداکثر مجاز برای ${typeName} ${ 
+                        overType === 'factory' ? maxFactory : 
+                        overType === 'free'    ? maxFree    : maxGuest 
+                    } عدد است.\nتعداد به ${newQty} تنظیم شد.`,
+                    confirmButtonText: 'باشه'
+                });
+
+                jdateInput.focus();
+            }
+        });
+
+    });
+        
+
+
     
     const URLS = {
         searchEmployees: "{% url 'users:search_employees' %}",
@@ -168,24 +299,36 @@
         // ===============================
 
         function fetchEmployeeReservationInfo(employeeId, callback) {
+
+            const jdateInput = document.getElementById('jdate');
+            const jdatevalue = jdateInput.value.trim();
+
             $.ajax({
                 url: URLS.getEmployeeReservationInfo,
                 type: "GET",
-                data: { q: employeeId },
+                data: { q: employeeId , for_date: jdatevalue },
                 dataType: "json",
                 success: function (data) {
 
                     // اگر برای این کارمند state نداریم → بساز
-                    if (!employeeReservationStates[employeeId]) {
-                        employeeReservationStates[employeeId] = {
-                            ...data,                              // کپی تمام فیلدها
-                            existing_reservations: data.existing_reservations.map(r => ({...r}))  // deep copy آرایه رزروها
-                        };
-                    }
+                    // if (!employeeReservationStates[employeeId]) {
+                    //     employeeReservationStates[employeeId] = {
+                    //         ...data,                              // کپی تمام فیلدها
+                    //         existing_reservations: data.existing_reservations.map(r => ({...r}))  // deep copy آرایه رزروها
+                    //     };
+                    // }
+
+                    // if (!employeeReservationStates[employeeId]) {
+                    employeeReservationStates[employeeId] = {
+                        ...data,                              // کپی تمام فیلدها
+                        existing_reservations: data.existing_reservations.map(r => ({...r}))  // deep copy آرایه رزروها
+                    };
+                    // }
 
                     // همیشه نسخه کش‌شده رو به callback بده
                     if (callback) callback(employeeReservationStates[employeeId]);
                 },
+
                 // error: function(xhr) {
                 //     $('#debug-output').text(
                 //         'ERROR:\n' + xhr.responseText
@@ -193,6 +336,7 @@
                 //     console.error(xhr);
                 // }
             });
+            // console.log('test:', employeeId);
         }
 
 
@@ -335,6 +479,7 @@
                             { key: 'free_quantity',    type: 'free',    qty: res.free_quantity   || 0 },
                             { key: 'guest_quantity',   type: 'guest',   qty: res.guest_quantity  || 0 },
                         ];
+                        // console.log('test:', res);
 
                         types.forEach(t => {
                             if (t.qty <= 0) return;
@@ -991,11 +1136,6 @@
                 });
             });
 
-
-            
-
-
-
             // اگر هیچ تغییری نبود، می‌تونی پیام بدی (اختیاری)
             if (!hasAnyChange) {
                 Swal.fire({
@@ -1009,14 +1149,20 @@
                 return;
             }
 
+            
+
+
+
             $('#group-reservation-form').trigger('change');  // ← این خط جدید
 
-            // ۲. جمع‌آوری تمام داده‌های فرم (دقیقاً همان چیزی که Django انتظار داره)
-            const formData = $('#group-reservation-form').serialize() + '&action=save_group';
-
-
             // برای دیباگ (اختیاری – می‌تونی بعداً حذف کنی)
-            console.log('فرم ارسال‌شده:', formData);
+            // console.log('فرم ارسال‌شده:', jdatevalue);
+
+            const jdateInput = document.getElementById('jdate');
+            const for_date = jdateInput.value.trim();
+
+            // ۲. جمع‌آوری تمام داده‌های فرم (دقیقاً همان چیزی که Django انتظار داره)
+            const formData = $('#group-reservation-form').serialize() + '&action=save_group' + '&for_date=' + for_date;
 
             // ۳. ارسال AJAX
             $.ajax({
@@ -1056,7 +1202,6 @@
                 }
             });
         });
-
     });
 </script>
 

@@ -349,6 +349,15 @@ class Employee(AbstractUser):
         (1, "تحویل گیرنده کارخانه"),
         (2, "تحویل گیرنده هلدینگ"),
     )
+    can_reserve_for_others_choices = (
+        (0, "اجازه ندارد"),
+        (1, "مجاز (با محدودیت)"),
+        (2, "مجاز (بدن محدودیت پسنل مقصد)"),
+    )
+    can_reserve_for_which_day_choices = (
+        (0, "فقط همان روز"),
+        (1, "مجاز به رزرو برای اینده و گذشته"),
+    )
 
     national_id = models.CharField(max_length=10, unique=True, verbose_name="کد ملی")
     phone_number = models.CharField(
@@ -375,8 +384,30 @@ class Employee(AbstractUser):
     unlimit_reservation = models.BooleanField(
         default=False, verbose_name="مجوز رزرو نامحدود"
     )
-    can_reserve_for_others = models.BooleanField(
-        default=False, verbose_name="مجوز رزرو برای دیگران"
+    is_contractor = models.BooleanField(default=False, verbose_name="آیا پیمانکار است؟")
+    # can_reserve_for_others = models.BooleanField(
+    #     default=False, verbose_name="مجوز رزرو برای دیگران"
+    # )
+
+    guest_limit_reservation = models.IntegerField(
+        default=0, verbose_name="محدودیت رزرو مهمان"
+    )
+    free_limit_reservation = models.IntegerField(
+        default=5, verbose_name="محدودیت رزرو آزاد"
+    )
+    factory_limit_reservation = models.IntegerField(
+        default=1, verbose_name="محدودیت رزرو سهمیه ای"
+    )
+
+    can_reserve_for_others = models.PositiveSmallIntegerField(
+        default=0,
+        choices=can_reserve_for_others_choices,
+        verbose_name="مجوز رزرو برای دیگران",
+    )
+    can_reserve_for_which_day = models.PositiveSmallIntegerField(
+        default=0,
+        choices=can_reserve_for_which_day_choices,
+        verbose_name="مجوز رزرو برای تاریخ",
     )
     guest_limit_reservation_for_others = models.IntegerField(
         default=0, verbose_name="محدودیت رزرو مهمان برای دیگران"
@@ -476,47 +507,94 @@ class Employee(AbstractUser):
     manage_sub_employees = models.BooleanField(
         default=False, verbose_name="مجوز مدیریت پرسنل زیر مجموعه"
     )
-
-    manage_holdings_members = models.ManyToManyField(
-        Holding,
-        related_name="manage_holdings_members",
+    hr_granting_role_limit = models.ForeignKey(
+        Role,
         blank=True,
-        verbose_name="مدیریت افراد این هلدینگ ها",
+        null=True,
+        on_delete=models.PROTECT,
+        verbose_name="حد اعطای نقش به پرسنل مربوطه",
+    )
+    hr_accessible_holdings = models.ManyToManyField(
+        Holding,
+        related_name="hr_accessible_by",
+        blank=True,
+        verbose_name="هلدینگ های قابل مدیریت",
+    )
+    hr_accessible_factories = models.ManyToManyField(
+        Factory,
+        related_name="hr_accessible_by",
+        blank=True,
+        verbose_name="کارخانه های قابل مدیریت",
+    )
+    hr_accessible_departments = models.ManyToManyField(
+        Department,
+        related_name="hr_accessible_by",
+        blank=True,
+        verbose_name="بخش های قابل مدیریت",
+    )
+    hr_accessible_subdepartments = models.ManyToManyField(
+        Subdepartment,
+        related_name="hr_accessible_by",
+        blank=True,
+        verbose_name="زیر بخش های قابل مدیریت",
+    )
+    hr_accessible_employees = models.ManyToManyField(
+        "self",
+        related_name="hr_accessible_by",
+        blank=True,
+        verbose_name="پرسنل قابل مدیریت",
     )
 
-    manage_factories_members = models.ManyToManyField(
-        Holding,
-        related_name="manage_factories_members",
-        blank=True,
-        verbose_name="مدیریت افراد این کارخانه ها",
-    )
+    # manage_holdings_members = models.ManyToManyField(
+    #     Holding,
+    #     related_name="manage_holdings_members",
+    #     blank=True,
+    #     verbose_name="مدیریت افراد این هلدینگ ها",
+    # )
 
-    manage_departments_members = models.ManyToManyField(
-        Holding,
-        related_name="manage_departments_members",
-        blank=True,
-        verbose_name="مدیریت افراد این بخش ها",
-    )
+    # manage_factories_members = models.ManyToManyField(
+    #     Holding,
+    #     related_name="manage_factories_members",
+    #     blank=True,
+    #     verbose_name="مدیریت افراد این کارخانه ها",
+    # )
 
-    manage_subdepartments_members = models.ManyToManyField(
-        Holding,
-        related_name="manage_subdepartments_members",
-        blank=True,
-        verbose_name="مدیریت افراد این زیر بخش ها",
-    )
+    # manage_departments_members = models.ManyToManyField(
+    #     Holding,
+    #     related_name="manage_departments_members",
+    #     blank=True,
+    #     verbose_name="مدیریت افراد این بخش ها",
+    # )
+
+    # manage_subdepartments_members = models.ManyToManyField(
+    #     Holding,
+    #     related_name="manage_subdepartments_members",
+    #     blank=True,
+    #     verbose_name="مدیریت افراد این زیر بخش ها",
+    # )
 
     # manage_special_employees = models.ManyToManyField(Employee, related_name="", blank=True, verbose_name="")
-    manage_special_employees = models.ManyToManyField(
-        "self",
-        symmetrical=True,
-        blank=True,
-        related_name="managed_special_employees",
-        verbose_name="مدیریت کارکنان ویژه",
-    )
+    # manage_special_employees = models.ManyToManyField(
+    #     "self",
+    #     symmetrical=True,
+    #     blank=True,
+    #     related_name="managed_special_employees",
+    #     verbose_name="مدیریت کارکنان ویژه",
+    # )
 
     center_of_charge = models.CharField(
         max_length=200, null=True, blank=True, verbose_name="مرکز هزینه"
     )
+
+    # reporting system
+    # can_reserve_for_others_choices = (
+    #     (0, "اجازه ندارد"),
+    #     (1, "مجاز (با محدودیت)"),
+    #     (2, "مجاز (بدن محدودیت پسنل مقصد)"),
+    # )
+    # can_reserve_for_others = models.PositiveSmallIntegerField(
+    #     default=0, choices=can_reserve_for_others_choices, verbose_name="مجوز رزرو برای دیگران"
+    # )
 
     USERNAME_FIELD = "national_id"
     REQUIRED_FIELDS = ["first_name", "last_name", "phone_number"]
@@ -1053,8 +1131,8 @@ class FoodReservation(models.Model):
         # today_gdate = date.today() + timedelta(days=2)
         today_gdate = date.today()
         # نمی‌توان برای گذشته رزرو کرد
-        if self.reservation_date < today_gdate:
-            raise ValidationError("نمی‌توانید برای روزهای گذشته رزرو کنید.")
+        # if self.reservation_date < today_gdate:
+        #     raise ValidationError("نمی‌توانید برای روزهای گذشته رزرو کنید.")
 
         # امروز فقط تا ساعت 10 صبح
         if self.reservation_date == today_gdate:

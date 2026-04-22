@@ -438,6 +438,10 @@ class PermissionLevelAdmin(admin.ModelAdmin):
 admin.site.register(PermissionLevel, PermissionLevelAdmin)
 
 
+
+
+
+
 class EmployeeManagementAssignmentsForm(UserChangeForm):
     managed_holdings_assignments = forms.ModelMultipleChoiceField(
         queryset=Holding.objects.none(),
@@ -525,11 +529,22 @@ class EmployeeManagementAssignmentsForm(UserChangeForm):
         self._save_management_assignments()
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 @admin.register(Employee)
 class EmployeeAdmin(UserAdmin):
     add_form_template = "admin/users/employee_add_form.html"
     form = EmployeeManagementAssignmentsForm
-
     # --- فرم ویرایش ---
     fieldsets = (
         (None, {"fields": ("national_id", "password")}),
@@ -562,14 +577,39 @@ class EmployeeAdmin(UserAdmin):
             },
         ),
         (
+            "مدیریت پرسنل",
+            {
+                "fields": (
+                    "hr_accessible_holdings",
+                    "hr_accessible_factories",
+                    "hr_accessible_departments",
+                    "hr_accessible_subdepartments",
+                    "hr_accessible_employees",
+
+
+
+                    # "hr_accessible_holdings",
+
+
+                    # "managed_factories_assignments",
+                    # "managed_departments_assignments",
+                    # "supervised_subdepartments_assignments",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
             "مجوزهای مربوط به سلف",
             {
                 "fields": (
                     "unlimit_reservation",
                     "can_serve_foods",
                     "can_reserve_management_food",
+                    "factory_limit_reservation",
+                    "free_limit_reservation",
+                    "guest_limit_reservation",
                     "can_reserve_for_others",
-                    # ← گروه جدید برای محدودیت‌های عددی
+                    "can_reserve_for_which_day",
                     "guest_limit_reservation_for_others",
                     "free_limit_reservation_for_others",
                     "factory_limit_reservation_for_others",
@@ -597,6 +637,7 @@ class EmployeeAdmin(UserAdmin):
                     "is_first_login",
                     "factory_bimeh",
                     "holding_bimeh",
+                    "is_contractor",
                 ),
                 "classes": ("collapse",),
             },
@@ -621,8 +662,13 @@ class EmployeeAdmin(UserAdmin):
                     "phone_number",
                     "assigned_subdepartments",
                     "roles",
+                    "is_contractor",
                     "unlimit_reservation",
+                    "factory_limit_reservation",
+                    "free_limit_reservation",
+                    "guest_limit_reservation",
                     "can_reserve_for_others",
+                    "can_reserve_for_which_day",
                     "guest_limit_reservation_for_others",
                     "free_limit_reservation_for_others",
                     "factory_limit_reservation_for_others",
@@ -648,6 +694,7 @@ class EmployeeAdmin(UserAdmin):
         "personnel_code",  # اضافه شد
         "national_id",
         "can_serve_foods",
+        "is_contractor",
         "unlimit_reservation",
         "can_reserve_management_food",
         "factory_bimeh",
@@ -659,7 +706,11 @@ class EmployeeAdmin(UserAdmin):
         "is_staff",
         "is_superuser",
         "is_first_login",
+        "guest_limit_res_display",
+        "free_limit_res_display",
+        "factory_limit_res_display",
         "can_reserve_for_others",
+        "can_reserve_for_which_day",
         "guest_limit_res_for_others_display",
         "free_limit_res_for_others_display",
         "factory_limit_res_for_others_display",
@@ -690,11 +741,16 @@ class EmployeeAdmin(UserAdmin):
         "assigned_subdepartments__department__factory",
         "assigned_subdepartments__department",
         "assigned_subdepartments",
+        "is_contractor",
         "is_active",
         "is_staff",
         "is_superuser",
         "is_first_login",
+        "factory_limit_reservation",
+        "free_limit_reservation",
+        "guest_limit_reservation",
         "can_reserve_for_others",
+        "can_reserve_for_which_day",
         "guest_limit_reservation_for_others",
         "free_limit_reservation_for_others",
         "factory_limit_reservation_for_others",
@@ -716,10 +772,28 @@ class EmployeeAdmin(UserAdmin):
         },
     }
 
+    def guest_limit_res_display(self, obj):
+        return obj.guest_limit_reservation
+
+    guest_limit_res_display.short_description = "محدودیت مهمان"
+    guest_limit_res_display.admin_order_field = "guest_limit_reservation"
+
+    def free_limit_res_display(self, obj):
+        return obj.free_limit_reservation
+
+    free_limit_res_display.short_description = "محدودیت آزاد"
+    free_limit_res_display.admin_order_field = "free_limit_reservation"
+
+    def factory_limit_res_display(self, obj):
+        return obj.factory_limit_reservation
+
+    factory_limit_res_display.short_description = "محدودیت سهمیه‌ای"
+    factory_limit_res_display.admin_order_field = "factory_limit_reservation"
+
     def guest_limit_res_for_others_display(self, obj):
         return obj.guest_limit_reservation_for_others
 
-    guest_limit_res_for_others_display.short_description = "محدودیت مهمان"
+    guest_limit_res_for_others_display.short_description = "محدودیت مهمان برای دیگران"
     guest_limit_res_for_others_display.admin_order_field = (
         "guest_limit_reservation_for_others"
     )
@@ -727,7 +801,7 @@ class EmployeeAdmin(UserAdmin):
     def free_limit_res_for_others_display(self, obj):
         return obj.free_limit_reservation_for_others
 
-    free_limit_res_for_others_display.short_description = "محدودیت آزاد"
+    free_limit_res_for_others_display.short_description = "محدودیت آزاد برای دیگران"
     free_limit_res_for_others_display.admin_order_field = (
         "free_limit_reservation_for_others"
     )
@@ -735,7 +809,9 @@ class EmployeeAdmin(UserAdmin):
     def factory_limit_res_for_others_display(self, obj):
         return obj.factory_limit_reservation_for_others
 
-    factory_limit_res_for_others_display.short_description = "محدودیت سهمیه‌ای"
+    factory_limit_res_for_others_display.short_description = (
+        "محدودیت سهمیه‌ای برای دیگران"
+    )
     factory_limit_res_for_others_display.admin_order_field = (
         "factory_limit_reservation_for_others"
     )
@@ -743,15 +819,13 @@ class EmployeeAdmin(UserAdmin):
     ordering = ["personnel_code", "last_name", "first_name"]  # مرتب‌سازی بهتر
     readonly_fields = ["date_joined", "last_login"]
 
-    # --- نمایش کد پرسنلی در لیست (اگر بخوای لینک بشه) ---
+    # --- نمایش کد پرسنلی در لیست ---
     def personnel_code_display(self, obj):
         return obj.personnel_code or "-"
 
     personnel_code_display.short_description = "کد پرسنلی"
 
-    # --- بقیه متدها بدون تغییر ---
     def roles_display(self, obj):
-        # ... (همون کد قبلی)
         pass
 
     def full_name(self, obj):
@@ -762,7 +836,7 @@ class EmployeeAdmin(UserAdmin):
     def assigned_subdepartments_display(self, obj):
         return ", ".join([sd.name for sd in obj.assigned_subdepartments.all()]) or "-"
 
-    assigned_subdepartments_display.short_description = "زیربخش‌های تخصیص‌یافته"
+    assigned_subdepartments_display.short_description = "زیربخش‌های تخصیص‌یافته (فقط برای نقش کارمند)"
 
     def food_receiver_role_display(self, obj):
         return dict(obj.FOOD_RECEIVER_CHOICES).get(obj.food_receiver_role, "-")
@@ -797,6 +871,9 @@ class EmployeeAdmin(UserAdmin):
         obj.supervised_subdepartments_m2m.set(
             form.cleaned_data.get("supervised_subdepartments_assignments", [])
         )
+
+
+
 
 
 @admin.register(Participation)

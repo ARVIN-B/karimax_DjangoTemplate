@@ -1,150 +1,957 @@
-{% extends 'base.html' %}
-{% load static %}
-{% block title %}مدیریت کاربران{% endblock %}
-{% block breadcrumb_title %}مدیریت کاربران{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% load static %} {% block title %}مدیریت کاربران{% endblock %} {% block breadcrumb_title %}مدیریت کاربران{% endblock %} {% block content %}
 <div class="container-fluid px-2 px-md-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">مدیریت کاربران</h3>
-                </div>
-                <div class="card-body">
-                    <!-- فیلتر -->
-                    <form method="get" class="mb-3">
-                        <div class="row gy-2">
-                            {% if is_super_admin %}
-                                <div class="col-12 col-md-3">
-                                    <div class="form-group">
+	<div class="row">
+		<div class="col-12">
+			<div class="card shadow-sm border-0 rounded-4">
+				<div class="card-header bg-gradient-primary text-white rounded-top-4 py-3">
+					<div class="d-flex align-items-center justify-content-between">
+						<h3 class="mb-0 fw-bold"><i class="fas fa-users-cog me-2"></i>مدیریت کاربران</h3>
+						<span class="badge bg-light text-primary fs-6 py-2 px-3">{{ employees|length }} کاربر</span>
+					</div>
+				</div>
+				<div class="card-body p-3 p-md-4">
+					<!-- فیلتر با طراحی بهبودیافته -->
+					<form
+						method="get"
+						class="mb-4 bg-light p-3 rounded-3 border"
+					>
+						<div class="row g-3 align-items-end">
+							{% if is_super_admin %}
+							<div class="col-12 col-md-3">
+								<label class="form-label fw-semibold small text-secondary"><i class="fas fa-industry me-1"></i>کارخانه</label>
+								{{ form.factory }}
+							</div>
+							{% endif %}
+							<div class="col-12 col-md-3">
+								<label class="form-label fw-semibold small text-secondary"><i class="fas fa-users me-1"></i>بخش</label>
+								{{ form.department }}
+							</div>
+							<div class="col-12 col-md-3">
+								<label class="form-label fw-semibold small text-secondary"><i class="fas fa-user-tag me-1"></i>نقش</label>
+								{{ form.role }}
+							</div>
+							<div class="col-12 col-md-3">
+								<label class="form-label fw-semibold small text-secondary"><i class="fas fa-search me-1"></i>جستجو</label>
+								{{ form.search_name }}
+							</div>
+							<div class="col-12 text-center mt-2">
+								<button
+									type="submit"
+									class="btn btn-primary px-4 py-2 shadow-sm me-2"
+								>
+									<i class="fas fa-filter me-1"></i>فیلتر
+								</button>
+								<a
+									href="{% url 'users:user_management' %}"
+									class="btn btn-outline-secondary px-4 py-2"
+								>
+									<i class="fas fa-redo-alt me-1"></i>پاک کردن
+								</a>
+							</div>
+						</div>
+					</form>
 
-                                        <label for="id_factory">کارخانه:</label>
-                                        {{ form.factory }}
-                                    </div>
-                                </div>
-                            {% endif %}
-                            <div class="col-12 col-md-3">
-                                <div class="form-group">
-                                    <label for="id_department">بخش:</label>
-                                    {{ form.department }}
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-3">
-                                <div class="form-group">
-                                    <label for="id_role">نقش:</label>
-                                    {{ form.role }}
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-3">
-                                <div class="form-group">
-                                    <label for="id_search_name">جستجو:</label>
-                                    {{ form.search_name }}
-                                </div>
-                            </div>
-                            <div class="col-12 text-center mt-2">
-                                <button type="submit" class="btn btn-primary w-100 w-md-auto me-md-2 mb-2 mb-md-0">فیلتر کن</button>
-                                <a href="{% url 'users:user_management' %}" class="btn btn-secondary w-100 w-md-auto">پاک کردن فیلتر</a>
-                            </div>
-                        </div>
-                    </form>
-
-                    <!-- جدول کاربران -->
-                    {% if employees %}
-                        <div class="table-responsive">
-                            <table class="table table-striped table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>نام</th>
-                                        <th>کد ملی</th>
-                                        <th>نقش</th>
-                                        <th>عملیات</th>
-                                        <th>بخش</th>
-                                        <th>کارخانه</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for employee in employees %}
-                                    <tr>
-                                        <td class="text-truncate">{{ employee.full_name }}</td>
-                                        <td class="text-truncate">{{ employee.national_id }}</td>
-                                        <td>{{ employee.role.get_name_display.1 }}</td>
-                                        <td>
-                                            <a href="{% url 'users:user_details' employee.id %}" class="btn btn-sm btn-info">جزئیات</a>
-                                        </td>
-                                        <td>{{ employee.department.name|default:"بدون بخش" }}</td>
-                                        <td class="text-truncate">{{ employee.factory.name|default:"بدون کارخانه" }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <p>هیچ کاربری یافت نشد.</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+					<!-- جدول با طراحی کارتی -->
+					{% if employees %}
+					<div class="table-responsive rounded-3 border">
+						<table class="table table-hover align-middle mb-0">
+							<thead class="table-light">
+								<tr>
+									<th class="ps-3">#</th>
+									<th>نام کامل</th>
+									<th>کد ملی</th>
+									<th>نقش</th>
+									<th>بخش</th>
+									<th>کارخانه</th>
+									<th class="text-center">عملیات</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for employee in employees %}
+								<tr>
+									<td class="ps-3 fw-semibold">{{ forloop.counter }}</td>
+									<td>
+										<div class="d-flex align-items-center">
+											<div class="avatar-circle bg-primary text-white me-2">{{ employee.first_name|first }}{{ employee.last_name|first }}</div>
+											{{ employee.full_name }}
+										</div>
+									</td>
+									<td><code>{{ employee.national_id }}</code></td>
+									<td><span class="badge bg-info bg-opacity-10 text-info px-3 py-2">{{ employee.role.get_name_display.1 }}</span></td>
+									<td>{{ employee.department.name|default:"—" }}</td>
+									<td>{{ employee.factory.name|default:"—" }}</td>
+									<td class="text-center">
+										<button
+											class="btn btn-sm btn-outline-primary rounded-pill px-3 edit-user-btn"
+											data-employee-id="{{ employee.id }}"
+											data-employee-national-id="{{ employee.national_id }}"
+											data-employee-first-name="{{ employee.first_name }}"
+											data-employee-last-name="{{ employee.last_name }}"
+											data-employee-phone="{{ employee.phone_number }}"
+											data-employee-email="{{ employee.email|default:'' }}"
+											data-employee-position="{{ employee.position|default:'' }}"
+											data-employee-holdings='{{ employee.managed_holdings_m2m.all|join:"," }}'
+											data-employee-factories='{{ employee.managed_factories_m2m.all|join:"," }}'
+											data-employee-departments='{{ employee.managed_departments_m2m.all|join:"," }}'
+											data-employee-supervised='{{ employee.supervised_subdepartments_m2m.all|join:"," }}'
+											data-employee-assigned='{{ employee.assigned_subdepartments.all|join:"," }}'
+											data-bs-toggle="modal"
+											data-bs-target="#addUserModal"
+										>
+											<i class="fas fa-edit"></i> ویرایش
+										</button>
+									</td>
+								</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					{% else %}
+					<div class="text-center py-5 bg-light rounded-3">
+						<i class="fas fa-users-slash fa-4x text-muted mb-3"></i>
+						<p class="text-muted fs-5">هیچ کاربری با این شرایط یافت نشد.</p>
+					</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
-{% endblock %}
 
-{% block extra_css %}
-    <style>
-        .form-group {
-            margin-bottom: 0.75rem;
-        }
-        .form-group label {
-            font-size: 0.9rem;
-        }
-        .form-group select, .form-group input {
-            width: 100%;
-            font-size: 0.85rem;
-            padding: 0.3rem;
-        }
-        .table-responsive {
-            overflow-x: auto;
-        }
-        .table {
-            font-size: 0.9rem;
-        }
-        .table th, .table td {
-            padding: 0.5rem;
-            vertical-align: middle;
-        }
-        .text-truncate {
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.85rem;
-        }
-        @media (max-width: 576px) {
-            .card-header h3 {
-                font-size: 1.25rem;
-            }
-            .btn {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-            .form-group label {
-                font-size: 0.8rem;
-            }
-            .form-group select, .form-group input {
-                font-size: 0.8rem;
-            }
-            .table {
-                font-size: 0.85rem;
-            }
-            .table th, .table td {
-                padding: 0.4rem;
-            }
-            .text-truncate {
-                max-width: 120px;
-            }
-        }
-    </style>
+<!-- دکمه افزودن پرسنل (مدرن) -->
+<div class="d-flex justify-content-center my-4">
+	<button
+		class="btn btn-primary btn-lg px-5 py-3 shadow rounded-pill"
+		data-bs-toggle="modal"
+		data-bs-target="#addUserModal"
+		id="addNewUserBtn"
+	>
+		<i class="fas fa-user-plus me-2"></i>افزودن پرسنل جدید
+	</button>
+</div>
+
+<!-- مودال افزودن/ویرایش -->
+<div
+	class="modal fade"
+	id="addUserModal"
+	tabindex="-1"
+>
+	<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content border-0 shadow-lg rounded-4">
+			<div class="modal-header bg-gradient-primary text-white border-0 rounded-top-4 py-3">
+				<h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i><span id="modalTitle">افزودن پرسنل جدید</span></h5>
+				<button
+					type="button"
+					class="btn-close btn-close-white"
+					data-bs-dismiss="modal"
+				></button>
+			</div>
+			<div class="modal-body p-4">
+				<div class="step-indicator mb-4">
+					<div
+						class="step-dot active"
+						id="dot1"
+					></div>
+					<div
+						class="step-dot"
+						id="dot2"
+					></div>
+					<div
+						class="step-dot"
+						id="dot3"
+					></div>
+				</div>
+
+				<form
+					method="post"
+					action="{% url 'users:user_management' %}"
+					id="addUserForm"
+				>
+					{% csrf_token %}
+					<input
+						type="hidden"
+						name="employee_id"
+						id="employeeIdInput"
+					/>
+
+					<!-- Step 1 -->
+					<div
+						class="form-step"
+						id="step1"
+					>
+						<h6 class="mb-3 text-primary fw-bold"><i class="fas fa-user-circle me-2"></i>اطلاعات شخصی</h6>
+						<div class="row g-3">
+							<div class="col-md-6">
+								<label class="form-label fw-semibold"><span class="text-danger">*</span> کد ملی</label>
+								<div class="input-group">
+									<span class="input-group-text bg-light"><i class="fas fa-id-card"></i></span>
+									<input
+										type="text"
+										class="form-control"
+										name="national_id"
+										id="nationalIdInput"
+										placeholder="مثال: ۰۰۱۲۳۴۵۶۷۸"
+										required
+										maxlength="10"
+										readonly
+									/>
+								</div>
+								<small
+									class="text-muted"
+									id="nationalIdHelp"
+									>در حالت ویرایش غیرقابل تغییر است</small
+								>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label fw-semibold">کد پرسنلی</label>
+								<div class="input-group">
+									<span class="input-group-text bg-light"><i class="fas fa-barcode"></i></span>
+									<input
+										type="text"
+										class="form-control"
+										name="personnel_code"
+										id="personnelCodeInput"
+										placeholder="کد پرسنلی اختیاری"
+									/>
+								</div>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label fw-semibold"><span class="text-danger">*</span> نام</label>
+								<input
+									type="text"
+									class="form-control"
+									name="first_name"
+									id="firstNameInput"
+									placeholder="نام"
+									required
+								/>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label fw-semibold"><span class="text-danger">*</span> نام خانوادگی</label>
+								<input
+									type="text"
+									class="form-control"
+									name="last_name"
+									id="lastNameInput"
+									placeholder="نام خانوادگی"
+									required
+								/>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label fw-semibold"><span class="text-danger">*</span> شماره تلفن</label>
+								<div class="input-group">
+									<span class="input-group-text bg-light"><i class="fas fa-phone"></i></span>
+									<input
+										type="tel"
+										class="form-control"
+										name="phone_number"
+										id="phoneInput"
+										placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+										required
+									/>
+								</div>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label fw-semibold">ایمیل</label>
+								<div class="input-group">
+									<span class="input-group-text bg-light"><i class="fas fa-envelope"></i></span>
+									<input
+										type="email"
+										class="form-control"
+										name="email"
+										id="emailInput"
+										placeholder="example@domain.com"
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Step 2 -->
+					<div
+						class="form-step d-none"
+						id="step2"
+					>
+						<h6 class="mb-3 text-primary fw-bold"><i class="fas fa-lock me-2"></i>اطلاعات حساب کاربری</h6>
+						<div class="row g-3">
+							<div class="col-md-6">
+								<label class="form-label fw-semibold">رمز عبور</label>
+								<div class="input-group">
+									<span class="input-group-text bg-light"><i class="fas fa-key"></i></span>
+									<input
+										type="password"
+										class="form-control"
+										name="password"
+										id="passwordInput"
+										placeholder="حداقل ۸ کاراکتر"
+									/>
+									<button
+										class="btn btn-outline-secondary toggle-password"
+										type="button"
+									>
+										<i class="fas fa-eye"></i>
+									</button>
+								</div>
+								<small class="text-muted">برای ویرایش، در صورت تمایل به تغییر رمز پر کنید</small>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label fw-semibold">تکرار رمز عبور</label>
+								<div class="input-group">
+									<span class="input-group-text bg-light"><i class="fas fa-key"></i></span>
+									<input
+										type="password"
+										class="form-control"
+										name="confirm_password"
+										id="confirmPasswordInput"
+										placeholder="تکرار رمز عبور"
+									/>
+								</div>
+							</div>
+							<div class="col-md-12">
+								<label class="form-label fw-semibold">سمت سازمانی</label>
+								<input
+									type="text"
+									class="form-control"
+									name="position"
+									id="positionInput"
+									placeholder="مثال: مدیر تولید"
+								/>
+							</div>
+						</div>
+					</div>
+
+					<!-- Step 3: آکاردئون یکپارچه -->
+					<div
+						class="form-step d-none"
+						id="step3"
+					>
+						<h6 class="mb-3 text-primary fw-bold"><i class="fas fa-sitemap me-2"></i>نقش‌ها و مسئولیت‌های مدیریتی</h6>
+
+						<div
+							class="accordion"
+							id="rolesAccordion"
+						>
+							<!-- هلدینگ‌ها -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2
+									class="accordion-header"
+									id="headingHoldings"
+								>
+									<button
+										class="accordion-button rounded-3"
+										type="button"
+										data-bs-toggle="collapse"
+										data-bs-target="#collapseHoldings"
+										aria-expanded="true"
+									>
+										<i class="fas fa-building me-2"></i>هلدینگ‌های تحت مدیریت
+									</button>
+								</h2>
+								<div
+									id="collapseHoldings"
+									class="accordion-collapse collapse show"
+									data-bs-parent="#rolesAccordion"
+								>
+									<div class="accordion-body">
+										<select
+											name="managing_holdings"
+											multiple
+											class="unified-select"
+											data-placeholder="جستجو و انتخاب هلدینگ..."
+										>
+											{% for holding in holdings %}
+											<option value="{{ holding.id }}">{{ holding.name }}</option>
+											{% endfor %}
+										</select>
+									</div>
+								</div>
+							</div>
+
+							<!-- کارخانه‌ها -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2
+									class="accordion-header"
+									id="headingFactories"
+								>
+									<button
+										class="accordion-button collapsed rounded-3"
+										type="button"
+										data-bs-toggle="collapse"
+										data-bs-target="#collapseFactories"
+									>
+										<i class="fas fa-industry me-2"></i>کارخانه‌های تحت مدیریت
+									</button>
+								</h2>
+								<div
+									id="collapseFactories"
+									class="accordion-collapse collapse"
+									data-bs-parent="#rolesAccordion"
+								>
+									<div class="accordion-body">
+										<select
+											name="managing_factories"
+											multiple
+											class="unified-select"
+											data-placeholder="جستجو و انتخاب کارخانه..."
+										>
+											{% for factory in factories %}
+											<option value="{{ factory.id }}">{{ factory.name }}</option>
+											{% endfor %}
+										</select>
+									</div>
+								</div>
+							</div>
+
+							<!-- بخش‌ها -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2
+									class="accordion-header"
+									id="headingDepartments"
+								>
+									<button
+										class="accordion-button collapsed rounded-3"
+										type="button"
+										data-bs-toggle="collapse"
+										data-bs-target="#collapseDepartments"
+									>
+										<i class="fas fa-users me-2"></i>بخش‌های تحت مدیریت
+									</button>
+								</h2>
+								<div
+									id="collapseDepartments"
+									class="accordion-collapse collapse"
+									data-bs-parent="#rolesAccordion"
+								>
+									<div class="accordion-body">
+										<select
+											name="managing_departments"
+											multiple
+											class="unified-select"
+											data-placeholder="جستجو و انتخاب بخش..."
+										>
+											{% for department in departments %}
+											<option value="{{ department.id }}">{{ department.name }}</option>
+											{% endfor %}
+										</select>
+									</div>
+								</div>
+							</div>
+
+							<!-- زیربخش‌های تحت سرپرستی -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2
+									class="accordion-header"
+									id="headingSupervised"
+								>
+									<button
+										class="accordion-button collapsed rounded-3"
+										type="button"
+										data-bs-toggle="collapse"
+										data-bs-target="#collapseSupervised"
+									>
+										<i class="fas fa-user-tie me-2"></i>زیربخش‌های تحت سرپرستی
+									</button>
+								</h2>
+								<div
+									id="collapseSupervised"
+									class="accordion-collapse collapse"
+									data-bs-parent="#rolesAccordion"
+								>
+									<div class="accordion-body">
+										<select
+											name="supervising_subdepartments"
+											multiple
+											class="unified-select"
+											data-placeholder="جستجو و انتخاب زیربخش..."
+										>
+											{% for subdepartment in subdepartments %}
+											<option value="{{ subdepartment.id }}">{{ subdepartment.name }}</option>
+											{% endfor %}
+										</select>
+									</div>
+								</div>
+							</div>
+
+							<!-- زیربخش‌های تخصیص‌یافته -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2
+									class="accordion-header"
+									id="headingAssigned"
+								>
+									<button
+										class="accordion-button collapsed rounded-3"
+										type="button"
+										data-bs-toggle="collapse"
+										data-bs-target="#collapseAssigned"
+									>
+										<i class="fas fa-clipboard-list me-2"></i>زیربخش‌های تخصیص‌یافته
+									</button>
+								</h2>
+								<div
+									id="collapseAssigned"
+									class="accordion-collapse collapse"
+									data-bs-parent="#rolesAccordion"
+								>
+									<div class="accordion-body">
+										<select
+											name="assigned_subdepartments"
+											multiple
+											class="unified-select"
+											data-placeholder="جستجو و انتخاب زیربخش..."
+										>
+											{% for subdepartment in subdepartments %}
+											<option value="{{ subdepartment.id }}">{{ subdepartment.name }}</option>
+											{% endfor %}
+										</select>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer border-0 pt-0 pb-3 px-4">
+				<button
+					type="button"
+					class="btn btn-outline-secondary px-4"
+					id="prevBtn"
+					onclick="nextStep(-1)"
+				>
+					<i class="fas fa-arrow-right me-1"></i>قبلی
+				</button>
+				<button
+					type="button"
+					class="btn btn-primary px-5 shadow-sm"
+					id="nextBtn"
+					onclick="nextStep(1)"
+				>
+					بعدی<i class="fas fa-arrow-left ms-1"></i>
+				</button>
+				<button
+					type="button"
+					class="btn btn-success px-5 shadow-sm d-none"
+					id="submitBtn"
+				>
+					<i class="fas fa-check me-1"></i>ثبت نهایی
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+	let currentStep = 1;
+	const totalSteps = 3;
+	let choicesInstances = [];
+	let isEditMode = false;
+
+	// تابع راه‌اندازی Choices
+	function initializeChoices() {
+		choicesInstances.forEach((instance) => instance.destroy());
+		choicesInstances = [];
+		document.querySelectorAll(".unified-select").forEach((select) => {
+			const choices = new Choices(select, {
+				removeItemButton: true,
+				searchEnabled: true,
+				searchPlaceholderValue: "جستجو...",
+				noResultsText: "نتیجه‌ای یافت نشد",
+				noChoicesText: "گزینه‌ای برای انتخاب وجود ندارد",
+				itemSelectText: "برای انتخاب کلیک کنید",
+				maxItemCount: -1,
+				shouldSort: false,
+				placeholder: true,
+				placeholderValue: select.dataset.placeholder || "انتخاب کنید...",
+				searchFloor: 1,
+				searchResultLimit: 10,
+				loadingText: "در حال بارگذاری...",
+			});
+			choicesInstances.push(choices);
+		});
+	}
+
+	// تنظیم مقادیر فرم در حالت ویرایش
+	function populateFormForEdit(btn) {
+		isEditMode = true;
+		document.getElementById("modalTitle").innerHTML = '<i class="fas fa-user-edit me-2"></i>ویرایش پرسنل';
+		document.getElementById("employeeIdInput").value = btn.dataset.employeeId;
+		document.getElementById("nationalIdInput").value = btn.dataset.employeeNationalId;
+		document.getElementById("nationalIdInput").setAttribute("readonly", true);
+		document.getElementById("firstNameInput").value = btn.dataset.employeeFirstName;
+		document.getElementById("lastNameInput").value = btn.dataset.employeeLastName;
+		document.getElementById("phoneInput").value = btn.dataset.employeePhone;
+		document.getElementById("emailInput").value = btn.dataset.employeeEmail;
+		document.getElementById("positionInput").value = btn.dataset.employeePosition || "";
+
+		// خالی کردن رمزها
+		document.getElementById("passwordInput").value = "";
+		document.getElementById("confirmPasswordInput").value = "";
+
+		// بازنشانی انتخاب‌ها (بعداً با Choices setValue انجام می‌شود)
+		// ابتدا همه select ها را پاک می‌کنیم
+		document.querySelectorAll(".unified-select").forEach((select) => {
+			Array.from(select.options).forEach((opt) => (opt.selected = false));
+		});
+
+		// حالا مقادیر را از data-attribute ها می‌خوانیم
+		const fields = {
+			managing_holdings: btn.dataset.employeeHoldings,
+			managing_factories: btn.dataset.employeeFactories,
+			managing_departments: btn.dataset.employeeDepartments,
+			supervising_subdepartments: btn.dataset.employeeSupervised,
+			assigned_subdepartments: btn.dataset.employeeAssigned,
+		};
+
+		// بعد از راه‌اندازی Choices مقادیر را تنظیم می‌کنیم
+		setTimeout(() => {
+			for (const [name, idsStr] of Object.entries(fields)) {
+				if (!idsStr) continue;
+				const ids = idsStr.split(",").filter((id) => id.trim() !== "");
+				const select = document.querySelector(`select[name="${name}"]`);
+				if (select) {
+					const choicesInstance = choicesInstances.find((inst) => inst.passedElement.element === select);
+					if (choicesInstance) {
+						choicesInstance.setChoiceByValue(ids);
+					} else {
+						// fallback
+						ids.forEach((id) => {
+							const option = select.querySelector(`option[value="${id}"]`);
+							if (option) option.selected = true;
+						});
+					}
+				}
+			}
+		}, 150);
+	}
+
+	// ریست کردن فرم به حالت افزودن
+	function resetFormToAddMode() {
+		isEditMode = false;
+		document.getElementById("modalTitle").innerHTML = '<i class="fas fa-user-plus me-2"></i>افزودن پرسنل جدید';
+		document.getElementById("employeeIdInput").value = "";
+		document.getElementById("nationalIdInput").removeAttribute("readonly");
+		document.getElementById("addUserForm").reset();
+		document.querySelectorAll(".unified-select").forEach((select) => {
+			Array.from(select.options).forEach((opt) => (opt.selected = false));
+		});
+		if (choicesInstances.length) {
+			choicesInstances.forEach((inst) => inst.removeActiveItems());
+		}
+	}
+
+	function nextStep(step) {
+		if (step > 0 && !validateStep(currentStep)) return;
+		document.getElementById("step" + currentStep).classList.add("d-none");
+		currentStep += step;
+		document.getElementById("step" + currentStep).classList.remove("d-none");
+		updateStepIndicator();
+		document.getElementById("prevBtn").style.display = currentStep > 1 ? "inline-block" : "none";
+		if (currentStep === totalSteps) {
+			document.getElementById("nextBtn").classList.add("d-none");
+			document.getElementById("submitBtn").classList.remove("d-none");
+			initializeChoices();
+		} else {
+			document.getElementById("nextBtn").classList.remove("d-none");
+			document.getElementById("submitBtn").classList.add("d-none");
+		}
+		document.querySelector(".modal-body").scrollTop = 0;
+	}
+
+	function updateStepIndicator() {
+		for (let i = 1; i <= totalSteps; i++) {
+			const dot = document.getElementById("dot" + i);
+			dot.classList.toggle("active", i === currentStep);
+		}
+	}
+
+	function validateStep(step) {
+		if (step === 1) {
+			const nationalId = document.querySelector('[name="national_id"]').value;
+			const firstName = document.querySelector('[name="first_name"]').value;
+			const lastName = document.querySelector('[name="last_name"]').value;
+			const phone = document.querySelector('[name="phone_number"]').value;
+			if (!nationalId || !firstName || !lastName || !phone) {
+				Swal.fire({ title: "خطا", text: "لطفاً تمام فیلدهای اجباری را پر کنید", icon: "error", confirmButtonText: "باشه" });
+				return false;
+			}
+			if (!/^\d{10}$/.test(nationalId)) {
+				Swal.fire({ title: "خطا", text: "کد ملی باید ۱۰ رقم باشد", icon: "error", confirmButtonText: "باشه" });
+				return false;
+			}
+			if (!/^09\d{9}$/.test(phone)) {
+				Swal.fire({ title: "خطا", text: "شماره تلفن معتبر نیست", icon: "error", confirmButtonText: "باشه" });
+				return false;
+			}
+		}
+		if (step === 2) {
+			const password = document.querySelector('[name="password"]').value;
+			const confirmPassword = document.querySelector('[name="confirm_password"]').value;
+			if (password && password !== confirmPassword) {
+				Swal.fire({ title: "خطا", text: "رمز عبور و تکرار آن مطابقت ندارند", icon: "error", confirmButtonText: "باشه" });
+				return false;
+			}
+		}
+		return true;
+	}
+
+	document.addEventListener("DOMContentLoaded", function () {
+		// دکمه نمایش رمز
+		document.querySelectorAll(".toggle-password").forEach((btn) => {
+			btn.addEventListener("click", function () {
+				const input = this.previousElementSibling;
+				const icon = this.querySelector("i");
+				if (input.type === "password") {
+					input.type = "text";
+					icon.classList.replace("fa-eye", "fa-eye-slash");
+				} else {
+					input.type = "password";
+					icon.classList.replace("fa-eye-slash", "fa-eye");
+				}
+			});
+		});
+
+		const form = document.querySelector("#addUserForm");
+		const submitBtn = document.getElementById("submitBtn");
+		form.addEventListener("submit", (e) => e.preventDefault());
+
+		// کلیک روی دکمه ویرایش
+		document.querySelectorAll(".edit-user-btn").forEach((btn) => {
+			btn.addEventListener("click", function () {
+				resetFormToAddMode();
+				populateFormForEdit(this);
+				// بازگشت به استپ ۱
+				currentStep = 1;
+				document.getElementById("step1").classList.remove("d-none");
+				document.getElementById("step2").classList.add("d-none");
+				document.getElementById("step3").classList.add("d-none");
+				document.getElementById("nextBtn").classList.remove("d-none");
+				document.getElementById("submitBtn").classList.add("d-none");
+				document.getElementById("prevBtn").style.display = "none";
+				updateStepIndicator();
+			});
+		});
+
+		// دکمه افزودن جدید
+		document.getElementById("addNewUserBtn").addEventListener("click", function () {
+			resetFormToAddMode();
+			currentStep = 1;
+			document.getElementById("step1").classList.remove("d-none");
+			document.getElementById("step2").classList.add("d-none");
+			document.getElementById("step3").classList.add("d-none");
+			document.getElementById("nextBtn").classList.remove("d-none");
+			document.getElementById("submitBtn").classList.add("d-none");
+			document.getElementById("prevBtn").style.display = "none";
+			updateStepIndicator();
+		});
+
+		submitBtn.addEventListener("click", function () {
+			submitForm();
+		});
+
+		function submitForm() {
+			submitBtn.disabled = true;
+			submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>در حال ثبت...';
+			const formData = new FormData(form);
+			formData.append("create_user", "create"); // بک‌اند بر اساس وجود employee_id تصمیم می‌گیرد
+			formData.append("update_permitted", isEditMode ? "true" : "false");
+			formData.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
+
+			fetch(form.action, { method: "POST", body: formData })
+				.then((res) => res.json())
+				.then((data) => {
+					submitBtn.disabled = false;
+					submitBtn.innerHTML = '<i class="fas fa-check me-1"></i>ثبت نهایی';
+					if (data.status === "exists" && !isEditMode) {
+						return showConfirmModal(data.message, data.employee_name);
+					}
+					if (data.status === "created" || data.status === "updated") {
+						bootstrap.Modal.getInstance(document.getElementById("addUserModal")).hide();
+						Swal.fire({ title: "موفق", text: data.message, icon: "success", timer: 2000, showConfirmButton: false }).then(() => location.reload());
+					} else if (data.status === "message") {
+						Swal.fire({ title: data.title, text: data.message, icon: data.icon });
+					}
+				})
+				.catch((err) => {
+					console.error(err);
+					submitBtn.disabled = false;
+					submitBtn.innerHTML = '<i class="fas fa-check me-1"></i>ثبت نهایی';
+					Swal.fire({ title: "خطا", text: "خطا در ارتباط با سرور", icon: "error" });
+				});
+		}
+
+		function showConfirmModal(message, name) {
+			Swal.fire({
+				title: "کاربر تکراری است!",
+				html: `${message}<br><b>${name}</b>`,
+				icon: "warning",
+				showCancelButton: true,
+				confirmButtonText: "بله، بروزرسانی کن",
+				cancelButtonText: "انصراف",
+				reverseButtons: true,
+			}).then((result) => {
+				if (result.isConfirmed) {
+					isEditMode = true;
+					submitForm();
+				}
+			});
+		}
+
+		updateStepIndicator();
+	});
+
+	document.getElementById("addUserModal").addEventListener("hidden.bs.modal", function () {
+		resetFormToAddMode();
+		currentStep = 1;
+		document.getElementById("step1").classList.remove("d-none");
+		document.getElementById("step2").classList.add("d-none");
+		document.getElementById("step3").classList.add("d-none");
+		document.getElementById("nextBtn").classList.remove("d-none");
+		document.getElementById("submitBtn").classList.add("d-none");
+		document.getElementById("prevBtn").style.display = "none";
+		updateStepIndicator();
+		choicesInstances.forEach((i) => i.destroy());
+		choicesInstances = [];
+	});
+</script>
+{% endblock %} {% block extra_css %}
+<style>
+	/* بهبود ظاهر */
+	.bg-gradient-primary {
+		background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+	}
+	.avatar-circle {
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: bold;
+		font-size: 14px;
+	}
+	.table th {
+		font-weight: 600;
+		color: #495057;
+	}
+	.choices__inner {
+		min-height: 45px;
+		background-color: #fff;
+		border-radius: 8px;
+		border: 1px solid #dee2e6;
+		padding: 5px 10px;
+	}
+	.choices__list--multiple .choices__item {
+		background-color: #0d6efd;
+		border: none;
+		border-radius: 20px;
+		padding: 5px 15px;
+		font-size: 14px;
+		margin: 3px;
+	}
+	.choices__list--dropdown .choices__item--selectable {
+		padding: 10px 15px;
+		font-size: 14px;
+	}
+	.choices__list--dropdown .choices__item--selectable.is-highlighted {
+		background-color: #e9ecef;
+	}
+	.choices[data-type*="select-multiple"] .choices__button {
+		border-left: 1px solid rgba(255, 255, 255, 0.3);
+		filter: brightness(0) invert(1);
+	}
+
+	.accordion-button:not(.collapsed) {
+		background-color: #e7f1ff;
+		color: #0d6efd;
+	}
+	.accordion-button:focus {
+		box-shadow: none;
+		border-color: rgba(0, 0, 0, 0.125);
+	}
+	@media (min-width: 992px) {
+		.accordion-button {
+			pointer-events: none;
+		}
+		.accordion-button::after {
+			display: none;
+		}
+		.accordion-collapse {
+			display: block !important;
+			height: auto !important;
+		}
+	}
+
+	.step-indicator {
+		display: flex;
+		justify-content: center;
+		margin-bottom: 20px;
+	}
+	.step-dot {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #dee2e6;
+		margin: 0 5px;
+		transition: all 0.3s ease;
+	}
+	.step-dot.active {
+		background: #0d6efd;
+		width: 30px;
+		border-radius: 6px;
+	}
+	.form-step {
+		animation: fadeIn 0.3s ease;
+	}
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@media (max-width: 768px) {
+		.choices__inner {
+			min-height: 50px;
+			font-size: 16px;
+		}
+		.choices__list--multiple .choices__item {
+			padding: 8px 16px;
+			font-size: 14px;
+		}
+		.choices__list--dropdown .choices__item--selectable {
+			padding: 12px 15px;
+			font-size: 16px;
+		}
+		.modal-footer {
+			position: sticky;
+			bottom: 0;
+			background: white;
+			border-top: 1px solid #dee2e6;
+			padding: 12px 16px;
+			z-index: 1000;
+		}
+		.modal-footer .btn {
+			width: auto;
+			min-width: 100px;
+			margin-bottom: 0;
+		}
+		.modal-body {
+			max-height: calc(100vh - 200px);
+			overflow-y: auto;
+			padding-bottom: 20px;
+		}
+		.modal-dialog {
+			margin: 10px;
+			max-height: 95vh;
+		}
+		.modal-content {
+			max-height: 95vh;
+			display: flex;
+			flex-direction: column;
+		}
+	}
+</style>
 {% endblock %}
