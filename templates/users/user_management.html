@@ -98,6 +98,7 @@
 											data-bs-toggle="modal"
 											data-bs-target="#addUserModal"
 										>
+											<script>console.log("{{ employee.managed_holdings_m2m.all|join:"," }}")</script>
 											<i class="fas fa-edit"></i> ویرایش
 										</button>
 									</td>
@@ -484,7 +485,7 @@
 										data-bs-toggle="collapse"
 										data-bs-target="#collapseAssigned"
 									>
-										<i class="fas fa-clipboard-list me-2"></i>زیربخش‌های تخصیص‌یافته
+										<i class="fas fa-clipboard-list me-2"></i>زیربخش‌های تخصیص‌یافته (مخصوص کارمندان)
 									</button>
 								</h2>
 								<div
@@ -580,7 +581,9 @@
 		document.getElementById("lastNameInput").value = btn.dataset.employeeLastName;
 		document.getElementById("phoneInput").value = btn.dataset.employeePhone;
 		document.getElementById("emailInput").value = btn.dataset.employeeEmail;
-		document.getElementById("positionInput").value = btn.dataset.employeePosition || "";
+		document.getElementById("positionInput").value = btn.dataset.employeePosition || "22";
+
+		console.log(btn)
 
 		// خالی کردن رمزها
 		document.getElementById("passwordInput").value = "";

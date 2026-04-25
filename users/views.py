@@ -1151,6 +1151,11 @@ def dashboard(request):
 
     can_reserve_for_others = user.can_reserve_for_others > 0
 
+    if request.method == "GET" and request.GET.get("action") == "update_food_prices":
+        print("bbbbbbbbbbbbbbb")
+        result = update_food_reservation_prices()
+        print(f"result = {result}")
+
     return render(
         request,
         "users/dashboard.html",
@@ -1182,6 +1187,55 @@ def dashboard(request):
             "can_reserve_for_others": can_reserve_for_others,
         },
     )
+
+
+@transaction.atomic
+def update_food_reservation_prices():
+    """
+    به‌روزرسانی قیمت رزروهای غذا از تاریخ ۲۰۲۶-۰۴-۲۱ به بعد
+    """
+    target_date = date(2026, 4, 21)
+
+    # دریافت تمام رزروهای بعد از تاریخ مشخص شده
+    reservations = FoodReservation.objects.filter(
+        reservation_date__gte=target_date, is_canceled=False  # فقط رزروهای لغو نشده
+    ).select_related("menu_item__food")
+
+    # print(f"reservations : {reservations}")
+
+    # print(f"target_date : {target_date}")
+
+    updated_count = 0
+
+    for reservation in reservations:
+        food = reservation.menu_item.food
+        print(f"food : {food}")
+
+        # به‌روزرسانی قیمت‌ها از مدل FoodItem
+        reservation.factory_price = food.factory_price
+        reservation.free_price = food.free_price
+        reservation.guest_price = food.guest_price
+        reservation.save()
+
+        # محاسبه مجدد قیمت کل
+        reservation.total_price = (
+            reservation.factory_quantity * food.factory_price
+            + reservation.free_quantity * food.free_price
+            + reservation.guest_quantity * food.guest_price
+        )
+
+        reservation.save()
+
+        # reservation.save(update_fields=[
+        #     'factory_price', 'free_price', 'guest_price', 'total_price'
+        # ])
+        updated_count += 1
+
+    # # اجرای تابع
+    # updated = update_food_reservation_prices()
+    # print(f"✅ {updated} رزرو با موفقیت به‌روزرسانی شد.")
+
+    return updated_count
 
 
 @login_required
@@ -2172,7 +2226,7 @@ def manage_self_menu(request):
             is_restaurant=True, department__factory_id__in=factory_id
         ).order_by("name")
 
-        employees = Employee.objects.filter(is_active=True)
+        employees = Employee.objects.filter()
 
         restaurant_stats = {}
 
@@ -3843,7 +3897,7 @@ def food_reservation_for_others(request):
 
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
-    print(today_jdate.strftime("%Y/%m/%d"))
+    # print(today_jdate.strftime("%Y/%m/%d"))
 
     if can_reserve_for_which_day == 1:
         for_date = request.POST.get("for_date")
@@ -3872,8 +3926,8 @@ def food_reservation_for_others(request):
         today_gdate = selected_gdate
         today_jdate = selected_jdate
 
-        print(f"today_gdate : {today_gdate}")
-        print(f"today_jdate : {today_jdate}")
+        # print(f"today_gdate : {today_gdate}")
+        # print(f"today_jdate : {today_jdate}")
 
     max_factory_quantity_for_others = request.user.factory_limit_reservation_for_others
     max_free_quantity_for_others = request.user.free_limit_reservation_for_others
@@ -3886,7 +3940,7 @@ def food_reservation_for_others(request):
 
             # مرحله ۱: parse خام به شکل employee → لیست سفارش‌ها
             raw_orders = defaultdict(list)
-            print(f"jjjjjjjjjjjjjjjjjjj{request.POST}")
+            # print(f"jjjjjjjjjjjjjjjjjjj{request.POST}")
 
             for key, value_list in request.POST.lists():
                 if not key.startswith("full_reservations["):
@@ -4348,8 +4402,6 @@ def user_management(request):
     employee_fields = [f.name for f in Employee._meta.get_fields()]
     print(f"xxxxxxxxxxxxxxxx {employee_fields}")
 
-
-
     management_access = role_name in [
         "super_admin",
         "holding_manager",
@@ -4373,15 +4425,15 @@ def user_management(request):
     employees = (
         Employee.objects.filter(
             # Q(id__in=user.hr_accessible_employees.values_list("id", flat=True)) |
-            Q(assigned_subdepartments__in=user.hr_accessible_subdepartments.all()) |
-            Q(
+            Q(assigned_subdepartments__in=user.hr_accessible_subdepartments.all())
+            | Q(
                 assigned_subdepartments__department__in=user.hr_accessible_departments.all()
-            ) |
-            Q(
+            )
+            | Q(
                 assigned_subdepartments__department__factory__in=user.hr_accessible_factories.all()
-            ) |
-            Q(
-                assigned_subdepartments__department__factory__holding__in=user.hr_accessible_holdings.all() 
+            )
+            | Q(
+                assigned_subdepartments__department__factory__holding__in=user.hr_accessible_holdings.all()
             )
         )
         .exclude(id=user.id)  # اگر نمی‌خوای خود مدیر داخل لیست باشه
@@ -4428,8 +4480,6 @@ def user_management(request):
 
             # print(f"CCCCCCCCCCCC {request.POST}")
 
-
-
             if national_id in [None, ""]:
                 return JsonResponse(
                     {
@@ -4451,7 +4501,9 @@ def user_management(request):
             password = request.POST.get("password")
             confirm_password = request.POST.get("confirm_password")
 
-            if (password in [None, ""] or password != confirm_password) and not is_exist:
+            if (
+                password in [None, ""] or password != confirm_password
+            ) and not is_exist:
                 return JsonResponse(
                     {
                         "status": "message",
@@ -4462,7 +4514,7 @@ def user_management(request):
                         "showConfirmButton": True,
                     }
                 )
-            
+
             personnel_code = request.POST.get("personnel_code")
             first_name = request.POST.get("first_name")
             last_name = request.POST.get("last_name")
@@ -4473,16 +4525,18 @@ def user_management(request):
             managing_departments = request.POST.get("managing_departments")
             supervising_subdepartments = request.POST.get("supervising_subdepartments")
             assigned_subdepartments = request.POST.get("assigned_subdepartments")
-            
-            is_filled = all([
-                personnel_code.strip() if personnel_code else None,
-                first_name.strip() if first_name else None,
-                last_name.strip() if last_name else None,
-                phone_number.strip() if phone_number else None,
-                email.strip() if email else None,
-            ])
-            
-            if not is_filled:
+
+            is_filled = all(
+                [
+                    # personnel_code.strip() if personnel_code else None,
+                    first_name.strip() if first_name else None,
+                    last_name.strip() if last_name else None,
+                    phone_number.strip() if phone_number else None,
+                    # email.strip() if email else None,
+                ]
+            )
+
+            if not is_filled and not is_exist:
                 return JsonResponse(
                     {
                         "status": "message",
@@ -4492,7 +4546,7 @@ def user_management(request):
                         "timer": 2500,
                         "showConfirmButton": True,
                     }
-                )                
+                )
 
             fields = [
                 "personnel_code",
@@ -4505,13 +4559,13 @@ def user_management(request):
 
             hashed_password = make_password(password)
 
-
-
             email = request.POST.get("email")
             managing_holdings = request.POST.getlist("managing_holdings")
             managing_factories = request.POST.getlist("managing_factories")
             managing_departments = request.POST.getlist("managing_departments")
-            supervising_subdepartments = request.POST.getlist("supervising_subdepartments")
+            supervising_subdepartments = request.POST.getlist(
+                "supervising_subdepartments"
+            )
             assigned_subdepartments = request.POST.getlist("assigned_subdepartments")
 
             emp = {
@@ -4522,17 +4576,15 @@ def user_management(request):
                 "phone_number": phone_number,
                 "email": email,
                 "password": hashed_password,
-                # "managing_holdings": managing_holdings,
-                # "managing_factories": managing_factories,
-                # "managing_departments": managing_departments,
-                # "supervising_subdepartments": supervising_subdepartments,
-                # "assigned_subdepartments": assigned_subdepartments,
-
                 "managing_holdings": [int(id) for id in managing_holdings if id],
                 "managing_factories": [int(id) for id in managing_factories if id],
                 "managing_departments": [int(id) for id in managing_departments if id],
-                "supervising_subdepartments": [int(id) for id in supervising_subdepartments if id],
-                "assigned_subdepartments": [int(id) for id in assigned_subdepartments if id],
+                "supervising_subdepartments": [
+                    int(id) for id in supervising_subdepartments if id
+                ],
+                "assigned_subdepartments": [
+                    int(id) for id in assigned_subdepartments if id
+                ],
             }
 
             if is_exist:
@@ -4549,41 +4601,39 @@ def user_management(request):
 
                 create_user(emp_info=emp)
 
+            else:
+                create_user(emp_info=emp)
+
+            coresponding_user = Employee.objects.filter(national_id=national_id)
+
+            if is_exist:
                 return JsonResponse(
                     {"status": "updated", "message": "کاربر با موفقیت بروزرسانی شد."}
                 )
-
             else:
-
-                create_user(emp_info=emp)
-
                 return JsonResponse(
                     {"status": "created", "message": "کاربر جدید با موفقیت ایجاد شد."}
                 )
-            
 
-
-
-
-
-    
     employees = (
         Employee.objects.filter(
             # Q(id__in=user.hr_accessible_employees.values_list("id", flat=True)) |
-            Q(assigned_subdepartments__in=user.hr_accessible_subdepartments.all()) |
-            Q(
+            Q(assigned_subdepartments__in=user.hr_accessible_subdepartments.all())
+            | Q(
                 assigned_subdepartments__department__in=user.hr_accessible_departments.all()
-            ) |
-            Q(
+            )
+            | Q(
                 assigned_subdepartments__department__factory__in=user.hr_accessible_factories.all()
-            ) |
-            Q(
-                assigned_subdepartments__department__factory__holding__in=user.hr_accessible_holdings.all() 
-            ) |
-            Q(managed_holdings_m2m__in=user.hr_accessible_holdings.all()) |
-            Q(managed_factories_m2m__in=user.hr_accessible_factories.all()) |
-            Q(managed_departments_m2m__in=user.hr_accessible_departments.all()) |
-            Q(supervised_subdepartments_m2m__in=user.hr_accessible_subdepartments.all())
+            )
+            | Q(
+                assigned_subdepartments__department__factory__holding__in=user.hr_accessible_holdings.all()
+            )
+            | Q(managed_holdings_m2m__in=user.hr_accessible_holdings.all())
+            | Q(managed_factories_m2m__in=user.hr_accessible_factories.all())
+            | Q(managed_departments_m2m__in=user.hr_accessible_departments.all())
+            | Q(
+                supervised_subdepartments_m2m__in=user.hr_accessible_subdepartments.all()
+            )
         )
         .exclude(id=user.id)  # اگر نمی‌خوای خود مدیر داخل لیست باشه
         .distinct()
@@ -4591,83 +4641,82 @@ def user_management(request):
     )
 
     # print(user.)
-    
+
     # محاسبه is_super_admin
     context = {
         "form": form,
         "employees": employees,
         "user": user,
-        
-        'holdings': user.hr_accessible_holdings.all() ,
-        'factories': user.hr_accessible_factories.all(),
-        'departments': user.hr_accessible_departments.all(),
-        'subdepartments': user.hr_accessible_subdepartments.all(),
+        "holdings": user.hr_accessible_holdings.all(),
+        "factories": user.hr_accessible_factories.all(),
+        "departments": user.hr_accessible_departments.all(),
+        "subdepartments": user.hr_accessible_subdepartments.all(),
     }
 
     return render(request, "users/user_management.html", context)
 
 
-
-
 def create_user(emp_info, update_partial=True):
     """
     ایجاد یا بروزرسانی کاربر با کنترل بیشتر روی بروزرسانی
-    
+
     Args:
         emp_info: دیکشنری شامل اطلاعات پرسنل
         update_partial: اگر True باشد، فقط فیلدهای ارسال شده آپدیت می‌شوند
                         اگر False باشد، فیلدهای ارسال نشده ریست می‌شوند
-        
+
     Returns:
         Employee: شیء کارمند ایجاد یا بروزرسانی شده
     """
 
-
     # print(f"vvvvvvvvvvvvvvv {emp_info}")
     with transaction.atomic():
-        national_id = emp_info.get('national_id')
+        national_id = emp_info.get("national_id")
         if not national_id:
             raise ValidationError("کد ملی الزامی است")
-        
+
         # فیلدهای مستقیم مدل Employee
-        employee_fields = [f.name for f in Employee._meta.get_fields() 
-                          if not f.many_to_many and not f.one_to_many]
-        
+        employee_fields = [
+            f.name
+            for f in Employee._meta.get_fields()
+            if not f.many_to_many and not f.one_to_many
+        ]
+
         # نگاشتها (مثل قبل)
         field_mapping = {
-            'managing_holdings': 'managed_holdings_m2m',
-            'managing_factories': 'managed_factories_m2m', 
-            'managing_departments': 'managed_departments_m2m',
-            'supervising_subdepartments': 'supervised_subdepartments_m2m',
+            "managing_holdings": "managed_holdings_m2m",
+            "managing_factories": "managed_factories_m2m",
+            "managing_departments": "managed_departments_m2m",
+            "supervising_subdepartments": "supervised_subdepartments_m2m",
         }
-        
+
         field_model_mapping = {
-            'managed_holdings_m2m': Holding,
-            'managed_factories_m2m': Factory,
-            'managed_departments_m2m': Department,
-            'supervised_subdepartments_m2m': Subdepartment,
+            "managed_holdings_m2m": Holding,
+            "managed_factories_m2m": Factory,
+            "managed_departments_m2m": Department,
+            "supervised_subdepartments_m2m": Subdepartment,
         }
-        
+
         # جداسازی داده‌ها
         direct_data = {}
         many_to_many_data = {}
-        
+
         for key, value in emp_info.items():
             if key in employee_fields and value is not None:
                 direct_data[key] = value
             elif key in field_mapping:
                 m2m_field = field_mapping[key]
                 many_to_many_data[m2m_field] = value  # None هم معنی دارد
-        
+
         # پیدا کردن یا ایجاد کاربر
         try:
             employee = Employee.objects.get(national_id=national_id)
-            
+
             # بروزرسانی فیلدهای مستقیم
             for key, value in direct_data.items():
                 setattr(employee, key, value)
             employee.save()
-            
+
             # بروزرسانی فیلدهای ManyToMany
             for m2m_field, items in many_to_many_data.items():
                 if items is None:
@@ -4682,11 +4731,11 @@ def create_user(emp_info, update_partial=True):
                             getattr(employee, m2m_field).set(objects)
                         else:  # لیست خالی
                             getattr(employee, m2m_field).clear()
-                            
+
         except ObjectDoesNotExist:
             # ایجاد کاربر جدید
             employee = Employee.objects.create(**direct_data)
-            
+
             # اضافه کردن ارتباطات ManyToMany
             for m2m_field, items in many_to_many_data.items():
                 if items and isinstance(items, list):
@@ -4695,7 +4744,7 @@ def create_user(emp_info, update_partial=True):
                         objects = model_class.objects.filter(id__in=items)
                         if objects:
                             getattr(employee, m2m_field).add(*objects)
-        
+
         return employee
 
 

@@ -44,10 +44,10 @@ INSTALLED_APPS = [
     "widget_tweaks",
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://karimax.ir",
-    "https://www.karimax.ir",
-]
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://karimax.ir",
+#     "https://www.karimax.ir",
+# ]
 
 # django-axes settings
 AXES_COOLOFF_TIME = 0.25  # 15 دقیقه قفل بعد از چند تلاش ناموفق
@@ -193,3 +193,57 @@ MESSAGE_TAGS = {
     messages.WARNING: "warning",
     messages.ERROR: "danger",  # مهم! برای رنگ قرمز Bootstrap
 }
+
+
+if DEBUG:
+    # محیط توسعه: فرانت لوکال، بک‌اند روی سرور
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+
+    # SESSION_COOKIE_SAMESITE = "None"
+    # CSRF_COOKIE_SAMESITE = "None"
+
+    # اصلاح شد: برای SameSite=None حتما باید True باشند
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+
+    CSRF_TRUSTED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        # "https://api.karimax.ir",
+        "https://karimax.ir",
+        "https://www.karimax.ir",
+        "http://0.0.0.0:8000",
+        # "*"
+    ]
+    CORS_ALLOW_CREDENTIALS = True
+    ALLOWED_HOSTS = ['*']
+
+else:
+    # پروداکشن
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [
+        "https://karimax.ir",
+        "https://www.karimax.ir",
+        # دامنه نهایی فرانت‌اندت
+    ]
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+
+    CSRF_TRUSTED_ORIGINS = [
+        "https://karimax.ir",
+        "https://www.karimax.ir",
+    ]
+
+# CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOW_ALL_ORIGINS = False
+#
+# CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_CREDENTIALS = True

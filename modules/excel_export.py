@@ -14,6 +14,7 @@ def export_to_excel(
     restaurant_stats=None,
     summary_row=None,
 ):
+    print(columns)
 
     if not columns:
         return HttpResponseBadRequest("داده‌ای برای اکسپورت وجود ندارد.")
@@ -25,7 +26,7 @@ def export_to_excel(
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "گزارش مشارکت‌ها"
+    ws.title = "گزارش"
 
     header_font = Font(name="B Nazanin", size=12, bold=True, color="FFFFFF")
     cell_font = Font(name="B Nazanin", size=11)
