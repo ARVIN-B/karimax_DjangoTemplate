@@ -242,6 +242,9 @@ def _login_user_and_initialize_session(request, user):
 
 
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("users:dashboard")
+
     if request.method == "POST":
         national_id = request.POST.get("national_id")
         password = request.POST.get("password")
@@ -997,6 +1000,21 @@ def switch_role(request):
 
 @login_required
 def dashboard(request):
+    response = HttpResponse("کش مرورگر با موفقیت پاک شد")
+    response['Clear-Site-Data'] = '"cache"'
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+
+    # برای دیباگ: هدر رو توی خروجی سرور چاپ کن
+    print(f"DEBUG: Header set to {response['Clear-Site-Data']}")
+    print("okkkkk")
+
+
+
+
+    
+
 
     if request.method == "GET" and request.GET.get("action") == "change":
         add_managers(request)
