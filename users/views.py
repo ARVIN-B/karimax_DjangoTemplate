@@ -1151,10 +1151,9 @@ def dashboard(request):
 
     can_reserve_for_others = user.can_reserve_for_others > 0
 
-    if request.method == "GET" and request.GET.get("action") == "update_food_prices":
-        print("bbbbbbbbbbbbbbb")
-        result = update_food_reservation_prices()
-        print(f"result = {result}")
+    # if request.method == "GET" and request.GET.get("action") == "update_food_prices":
+    #     result = update_food_reservation_prices()
+    #     print(f"result = {result}")
 
     return render(
         request,
