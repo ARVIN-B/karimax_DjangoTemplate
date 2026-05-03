@@ -1,0 +1,447 @@
+/* ===== delivery.css ===== */
+:root {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --primary-light: #ffedd5;
+  --primary-glow: rgba(249, 115, 22, 0.3);
+  --secondary: #f59e0b;
+  --secondary-dark: #d97706;
+  --secondary-light: #fef3c7;
+  --secondary-glow: rgba(245, 158, 11, 0.3);
+  --bg-page: #f8fafc;
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --radius-sm: 0.75rem;
+  --radius: 1.25rem;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  background: var(--bg-page);
+  font-family:
+    "Vazirmatn",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  margin: 0;
+}
+
+/********** Glassmorphism Cards **********/
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/********** Page Header **********/
+.delivery-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.page-header {
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.search-container {
+  width: 100%;
+  max-width: 350px;
+}
+
+.search-container .input-group {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+/********** Role Notice **********/
+.alert-notice {
+  background: var(--primary-glow);
+  border: 1px solid var(--secondary-glow);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/********** Factory Card **********/
+.factory-card {
+  margin-bottom: 2rem;
+}
+
+.factory-header {
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+  color: white;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.print-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  color: var(--primary-dark);
+  font-weight: 600;
+  transition: all var(--transition);
+}
+
+.print-btn:hover {
+  background: white;
+  color: var(--primary);
+}
+
+.factory-body {
+  padding: 1.5rem;
+}
+
+/********** Restaurant Section **********/
+.restaurant-card {
+  background: white;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.restaurant-title {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+  font-size: 1rem;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  padding: 0.25rem;
+}
+
+/********** Delivery Table **********/
+.delivery-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.delivery-table thead th {
+  background: var(--primary-dark);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.delivery-table tbody td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.food-row:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.7);
+}
+
+.food-row:hover {
+  background-color: var(--primary-glow);
+}
+
+.count-cell {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/********** Reservation Rows **********/
+.reservations-cell {
+  text-align: right;
+}
+
+.reservation-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed #e2e8f0;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.reservation-row:last-child {
+  border-bottom: none;
+}
+
+.reservation-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.emp-name {
+  font-weight: 600;
+  min-width: 120px;
+  color: var(--text-primary);
+}
+
+.reservation-details {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.reservation-details .badge {
+  font-size: 0.75rem;
+  padding: 0.25em 0.65em;
+}
+
+.action-cell {
+  flex-shrink: 0;
+}
+
+/********** Empty State **********/
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+}
+
+/********** Glass Modal (Custom) **********/
+.glass-modal {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius);
+}
+
+.modal-header,
+.modal-footer {
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.modal-title {
+  font-weight: 600;
+}
+
+#today-date-time {
+  color: var(--primary) !important;
+}
+
+/********** RESPONSIVE **********/
+@media (max-width: 768px) {
+  .page-header {
+    padding: 1.25rem;
+  }
+
+  .delivery-table thead {
+    display: none;
+  }
+
+  .delivery-table,
+  .delivery-table tbody,
+  .delivery-table tr,
+  .delivery-table td {
+    display: block;
+  }
+
+  .delivery-table tr {
+    margin-bottom: 1.5rem;
+    background: white;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid #e2e8f0;
+    padding: 0.75rem;
+  }
+
+  .delivery-table td {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+    position: relative;
+    padding-right: 40%;
+  }
+
+  .delivery-table td::before {
+    content: attr(data-label);
+    right: 0.75rem;
+    width: 35%;
+    font-weight: 600;
+    color: var(--primary-dark);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .delivery-table td:last-child {
+    border-bottom: 0;
+    padding-right: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 0.75rem;
+  }
+
+  .delivery-table td:last-child::before {
+    display: none;
+  }
+
+  .reservation-row {
+    flex-direction: column;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.5rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .factory-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .print-btn {
+    align-self: flex-end;
+  }
+
+  .reservation-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .emp-name {
+    min-width: unset;
+  }
+
+  .reservation-details {
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+
+  .action-cell {
+    align-self: flex-end;
+  }
+}
+
+/********** PRINT STYLES **********/
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  /* Make everything hidden initially, then only .print-factory visible */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-factory,
+  .print-factory * {
+    visibility: visible !important;
+  }
+
+  .print-factory {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+  }
+
+  /* Ensure the print-info inside is visible */
+  .print-info {
+    display: block !important;
+    font-size: 10pt;
+    color: #333;
+    background: #f9f9f9;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    page-break-inside: avoid;
+  }
+
+  /* Hide interactive elements */
+  .btn,
+  .alert-notice,
+  .print-btn,
+  .page-header,
+  .search-container,
+  .modal,
+  nav,
+  header,
+  footer {
+    display: none !important;
+  }
+
+  .card,
+  .factory-card,
+  .glass-card {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .factory-header {
+    background: var(--secondary) !important;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+    padding: 15px !important;
+  }
+
+  .delivery-table thead th {
+    background-color: #343a40 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .delivery-table td,
+  .delivery-table th {
+    border: 1px solid #000 !important;
+    padding: 8px !important;
+  }
+
+  .table-wrapper {
+    overflow-x: visible;
+  }
+
+  .delivery-table {
+    font-size: 11pt;
+  }
+}
+
+/* اسکرول‌بار اختصاصی */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}

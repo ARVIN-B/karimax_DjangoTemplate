@@ -20,6 +20,8 @@ import jdatetime
 from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
 
+from jdatetime import date as jdate
+
 
 default_close_food_res_time_H = 10
 default_close_food_res_time_M = 00
@@ -1041,9 +1043,9 @@ class MenuItem(models.Model):
             ("shanbe", "شنبه"),
             ("1shanbe", "یکشنبه"),
             ("2shanbe", "دوشنبه"),
-            ("3shanbe", "سه‌شنبه"),
+            ("3shanbe", "سه شنبه"),
             ("4shanbe", "چهارشنبه"),
-            ("5shanbe", "پنج‌شنبه"),
+            ("5shanbe", "پنج شنبه"),
             ("jome", "جمعه"),
         ],
         verbose_name="روز هفته",
@@ -1059,6 +1061,16 @@ class MenuItem(models.Model):
 
 
 class FoodReservation(models.Model):
+    PERSIAN_WEEKDAYS = {
+        "shanbe": "شنبه",
+        "1shanbe": "یکشنبه",
+        "2shanbe": "دوشنبه",
+        "3shanbe": "سه شنبه",
+        "4shanbe": "چهارشنبه",
+        "5shanbe": "پنج شنبه",
+        "jome": "جمعه",
+    }
+
     RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
 
     employee = models.ForeignKey(
@@ -1125,10 +1137,7 @@ class FoodReservation(models.Model):
         return f"{self.employee.full_name} - {self.menu_item} ({self.reservation_date})"
 
     def clean(self):
-        # ... (بخش clean مانند قبل، منطق رزرو در views.py پیاده‌سازی می‌شود)
 
-        # today_gdate = date.today() - timedelta(days=3)
-        # today_gdate = date.today() + timedelta(days=2)
         today_gdate = date.today()
         # نمی‌توان برای گذشته رزرو کرد
         # if self.reservation_date < today_gdate:
@@ -1143,6 +1152,31 @@ class FoodReservation(models.Model):
         if self.menu_item.weekly_menu.week_start_date > self.reservation_date:
             raise ValidationError("این غذا برای این تاریخ در منو موجود نیست.")
 
+        # ایا غذا برای همین روز هفته است یا تفاوت دارد؟>
+        j_res_date = jdate.fromgregorian(date=self.reservation_date)
+
+        # نگاشت روزهای هفته jdatetime به مقادیر day_persian در MenuItem
+        weekday_map = {
+            0: "shanbe",  # شنبه
+            1: "1shanbe",  # یکشنبه
+            2: "2shanbe",  # دوشنبه
+            3: "3shanbe",  # سه‌شنبه
+            4: "4shanbe",  # چهارشنبه
+            5: "5shanbe",  # پنج‌شنبه
+            6: "jome",  # جمعه
+        }
+
+        # expected_day = weekday_map[j_res_date.weekday()]
+        expected_day_en = weekday_map[j_res_date.weekday()]
+        expected_day_fa = self.PERSIAN_WEEKDAYS.get(expected_day_en, expected_day_en)
+
+        if self.menu_item.day_persian != expected_day_en:
+
+            raise ValidationError(
+                f"غذای '{self.menu_item.food.name}' برای روز {self.menu_item.get_day_persian_display()} "
+                f"تعریف شده است، اما شما برای روز {expected_day_fa} می خواهید رزرو کنید."
+            )
+
     def save(self, *args, **kwargs):
         # اگر فقط rating و feedback آپدیت میشه، اعتبارسنجی کامل نزن
         if kwargs.get("update_fields") and {"rating", "feedback"}.issubset(
@@ -1151,8 +1185,177 @@ class FoodReservation(models.Model):
             super().save(*args, **kwargs)
             return
 
-        else:
-            self.full_clean()  # فقط وقتی رزرو جدید یا ویرایش مهمه
+        # else:
+        #     self.full_clean()  # فقط وقتی رزرو جدید یا ویرایش مهمه
+        #     super().save(*args, **kwargs)
+
+        with transaction.atomic():
+            # 1. تعیین رزروکننده و گیرنده
+            receiver = self.employee
+            # if self.reserved_by == 0 or self.reserved_by == receiver.id:
+            if self.reserved_by == 0:
+                # رزرو برای خود
+                reserver = receiver
+                is_self = True
+            else:
+                # رزرو برای دیگران
+                reserver = Employee.objects.select_for_update().get(id=self.reserved_by)
+                is_self = False
+                if reserver.can_reserve_for_others == 0:
+                    raise ValidationError("شما مجاز به رزرو برای دیگران نیستید.")
+
+            # 2. قفل روی رزروهای موجود گیرنده (برای همان روز)
+            receiver_reservations = FoodReservation.objects.select_for_update().filter(
+                employee=receiver,
+                reservation_date=self.reservation_date,
+                is_canceled=False,
+            )
+            # اگر در حال ویرایش هستیم، خود این رکورد را از جمع‌آوری خارج می‌کنیم
+            if self.pk:
+                receiver_reservations = receiver_reservations.exclude(pk=self.pk)
+
+            # 3. اگر رزرو برای دیگران است، قفل روی رزروهای قبلی رزروکننده (برای دیگران)
+            reserver_others_reservations = None
+            if not is_self:
+                reserver_others_reservations = (
+                    FoodReservation.objects.select_for_update().filter(
+                        reserved_by=reserver.id,
+                        reservation_date=self.reservation_date,
+                        is_canceled=False,
+                    )
+                )
+                if self.pk and self.reserved_by == reserver.id:
+                    reserver_others_reservations = reserver_others_reservations.exclude(
+                        pk=self.pk
+                    )
+
+            # 4. محاسبه میزان استفاده فعلی
+            receiver_current = {
+                "factory": sum(r.factory_quantity for r in receiver_reservations),
+                "free": sum(r.free_quantity for r in receiver_reservations),
+                "guest": sum(r.guest_quantity for r in receiver_reservations),
+            }
+            reserver_others_current = None
+
+            if not is_self:
+                reserver_others_current = {
+                    "factory": sum(
+                        r.factory_quantity for r in reserver_others_reservations
+                    ),
+                    "free": sum(r.free_quantity for r in reserver_others_reservations),
+                    "guest": sum(
+                        r.guest_quantity for r in reserver_others_reservations
+                    ),
+                }
+
+            new_factory = self.factory_quantity
+            new_free = self.free_quantity
+            new_guest = self.guest_quantity
+
+            # 5. اعمال محدودیت‌ها
+            errors = []
+            day_name = self.PERSIAN_WEEKDAYS.get(
+                self.menu_item.day_persian, self.menu_item.day_persian
+            )
+
+            if is_self:
+                # محدودیت‌های شخص رزروکننده (که همان گیرنده است)
+                limits = {
+                    "factory": reserver.factory_limit_reservation,
+                    "free": reserver.free_limit_reservation,
+                    "guest": reserver.guest_limit_reservation,
+                }
+                if receiver_current["factory"] + new_factory > limits["factory"]:
+                    remaining = limits["factory"] - receiver_current["factory"]
+                    errors.append(
+                        f"سهمیه‌ای: حداکثر {limits['factory']} عدد، باقی مانده {remaining} عدد"
+                    )
+                if receiver_current["free"] + new_free > limits["free"]:
+                    remaining = limits["free"] - receiver_current["free"]
+                    errors.append(
+                        f"آزاد: حداکثر {limits['free']} عدد، باقی مانده {remaining} عدد"
+                    )
+                if receiver_current["guest"] + new_guest > limits["guest"]:
+                    remaining = limits["guest"] - receiver_current["guest"]
+                    errors.append(
+                        f"مهمان: حداکثر {limits['guest']} عدد، باقی مانده {remaining} عدد"
+                    )
+                if errors:
+                    detailed_errors = " • ".join(errors)
+                    raise ValidationError(
+                        f"برای روز {day_name} نمی توانید بیشتر از حد مجاز رزرو کنید: \n {detailed_errors}"
+                    )
+
+            else:
+                # الف) محدودیت‌های کلی رزروکننده برای دیگران
+                reserver_limits = {
+                    "factory": reserver.factory_limit_reservation_for_others,
+                    "free": reserver.free_limit_reservation_for_others,
+                    "guest": reserver.guest_limit_reservation_for_others,
+                }
+                if (
+                    reserver_others_current["factory"] + new_factory
+                    > reserver_limits["factory"]
+                ):
+                    remaining = (
+                        reserver_limits["factory"] - reserver_others_current["factory"]
+                    )
+                    errors.append(
+                        f"محدودیت رزرو سهمیه ای (برای دیگران): حداکثر {reserver_limits['factory']} عدد، باقی مانده این محدودیت {remaining} عدد"
+                    )
+                if reserver_others_current["free"] + new_free > reserver_limits["free"]:
+                    remaining = (
+                        reserver_limits["free"] - reserver_others_current["free"]
+                    )
+                    errors.append(
+                        f"محدودیت رزرو آزاد (برای دیگران): حداکثر {reserver_limits['free']} عدد، باقی مانده این محدودیت {remaining} عدد"
+                    )
+                if (
+                    reserver_others_current["guest"] + new_guest
+                    > reserver_limits["guest"]
+                ):
+                    remaining = (
+                        reserver_limits["guest"] - reserver_others_current["guest"]
+                    )
+                    errors.append(
+                        f"محدودیت رزرو مهمان (برای دیگران): حداکثر {reserver_limits['guest']} عدد، باقی مانده این محدودیت {remaining} عدد"
+                    )
+
+                # ب) در صورت can_reserve_for_others == 1 ، محدودیت‌های شخصی گیرنده نیز اعمال شود
+                if reserver.can_reserve_for_others == 1:
+                    receiver_limits = {
+                        "factory": receiver.factory_limit_reservation,
+                        "free": receiver.free_limit_reservation,
+                        "guest": receiver.guest_limit_reservation,
+                    }
+                    if (
+                        receiver_current["factory"] + new_factory
+                        > receiver_limits["factory"]
+                    ):
+                        remaining = (
+                            receiver_limits["factory"] - receiver_current["factory"]
+                        )
+                        errors.append(
+                            f"محدودیت رزرو سهمیه ای گیرنده: حداکثر {receiver_limits['factory']} عدد، باقی مانده این محدودیت {remaining} عدد"
+                        )
+                    if receiver_current["free"] + new_free > receiver_limits["free"]:
+                        remaining = receiver_limits["free"] - receiver_current["free"]
+                        errors.append(
+                            f"محدودیت رزرو آزاد گیرنده: حداکثر {receiver_limits['free']} عدد، باقی مانده این محدودیت {remaining} عدد"
+                        )
+                    if receiver_current["guest"] + new_guest > receiver_limits["guest"]:
+                        remaining = receiver_limits["guest"] - receiver_current["guest"]
+                        errors.append(
+                            f"محدودیت رزرو مهمان گیرنده: حداکثر {receiver_limits['guest']} عدد، باقی مانده این محدودیت {remaining} عدد"
+                        )
+
+                if errors:
+                    detailed_errors = " • ".join(errors)
+                    raise ValidationError(
+                        f"برای روز {day_name} محدودیت های رزرو برای دیگران \n (کاربر دریافت کننده: {receiver.full_name}): \n {detailed_errors}"
+                    )
+
+            # 6. در صورت عدم خطا، رزرو را ذخیره می‌کنیم
             super().save(*args, **kwargs)
 
 

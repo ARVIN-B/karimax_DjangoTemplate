@@ -1,0 +1,966 @@
+<!-- templates/users/reports_dashboard.html -->
+{% extends 'base.html' %} {% load static %} {% load humanize %} {% block title %}داشبورد گزارش‌گیری حرفه‌ای سلف{% endblock %} {% block content %}
+<div class="container-fluid py-4">
+	<!-- هدر -->
+	<div class="row mb-4 animate__animated animate__fadeIn">
+		<div class="col-12">
+			<div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+				<div>
+					<h1
+						class="display-6 fw-bold mb-0"
+						style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent"
+					>
+						<i class="fas fa-charts me-2"></i>داشبورد گزارش گیری
+					</h1>
+					<p class="text-muted mt-2">مدیریت و دانلود گزارش های پیشرفته سلف</p>
+				</div>
+				<a
+					href="{% url 'users:dashboard' %}"
+					class="btn btn-outline-secondary rounded-pill px-4"
+				>
+					<i class="fas fa-arrow-right me-2"></i>بازگشت به داشبورد
+				</a>
+			</div>
+		</div>
+	</div>
+
+	<!-- کارت‌های آماری -->
+	<div class="row g-4 mb-5 animate__animated animate__fadeInUp">
+		<div class="col-md-4">
+			<div class="stat-card primary">
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-center">
+						<div>
+							<p class="text-muted mb-1">کل کارمندان</p>
+							<h2
+								class="fw-bold mb-0"
+								id="totalEmployees"
+							>
+								{{ total_employees|default:"0" }}
+							</h2>
+						</div>
+						<div class="stat-icon primary">
+							<i class="fas fa-users"></i>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="stat-card success">
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-center">
+						<div>
+							<p class="text-muted mb-1">رستوران های فعال</p>
+							<h2
+								class="fw-bold mb-0"
+								id="totalRestaurants"
+							>
+								{{ total_restaurants|default:"0" }}
+							</h2>
+						</div>
+						<div class="stat-icon success">
+							<i class="fas fa-utensils"></i>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="stat-card info">
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-center">
+						<div>
+							<p class="text-muted mb-1">رزروهای امروز</p>
+							<h2
+								class="fw-bold mb-0"
+								id="todayReservations"
+							>
+								{{ today_reservations|default:"0" }}
+							</h2>
+						</div>
+						<div class="stat-icon info">
+							<i class="fas fa-calendar-check"></i>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row mb-4 animate__animated animate__fadeInUp">
+		<div class="col-12">
+			<div class="factory-filter-card">
+				<div class="card-body">
+					<div class="row align-items-center">
+						<div class="col-md-10">
+							<label class="filter-label">
+								<i class="fas fa-building me-2"></i>
+								فیلتر بر اساس کارخانه (اختیاری - می‌توانید چند کارخانه انتخاب کنید)
+							</label>
+
+							<select
+								id="factory-select"
+								class="form-control"
+								multiple="multiple"
+								style="width: 100%"
+							>
+								{% for factory in factories %}
+								<option value="{{ factory.id }}">{{ factory.name }}</option>
+								{% endfor %}
+							</select>
+
+							<small class="text-muted d-block mt-2">
+								<i class="fas fa-info-circle me-1"></i>
+								در صورت عدم انتخاب کارخانه، گزارش برای تمام کارخانه‌ها محاسبه می‌شود
+							</small>
+						</div>
+						<div class="col-md-2 text-end">
+							<button
+								id="clear-factories-btn"
+								class="btn btn-sm btn-outline-danger rounded-pill mt-4"
+							>
+								<i class="fas fa-trash-alt me-1"></i>
+								پاک کردن همه
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div
+		class="row mb-4 animate__animated animate__fadeInUp"
+		style="animation-delay: 0.1s"
+	>
+		<div class="col-12">
+			<div class="report-card">
+				<div
+					class="card-header-gradient"
+					style="background: linear-gradient(135deg, #667eea, #764ba2)"
+				>
+					<h4 class="mb-0">
+						<i class="fas fa-file-invoice-dollar me-2"></i>
+						گزارش جامع بدهی کارمندان
+					</h4>
+				</div>
+				<div class="card-body p-4">
+					<div class="row g-3">
+						<div class="col-md-3">
+							<label class="form-label fw-semibold"> <i class="fas fa-calendar-alt me-1"></i>از تاریخ </label>
+							<input
+								type="text"
+								id="full_from_date"
+								data-jdp
+								class="form-control form-control-modern"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label fw-semibold"> <i class="fas fa-calendar-alt me-1"></i>تا تاریخ </label>
+							<input
+								type="text"
+								id="full_to_date"
+								data-jdp
+								class="form-control form-control-modern"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label fw-semibold"> <i class="fas fa-chart-line me-1"></i>نوع گزارش </label>
+							<select
+								id="full_report_type"
+								class="form-control-modern form-select report-type-select"
+							>
+								<option value="detailed">گزارش تفصیلی (همه جزئیات)</option>
+								<!-- <option value="summary">گزارش خلاصه (فقط مبلغ کل)</option> -->
+							</select>
+						</div>
+						<div class="col-md-3">
+							<button
+								id="export-full-btn"
+								class="btn btn-gradient w-100"
+							>
+								<i class="fas fa-download me-2"></i>
+								دانلود گزارش (Excel)
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- گزارش ۲: آمار رستوران‌ها -->
+	<div
+		class="row mb-4 animate__animated animate__fadeInUp"
+		style="animation-delay: 0.2s"
+	>
+		<div class="col-12">
+			<div class="report-card">
+				<div
+					class="card-header-gradient"
+					style="background: linear-gradient(135deg, #fa709a, #fee140)"
+				>
+					<h4 class="mb-0 text-dark">
+						<i class="fas fa-chart-bar me-2"></i>
+						گزارش عملکرد روزانه رستوران‌ها
+					</h4>
+				</div>
+				<div class="card-body p-4">
+					<div class="row g-3">
+						<div class="col-md-4">
+							<label class="form-label fw-semibold">از تاریخ</label>
+							<input
+								type="text"
+								id="restaurant_from_date"
+								data-jdp
+								class="form-control form-control-modern"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label fw-semibold">تا تاریخ</label>
+							<input
+								type="text"
+								id="restaurant_to_date"
+								data-jdp
+								class="form-control form-control-modern"
+							/>
+						</div>
+						<div class="col-md-4">
+							<button
+								id="export-restaurant-btn"
+								class="btn w-100"
+								style="background: linear-gradient(135deg, #fa709a, #fee140); color: #333; border: none; border-radius: 50px; padding: 12px; font-weight: 600"
+							>
+								<i class="fas fa-chart-line me-2"></i>
+								دانلود گزارش ماتریسی
+							</button>
+						</div>
+					</div>
+					<div class="mt-3 text-muted small">
+						<i class="fas fa-info-circle me-1"></i>
+						این گزارش تعداد سفارش هر رستوران را به تفکیک روز نشان می‌دهد
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- گزارش ۳: گزارش اختصاصی کارمند با دو حالت -->
+	<div
+		class="row mb-4 animate__animated animate__fadeInUp"
+		style="animation-delay: 0.3s"
+	>
+		<div class="col-12">
+			<div class="report-card">
+				<div
+					class="card-header-gradient"
+					style="background: linear-gradient(135deg, #4facfe, #00f2fe)"
+				>
+					<h4 class="mb-0">
+						<i class="fas fa-user-circle me-2"></i>
+						گزارش اختصاصی کارمند
+					</h4>
+				</div>
+				<div class="card-body p-4">
+					<div class="row g-3">
+						<div class="col-md-3">
+							<label class="form-label fw-semibold">از تاریخ</label>
+							<input
+								type="text"
+								id="single_from_date"
+								data-jdp
+								class="form-control form-control-modern"
+							/>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label fw-semibold">تا تاریخ</label>
+							<input
+								type="text"
+								id="single_to_date"
+								data-jdp
+								class="form-control form-control-modern"
+							/>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label fw-semibold">جستجوی کارمند</label>
+							<select
+								id="employee-search"
+								class="form-control-modern"
+								style="width: 100%"
+							>
+								<option></option>
+							</select>
+						</div>
+						<div class="col-md-2">
+							<label class="form-label fw-semibold">&nbsp;</label>
+							<div
+								id="selectedEmployeeInfo"
+								class="alert alert-info p-2 text-center"
+								style="display: none; font-size: 12px"
+							>
+								<i class="fas fa-user-check"></i>
+								<span id="employeeInfoText"></span>
+							</div>
+						</div>
+					</div>
+
+					<div class="row g-3 mt-2">
+						<div class="col-md-6">
+							<button
+								id="export-detailed-btn"
+								class="btn btn-gradient-info w-100"
+								disabled
+							>
+								<i class="fas fa-file-alt me-2"></i>
+								دانلود گزارش تفصیلی (همه رزروها)
+							</button>
+						</div>
+						<div class="col-md-6">
+							<button
+								id="export-summary-btn"
+								class="btn w-100"
+								style="background: linear-gradient(135deg, #11998e, #38ef7d); border: none; border-radius: 50px; padding: 12px; font-weight: 600; color: white"
+								disabled
+							>
+								<i class="fas fa-chart-simple me-2"></i>
+								دانلود گزارش خلاصه (آمار رستوران‌ها)
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+	$(document).ready(function () {
+		// ==================== فعال‌سازی Choices.js برای انتخاب کارخانه ====================
+		const factorySelect = document.getElementById("factory-select");
+		let choicesInstance = null;
+
+		if (factorySelect) {
+			choicesInstance = new Choices(factorySelect, {
+				removeItemButton: true,
+				placeholder: true,
+				placeholderValue: "انتخاب کارخانه‌ها (می‌توانید چندین مورد انتخاب کنید)",
+				searchEnabled: true,
+				searchChoices: true,
+				searchResultLimit: 10,
+				renderChoiceLimit: -1,
+				shouldSort: false,
+				itemSelectText: "",
+				addItems: true,
+				removeItems: true,
+			});
+		}
+
+		// تابع کمکی برای گرفتن کارخانه‌های انتخاب شده - روش درست برای Choices.js
+		function getSelectedFactories() {
+			if (choicesInstance) {
+				// این روش درست مقادیر را برمی‌گرداند
+				const selectedOptions = Array.from(factorySelect.selectedOptions);
+				if (selectedOptions.length > 0) {
+					const ids = selectedOptions.map((opt) => opt.value).join(",");
+					console.log("Factory IDs to send:", ids);
+					return ids;
+				}
+			}
+			return "";
+		}
+
+		jalaliDatepicker.startWatch({
+			time: false,
+			persianDigits: true,
+			showTodayBtn: true,
+			showEmptyBtn: true,
+		});
+
+		let selectedEmployeeId = null;
+		let selectedEmployeeName = null;
+
+		// ==================== جستجوی کارمند ====================
+		$("#employee-search").select2({
+			placeholder: "جستجوی کارمند (نام، کد ملی یا کد پرسنلی)...",
+			allowClear: true,
+			dir: "rtl",
+			ajax: {
+				url: "{% url 'users:search_employees' %}",
+				dataType: "json",
+				delay: 300,
+				data: function (params) {
+					return { q: params.term || "" };
+				},
+				processResults: function (data) {
+					return { results: data };
+				},
+				cache: true,
+			},
+			minimumInputLength: 2,
+			templateResult: function (item) {
+				if (item.loading) return item.text;
+				return $(`<div><strong>${item.text}</strong><br><small>کد ملی: ${item.national_id} | کد پرسنلی: ${item.personnel_code || "ندارد"}</small></div>`);
+			},
+			templateSelection: function (item) {
+				return item.text || item.national_id || item.text;
+			},
+		});
+
+		$("#employee-search").on("select2:select", function (e) {
+			selectedEmployeeId = e.params.data.id;
+			selectedEmployeeName = e.params.data.text;
+
+			$("#export-detailed-btn, #export-summary-btn").prop("disabled", false);
+			$("#selectedEmployeeInfo").show();
+			$("#employeeInfoText").html(`کارمند: <strong>${selectedEmployeeName}</strong>`);
+		});
+
+		$("#employee-search").on("select2:clear", function () {
+			selectedEmployeeId = null;
+			selectedEmployeeName = null;
+			$("#export-detailed-btn, #export-summary-btn").prop("disabled", true);
+			$("#selectedEmployeeInfo").hide();
+		});
+
+		// ==================== گزارش کامل بدهی ====================
+		$("#export-full-btn").on("click", function () {
+			const startDate = $("#full_from_date").val();
+			const endDate = $("#full_to_date").val();
+			const reportType = $("#full_report_type").val();
+
+			if (!startDate || !endDate) {
+				Swal.fire("خطا", "لطفاً بازه تاریخ را انتخاب کنید", "error");
+				return;
+			}
+
+			let params = `export=full&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}&type=${reportType}`;
+
+			const selectedFactories = getSelectedFactories();
+			if (selectedFactories) {
+				params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
+			}
+
+			let url = "{% url 'users:reports_dashboard' %}?" + params;
+			console.log("Final URL:", url);
+			window.location.href = url;
+		});
+
+		// ==================== گزارش رستوران ====================
+		$("#export-restaurant-btn").on("click", function () {
+			const startDate = $("#restaurant_from_date").val();
+			const endDate = $("#restaurant_to_date").val();
+
+			if (!startDate || !endDate) {
+				Swal.fire("خطا", "لطفاً بازه تاریخ را انتخاب کنید", "error");
+				return;
+			}
+
+			let params = `export=full-restaurant&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+
+			const selectedFactories = getSelectedFactories();
+			if (selectedFactories) {
+				params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
+			}
+
+			let url = "{% url 'users:reports_dashboard' %}?" + params;
+			console.log("Final URL:", url);
+			window.location.href = url;
+		});
+
+		// ==================== گزارش تفصیلی کارمند ====================
+		$("#export-detailed-btn").on("click", function () {
+			if (!selectedEmployeeId) {
+				Swal.fire("خطا", "لطفاً یک کارمند انتخاب کنید", "error");
+				return;
+			}
+
+			const startDate = $("#single_from_date").val();
+			const endDate = $("#single_to_date").val();
+
+			if (!startDate || !endDate) {
+				Swal.fire("خطا", "لطفاً بازه تاریخ را انتخاب کنید", "error");
+				return;
+			}
+
+			let params = `export=single&employee_id=${selectedEmployeeId}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+
+			const selectedFactories = getSelectedFactories();
+			if (selectedFactories) {
+				params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
+			}
+
+			let url = "{% url 'users:reports_dashboard' %}?" + params;
+			console.log("Final URL:", url);
+			window.location.href = url;
+		});
+
+		// ==================== گزارش خلاصه کارمند ====================
+		$("#export-summary-btn").on("click", function () {
+			if (!selectedEmployeeId) {
+				Swal.fire("خطا", "لطفاً یک کارمند انتخاب کنید", "error");
+				return;
+			}
+
+			const startDate = $("#single_from_date").val();
+			const endDate = $("#single_to_date").val();
+
+			if (!startDate || !endDate) {
+				Swal.fire("خطا", "لطفاً بازه تاریخ را انتخاب کنید", "error");
+				return;
+			}
+
+			let params = `export=single&employee_id=${selectedEmployeeId}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}&summary=1`;
+
+			const selectedFactories = getSelectedFactories();
+			if (selectedFactories) {
+				params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
+			}
+
+			let url = "{% url 'users:reports_dashboard' %}?" + params;
+			console.log("Final URL:", url);
+			window.location.href = url;
+		});
+
+		// دکمه پاک کردن کارخانه‌های انتخاب شده
+		$("#clear-factories-btn").on("click", function () {
+			if (choicesInstance) {
+				choicesInstance.removeActiveItems();
+				// همچنین سلکت اصلی رو هم پاک کن
+				$(factorySelect).val([]);
+				Swal.fire({
+					title: "پاک شد!",
+					text: "فیلتر کارخانه‌ها حذف شد",
+					icon: "success",
+					timer: 1500,
+					showConfirmButton: false,
+				});
+			}
+		});
+	});
+</script>
+{% endblock extra_js %} {% block extra_css %}
+<style>
+	:root {
+		--primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		--success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+		--danger-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+		--warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+		--info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+	}
+
+	body {
+		background: #f8f9fc;
+	}
+
+	/* کارت‌های آماری */
+	.stat-card {
+		border: none;
+		border-radius: 20px;
+		background: white;
+		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		overflow: hidden;
+		position: relative;
+	}
+
+	.stat-card:hover {
+		transform: translateY(-8px);
+		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+	}
+
+	.stat-card::before {
+		content: "";
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 4px;
+	}
+
+	.stat-card.primary::before {
+		background: linear-gradient(90deg, #667eea, #764ba2);
+	}
+	.stat-card.success::before {
+		background: linear-gradient(90deg, #11998e, #38ef7d);
+	}
+	.stat-card.info::before {
+		background: linear-gradient(90deg, #4facfe, #00f2fe);
+	}
+
+	.stat-icon {
+		width: 60px;
+		height: 60px;
+		border-radius: 15px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 28px;
+		color: white;
+	}
+
+	.stat-icon.primary {
+		background: linear-gradient(135deg, #667eea, #764ba2);
+	}
+	.stat-icon.success {
+		background: linear-gradient(135deg, #11998e, #38ef7d);
+	}
+	.stat-icon.info {
+		background: linear-gradient(135deg, #4facfe, #00f2fe);
+	}
+
+	/* کارت‌های گزارش اصلی */
+	.report-card {
+		border: none;
+		border-radius: 24px;
+		background: white;
+		transition: all 0.3s ease;
+		overflow: hidden;
+		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+	}
+
+	.report-card:hover {
+		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+	}
+
+	.card-header-gradient {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		padding: 1.5rem;
+		border: none;
+	}
+
+	.card-header-gradient h4 {
+		margin: 0;
+		color: white;
+		font-weight: 600;
+	}
+
+	/* دکمه‌ها */
+	.btn-gradient {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		border: none;
+		color: white;
+		padding: 12px 30px;
+		border-radius: 50px;
+		font-weight: 600;
+		transition: all 0.3s;
+	}
+
+	.btn-gradient:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+		color: white;
+	}
+
+	.btn-gradient-success {
+		background: linear-gradient(135deg, #11998e, #38ef7d);
+	}
+
+	.btn-gradient-warning {
+		background: linear-gradient(135deg, #fa709a, #fee140);
+		color: #333;
+	}
+
+	.btn-gradient-info {
+		background: linear-gradient(135deg, #4facfe, #00f2fe);
+	}
+
+	/* فیلدهای فرم */
+	.form-control-modern {
+		border: 2px solid #e1e5e9;
+		border-radius: 12px;
+		padding: 12px 16px;
+		transition: all 0.3s;
+	}
+
+	.form-control-modern:focus {
+		border-color: #667eea;
+		box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.1);
+	}
+
+	/* انیمیشن‌ها */
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(30px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.animate-fade-in-up {
+		animation: fadeInUp 0.6s ease-out;
+	}
+
+	/* تبلت نمایش پیش‌نمایش */
+	.preview-table {
+		border-radius: 12px;
+		overflow: hidden;
+		background: #f8f9fc;
+	}
+
+	.preview-table table {
+		margin-bottom: 0;
+	}
+
+	.badge-modern {
+		padding: 6px 12px;
+		border-radius: 20px;
+		font-weight: 500;
+	}
+</style>
+<style>
+	/* استایل‌های قبلی حفظ شود... */
+
+	.report-type-select {
+		background: linear-gradient(135deg, #667eea15, #764ba215);
+		border: 2px solid #e1e5e9;
+		border-radius: 12px;
+		padding: 10px;
+		font-weight: 500;
+	}
+
+	.btn-sm-gradient {
+		padding: 8px 20px;
+		font-size: 14px;
+	}
+
+	.info-badge {
+		background: linear-gradient(135deg, #667eea, #764ba2);
+		color: white;
+		border-radius: 10px;
+		padding: 5px 12px;
+		font-size: 12px;
+	}
+</style>
+<style>
+	/* استایل مخصوص مولتی‌سلکت کارخانه */
+	.factory-select-container {
+		background: white;
+		border-radius: 16px;
+		padding: 5px;
+	}
+
+	.choices__inner {
+		background-color: white !important;
+		border: 2px solid #e1e5e9 !important;
+		border-radius: 12px !important;
+		padding: 8px 12px !important;
+		font-size: 14px !important;
+		transition: all 0.3s ease !important;
+	}
+
+	.choices__inner:focus-within {
+		border-color: #667eea !important;
+		box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+	}
+
+	.choices__button {
+		border-left: none !important;
+	}
+
+	.choices__list--multiple .choices__item {
+		background: linear-gradient(135deg, #667eea, #764ba2) !important;
+		border-radius: 20px !important;
+		padding: 4px 12px !important;
+		margin: 2px 4px !important;
+		font-size: 13px !important;
+	}
+
+	.choices__list--dropdown .choices__item--selectable.is-highlighted {
+		background: linear-gradient(135deg, #667eea15, #764ba215) !important;
+	}
+
+	.factory-badge {
+		background: linear-gradient(135deg, #667eea, #764ba2);
+		color: white;
+		padding: 8px 16px;
+		border-radius: 12px;
+		font-size: 13px;
+		font-weight: 500;
+	}
+
+	.factory-badge i {
+		margin-left: 6px;
+	}
+
+	/* انیمیشن برای مولتی‌سلکت */
+	.choices {
+		margin-bottom: 0 !important;
+	}
+
+	/* برچسب انتخاب شده */
+	.selected-factories-tag {
+		background: #f0f2f5;
+		border-radius: 12px;
+		padding: 8px 12px;
+		font-size: 12px;
+		color: #4a5568;
+	}
+</style>
+<style>
+	/* استایل برای Choices.js چند انتخابی */
+	.choices {
+		margin-bottom: 0;
+	}
+
+	.choices__inner {
+		background-color: #fff;
+		border: 2px solid #e1e5e9;
+		border-radius: 12px;
+		min-height: 48px;
+		padding: 8px 12px;
+	}
+
+	.choices__inner:focus {
+		border-color: #667eea;
+	}
+
+	.choices__list--multiple .choices__item {
+		background: linear-gradient(135deg, #667eea, #764ba2);
+		border-radius: 20px;
+		padding: 4px 12px;
+		margin: 2px;
+	}
+
+	.choices__list--multiple .choices__item .choices__button {
+		border-left: none;
+	}
+
+	.choices__input {
+		background-color: transparent;
+	}
+
+	.choices__list--dropdown .choices__item--selectable.is-highlighted {
+		background: linear-gradient(135deg, #667eea, #764ba2);
+		color: white;
+	}
+
+	/* کارت انتخاب کارخانه */
+	.factory-filter-card {
+		background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+		border: 2px solid rgba(102, 126, 234, 0.2);
+		border-radius: 20px;
+		margin-bottom: 25px;
+	}
+
+	.factory-filter-card .card-body {
+		padding: 1.25rem;
+	}
+
+	.filter-label {
+		font-weight: 600;
+		color: #4a5568;
+		margin-bottom: 8px;
+		display: block;
+	}
+
+	.filter-label i {
+		margin-left: 8px;
+		color: #667eea;
+	}
+
+	.selected-factories-badge {
+		display: inline-block;
+		background: #e2e8f0;
+		padding: 4px 10px;
+		border-radius: 20px;
+		font-size: 12px;
+		margin-left: 5px;
+		margin-top: 5px;
+	}
+
+	.clear-factories-btn {
+		background: none;
+		border: none;
+		color: #e53e3e;
+		font-size: 12px;
+		cursor: pointer;
+		padding: 0 5px;
+	}
+
+	.clear-factories-btn:hover {
+		color: #c53030;
+		text-decoration: underline;
+	}
+</style>
+<style>
+	/* استایل‌های Select2 برای هماهنگی با تم */
+	.select2-container--bootstrap-5 .select2-selection--multiple {
+		min-height: 48px;
+		border: 2px solid #e1e5e9 !important;
+		border-radius: 12px !important;
+		background-color: #fff !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-selection--multiple:focus-within {
+		border-color: #667eea !important;
+		box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+		background: linear-gradient(135deg, #667eea, #764ba2) !important;
+		border: none !important;
+		border-radius: 20px !important;
+		padding: 4px 12px !important;
+		margin: 4px 4px !important;
+		color: white !important;
+		font-size: 13px !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+		color: white !important;
+		border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
+		margin-right: 6px !important;
+		padding-right: 6px !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+		color: #ffcccc !important;
+		background: none !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+		padding: 8px 4px !important;
+		font-size: 14px !important;
+	}
+
+	.select2-dropdown {
+		border: 2px solid #e1e5e9 !important;
+		border-radius: 12px !important;
+		overflow: hidden !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-results__option--highlighted.select2-results__option--selectable {
+		background: linear-gradient(135deg, #667eea15, #764ba215) !important;
+		color: #4a5568 !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-results__option--selected {
+		background: linear-gradient(135deg, #667eea, #764ba2) !important;
+		color: white !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-results__option {
+		padding: 10px 12px !important;
+		font-size: 14px !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+		padding: 4px 8px !important;
+	}
+
+	/* آیکون جستجو در Select2 */
+	.select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field {
+		border: 2px solid #e1e5e9 !important;
+		border-radius: 10px !important;
+		padding: 8px 12px !important;
+	}
+
+	.select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field:focus {
+		border-color: #667eea !important;
+		outline: none !important;
+	}
+</style>
+{% endblock %}

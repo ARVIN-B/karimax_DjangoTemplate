@@ -95,10 +95,17 @@
 											data-employee-departments='{{ employee.managed_departments_m2m.all|join:"," }}'
 											data-employee-supervised='{{ employee.supervised_subdepartments_m2m.all|join:"," }}'
 											data-employee-assigned='{{ employee.assigned_subdepartments.all|join:"," }}'
+											data-employee-holdings-ids="{% for h in employee.managed_holdings_m2m.all %}{{ h.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+											data-employee-factories-ids="{% for f in employee.managed_factories_m2m.all %}{{ f.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+											data-employee-departments-ids="{% for d in employee.managed_departments_m2m.all %}{{ d.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+											data-employee-supervised-ids="{% for s in employee.supervised_subdepartments_m2m.all %}{{ s.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+											data-employee-assigned-ids="{% for a in employee.assigned_subdepartments.all %}{{ a.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
 											data-bs-toggle="modal"
 											data-bs-target="#addUserModal"
 										>
-											<script>console.log("{{ employee.managed_holdings_m2m.all|join:"," }}")</script>
+											<script>
+												console.log(" {% for h in employee.managed_holdings_m2m.all %}{{ h.id }}{% if not forloop.last %},{% endif %}{% endfor %} ");
+											</script>
 											<i class="fas fa-edit"></i> ویرایش
 										</button>
 									</td>
@@ -160,6 +167,10 @@
 					<div
 						class="step-dot"
 						id="dot3"
+					></div>
+					<div
+						class="step-dot"
+						id="dot4"
 					></div>
 				</div>
 
@@ -509,6 +520,227 @@
 							</div>
 						</div>
 					</div>
+					
+
+					
+					
+					<!-- Step 4: تنظیمات و پرمیژن‌ها -->
+					<div class="form-step d-none" id="step4">
+						<h6 class="mb-3 text-primary fw-bold"><i class="fas fa-shield-alt me-2"></i>تنظیمات دسترسی و مجوزها</h6>
+
+						<!-- دسته‌بندی با آکاردئون یا تب (برای زیبایی) -->
+						<div class="accordion" id="permissionsAccordion">
+							<!-- مجوزهای رزرو غذا -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2 class="accordion-header" id="headingReserve">
+									<button class="accordion-button rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReserve">
+										<i class="fas fa-utensils me-2"></i> مجوزهای رزرو غذا
+									</button>
+								</h2>
+								<div id="collapseReserve" class="accordion-collapse collapse show" data-bs-parent="#permissionsAccordion">
+									<div class="accordion-body">
+										<div class="row g-3">
+											<div class="col-md-6">
+												<label class="form-label fw-semibold">وضعیت رزرو نامحدود</label>
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="unlimit_reservation" id="unlimit_reservation" value="true">
+													<label class="form-check-label" for="unlimit_reservation">فعال باشد</label>
+												</div>
+											</div>
+											<div class="col-md-6">
+												<label class="form-label fw-semibold">پیمانکار است؟</label>
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="is_contractor" id="is_contractor" value="true">
+													<label class="form-check-label" for="is_contractor">بله</label>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">محدودیت رزرو مهمان</label>
+												<input type="number" class="form-control" name="guest_limit_reservation" id="guest_limit_reservation" value="0">
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">محدودیت رزرو آزاد</label>
+												<input type="number" class="form-control" name="free_limit_reservation" id="free_limit_reservation" value="5">
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">محدودیت رزرو سهمیه‌ای</label>
+												<input type="number" class="form-control" name="factory_limit_reservation" id="factory_limit_reservation" value="1">
+											</div>
+											<div class="col-md-6">
+												<label class="form-label fw-semibold">مجوز رزرو برای دیگران</label>
+												<select class="form-select" name="can_reserve_for_others">
+													<option value="0">اجازه ندارد</option>
+													<option value="1">مجاز (با محدودیت)</option>
+													<option value="2">مجاز (بدون محدودیت پرسنل مقصد)</option>
+												</select>
+											</div>
+											<div class="col-md-6">
+												<label class="form-label fw-semibold">مجوز رزرو برای تاریخ</label>
+												<select class="form-select" name="can_reserve_for_which_day">
+													<option value="0">فقط همان روز</option>
+													<option value="1">مجاز به رزرو برای آینده و گذشته</option>
+												</select>
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">محدودیت مهمان برای دیگران</label>
+												<input type="number" class="form-control" name="guest_limit_reservation_for_others" value="0">
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">محدودیت آزاد برای دیگران</label>
+												<input type="number" class="form-control" name="free_limit_reservation_for_others" value="0">
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">محدودیت سهمیه‌ای برای دیگران</label>
+												<input type="number" class="form-control" name="factory_limit_reservation_for_others" value="0">
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- نقش تحویل‌گیرنده غذا -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2 class="accordion-header" id="headingFoodReceiver">
+									<button class="accordion-button collapsed rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFoodReceiver">
+										<i class="fas fa-truck me-2"></i> نقش تحویل‌گیرنده غذا
+									</button>
+								</h2>
+								<div id="collapseFoodReceiver" class="accordion-collapse collapse" data-bs-parent="#permissionsAccordion">
+									<div class="accordion-body">
+										<div class="row g-3">
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">نقش تحویل‌گیرنده</label>
+												<select class="form-select" name="food_receiver_role" id="food_receiver_role">
+													<option value="0">تحویل گیرنده نیست</option>
+													<option value="1">تحویل گیرنده کارخانه</option>
+													<option value="2">تحویل گیرنده هلدینگ</option>
+												</select>
+											</div>
+											<div class="col-md-4" id="food_receiver_factory_div" style="display: none;">
+												<label class="form-label fw-semibold">کارخانه تحویل‌گیرنده</label>
+												<select class="form-select" name="food_receiver_factory">
+													<option value="">انتخاب کنید</option>
+													{% for factory in factories %}
+													<option value="{{ factory.id }}">{{ factory.name }}</option>
+													{% endfor %}
+												</select>
+											</div>
+											<div class="col-md-4" id="food_receiver_holding_div" style="display: none;">
+												<label class="form-label fw-semibold">هلدینگ تحویل‌گیرنده</label>
+												<select class="form-select" name="food_receiver_holding">
+													<option value="">انتخاب کنید</option>
+													{% for holding in holdings %}
+													<option value="{{ holding.id }}">{{ holding.name }}</option>
+													{% endfor %}
+												</select>
+											</div>
+											<div class="col-md-6">
+												<label class="form-label fw-semibold">اجازه سرو غذا</label>
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="can_serve_foods" value="true">
+													<label class="form-check-label">دارد</label>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- دسترسی‌های سیستمی -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2 class="accordion-header" id="headingSystemAccess">
+									<button class="accordion-button collapsed rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSystemAccess">
+										<i class="fas fa-laptop me-2"></i> دسترسی‌های سیستمی
+									</button>
+								</h2>
+								<div id="collapseSystemAccess" class="accordion-collapse collapse" data-bs-parent="#permissionsAccordion">
+									<div class="accordion-body">
+										<div class="row g-3">
+											<div class="col-md-6">
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="can_access_dashboard" value="true" checked>
+													<label class="form-check-label">دسترسی به داشبورد</label>
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="can_access_all_departments" value="true">
+													<label class="form-check-label">دسترسی به تمام بخش‌ها</label>
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="factory_bimeh" value="true">
+													<label class="form-check-label">دانلود اطلاعات بیمه‌ای کارخانه</label>
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="holding_bimeh" value="true">
+													<label class="form-check-label">دانلود اطلاعات بیمه‌ای هلدینگ</label>
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="can_reserve_management_food" value="true">
+													<label class="form-check-label">اجازه سفارش غذای ویژه</label>
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-check form-switch">
+													<input class="form-check-input" type="checkbox" name="manage_sub_employees" value="true">
+													<label class="form-check-label">مدیریت پرسنل زیرمجموعه</label>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- اطلاعات تکمیلی -->
+							<div class="accordion-item border-0 shadow-sm mb-3 rounded-3">
+								<h2 class="accordion-header" id="headingPersonalInfo">
+									<button class="accordion-button collapsed rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePersonalInfo">
+										<i class="fas fa-address-card me-2"></i> اطلاعات تکمیلی
+									</button>
+								</h2>
+								<div id="collapsePersonalInfo" class="accordion-collapse collapse" data-bs-parent="#permissionsAccordion">
+									<div class="accordion-body">
+										<div class="row g-3">
+											<div class="col-md-6">
+												<label class="form-label fw-semibold">آدرس</label>
+												<textarea class="form-control" name="address" rows="2"></textarea>
+											</div>
+											<div class="col-md-6">
+												<label class="form-label fw-semibold">مرکز هزینه</label>
+												<input type="text" class="form-control" name="center_of_charge">
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">شماره شناسنامه</label>
+												<input type="text" class="form-control" name="birth_certificate_number">
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">تاریخ تولد</label>
+												<input type="date" class="form-control" name="birth_date">
+											</div>
+											<div class="col-md-4">
+												<label class="form-label fw-semibold">نام پدر</label>
+												<input type="text" class="form-control" name="father_name">
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					
+
+
+
+
+
+
 				</form>
 			</div>
 			<div class="modal-footer border-0 pt-0 pb-3 px-4">
@@ -542,7 +774,7 @@
 {% endblock %} {% block extra_js %}
 <script>
 	let currentStep = 1;
-	const totalSteps = 3;
+	const totalSteps = 4;
 	let choicesInstances = [];
 	let isEditMode = false;
 
@@ -581,9 +813,9 @@
 		document.getElementById("lastNameInput").value = btn.dataset.employeeLastName;
 		document.getElementById("phoneInput").value = btn.dataset.employeePhone;
 		document.getElementById("emailInput").value = btn.dataset.employeeEmail;
-		document.getElementById("positionInput").value = btn.dataset.employeePosition || "22";
+		document.getElementById("positionInput").value = btn.dataset.employeePosition;
 
-		console.log(btn)
+		console.log(btn);
 
 		// خالی کردن رمزها
 		document.getElementById("passwordInput").value = "";
@@ -595,13 +827,21 @@
 			Array.from(select.options).forEach((opt) => (opt.selected = false));
 		});
 
-		// حالا مقادیر را از data-attribute ها می‌خوانیم
+		// // حالا مقادیر را از data-attribute ها می‌خوانیم
+		// const fields = {
+		// 	managing_holdings: btn.dataset.employeeHoldings,
+		// 	managing_factories: btn.dataset.employeeFactories,
+		// 	managing_departments: btn.dataset.employeeDepartments,
+		// 	supervising_subdepartments: btn.dataset.employeeSupervised,
+		// 	assigned_subdepartments: btn.dataset.employeeAssigned,
+		// };
+
 		const fields = {
-			managing_holdings: btn.dataset.employeeHoldings,
-			managing_factories: btn.dataset.employeeFactories,
-			managing_departments: btn.dataset.employeeDepartments,
-			supervising_subdepartments: btn.dataset.employeeSupervised,
-			assigned_subdepartments: btn.dataset.employeeAssigned,
+			managing_holdings: btn.dataset.employeeHoldingsIds,
+			managing_factories: btn.dataset.employeeFactoriesIds,
+			managing_departments: btn.dataset.employeeDepartmentsIds,
+			supervising_subdepartments: btn.dataset.employeeSupervisedIds,
+			assigned_subdepartments: btn.dataset.employeeAssignedIds,
 		};
 
 		// بعد از راه‌اندازی Choices مقادیر را تنظیم می‌کنیم
@@ -625,6 +865,29 @@
 			}
 		}, 150);
 	}
+
+	// // مقداردهی فیلدهای استپ ۴
+	// document.querySelectorAll('#step4 input[type="checkbox"]').forEach(chk => {
+	// 	const fieldName = chk.name;
+	// 	const value = btn.dataset[fieldName.replace(/_/g, '')]; // مثال data-canaccessdashboard
+	// 	if (value === 'true') chk.checked = true;
+	// 	else chk.checked = false;
+	// });
+	// document.querySelectorAll('#step4 input[type="number"], #step4 input[type="text"], #step4 textarea, #step4 select').forEach(input => {
+	// 	const fieldName = input.name;
+	// 	const value = btn.dataset[fieldName.replace(/_/g, '')];
+	// 	if (value !== undefined) input.value = value;
+	// });
+	// // برای select هایی که name مثل food_receiver_role دارند
+	// const foodRole = btn.dataset.foodreceiverrole;
+	// if (foodRole) document.querySelector('select[name="food_receiver_role"]').value = foodRole;
+	// // نمایش/مخفی کردن فیلدهای کارخانه/هلدینگ وابسته به نقش
+	// toggleFoodReceiverFields();
+
+
+
+
+
 
 	// ریست کردن فرم به حالت افزودن
 	function resetFormToAddMode() {

@@ -1,0 +1,566 @@
+/* ============================================================
+   Group Reservation - Modern UI/UX Stylesheet
+   Fully responsive, glassmorphism, orange accent, extreme mobile support
+   Compatible with Bootstrap 5 and the provided HTML template
+   ============================================================ */
+
+/* ---------- Core Variables ---------- */
+:root {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --primary-light: #ffedd5;
+  --primary-glow: rgba(249, 115, 22, 0.3);
+  --secondary: #f59e0b;
+  --secondary-dark: #d97706;
+  --secondary-light: #fef3c7;
+  --secondary-glow: rgba(245, 158, 11, 0.3);
+  --bg-page: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+  --radius-sm: 0.75rem;
+  --radius: 1.25rem;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --font-size-base: clamp(0.875rem, 2.5vw, 1rem);
+  --sidebar-width: 280px; /* If needed for layout calculations */
+}
+
+/* ---------- Global Reset & Base ---------- */
+body {
+  font-family:
+    "Vazirmatn",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------- Glass Card ---------- */
+.card.shadow-lg {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  transition: var(--transition);
+}
+.card-header.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius) var(--radius) 0 0 !important;
+}
+
+/* ---------- Alert Info ---------- */
+.alert-info {
+  background: var(--primary-glow);
+  border: 1px solid var(--secondary-glow);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+/* ---------- Form Controls ---------- */
+.form-control,
+.form-select {
+  font-size: var(--font-size-base);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: var(--transition);
+  background: rgba(255, 255, 255, 0.8);
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* Select2 custom overrides (if needed, the plugin provides its own styling) */
+.select2-container--default .select2-selection--multiple {
+  border-radius: var(--radius-sm);
+  min-height: 3rem;
+  background: white;
+}
+
+/* ---------- Table Styling ---------- */
+.table {
+  border-collapse: separate;
+  border-spacing: 0 0.5rem;
+  margin-bottom: 0;
+}
+.table thead th {
+  background: var(--text-primary);
+  color: white;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+  padding: 1rem 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.table tbody tr {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-sm);
+  transition: all 0.3s ease;
+}
+.table tbody tr:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  background: rgba(255, 255, 255, 0.9);
+}
+.table td {
+  border: none;
+  vertical-align: middle;
+  padding: 1.25rem 0.75rem;
+}
+
+/* ---------- Reservation Container (horizontal scroll fallback) ---------- */
+.reservation-container {
+  min-width: 700px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem 0 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+  display: flex;
+  flex-direction: column;
+}
+.reservation-container::-webkit-scrollbar {
+  height: 6px;
+}
+.reservation-container::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
+}
+
+/* ---------- Single Reservation Slot (Input Group) ---------- */
+.compact-input-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  padding: 0.25rem;
+  transition: var(--transition);
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.compact-input-group:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* Type label (سهمیه/آزاد/مهمان) */
+.type-label {
+  font-weight: 600;
+  font-size: 0.8rem;
+  min-width: 70px;
+  text-align: center;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  color: white;
+}
+.bg-primary {
+  background: var(--primary) !important;
+}
+.bg-danger {
+  background: #dc2626 !important;
+}
+.bg-warning {
+  background: #f59e0b !important;
+  color: #0f172a !important;
+}
+
+/* Food select */
+.food-select {
+  border: none;
+  font-size: 0.9rem;
+  background: transparent;
+  flex: 1 1 150px;
+  min-width: 120px;
+}
+
+/* Price buttons */
+.price-btn {
+  border: none;
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  transition: var(--transition);
+  min-width: 80px;
+  text-align: center;
+}
+.price-btn small {
+  display: block;
+  font-weight: 600;
+}
+.price-btn.active {
+  color: white;
+  font-weight: 600;
+}
+.price-btn.factory-btn.active {
+  background: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+.price-btn.free-btn.active {
+  background: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+.price-btn.guest-btn.active {
+  background: #f59e0b;
+  color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+.price-btn:hover:not(.active) {
+  background: var(--primary-glow);
+  color: var(--primary-dark);
+}
+
+/* Quantity input */
+.quantity-input {
+  border: none;
+  text-align: center;
+  font-weight: 600;
+  width: 70px !important;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 0.5rem;
+}
+
+/* Price total */
+.price-total {
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 100px;
+  background: var(--primary-glow);
+  border-radius: 0.5rem;
+  border: none;
+  padding: 0.3rem 0.5rem;
+  text-align: center;
+}
+
+/* Remove extra button */
+.remove-extra-btn {
+  background: transparent;
+  border: none;
+  color: #dc2626;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: var(--transition);
+}
+.remove-extra-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+/* ---------- Add Extra Button ---------- */
+.add-extra-btn {
+  border: 2px dashed var(--primary);
+  color: var(--primary-dark);
+  background: transparent;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  width: 100%;
+  margin-top: 0.5rem;
+}
+.add-extra-btn:hover {
+  background: var(--secondary-glow);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  color: var(--primary-dark);
+}
+
+/* ---------- Submit Button ---------- */
+#submit-group-reservations {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+  border: none;
+  font-size: 1.15rem;
+  padding: 1rem 2.5rem;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 20px var(--primary-glow);
+  transition: all 0.3s ease;
+  color: white;
+  letter-spacing: 0.5px;
+}
+#submit-group-reservations:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 25px var(--primary-glow);
+}
+#submit-group-reservations:disabled {
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---------- Remaining Display ---------- */
+.remaining-display {
+  background: var(--primary-glow);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font-weight: 600;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+/* ---------- Loading Skeleton ---------- */
+.loading {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.compact-input-group .type-label,
+.compact-input-group .food-select,
+.compact-input-group .price-btn,
+.compact-input-group .quantity-input {
+  min-height: 48px; /* لمس راحت‌تر */
+}
+
+/* ---------- Responsive Design (Mobile-First) ---------- */
+
+/* Tablet and smaller (max-width 992px) */
+@media (max-width: 992px) {
+  .reservation-container {
+    min-width: 600px;
+  }
+  .compact-input-group {
+    flex-wrap: wrap;
+  }
+}
+
+/* Mobile landscape (max-width 768px) */
+@media (max-width: 768px) {
+  .reservation-container {
+    min-width: 500px;
+  }
+  .type-label {
+    min-width: 60px;
+    font-size: 0.7rem;
+  }
+  .price-btn {
+    min-width: 70px;
+    font-size: 0.7rem;
+  }
+  .quantity-input {
+    width: 60px !important;
+  }
+  .price-total {
+    min-width: 80px;
+    font-size: 0.8rem;
+  }
+  /* جدول را به حالت بلوکی تبدیل کن و min-width اجباری را حذف کن */
+  .table-responsive table {
+    display: block;
+    min-width: auto !important; /* حذف min-width: 1200px */
+    width: 100% !important;
+  }
+
+  .table-responsive thead {
+    display: none; /* سربرگ ستون‌ها را مخفی کن */
+  }
+
+  .table-responsive tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .table-responsive tr {
+    display: block;
+    margin-bottom: 1.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-sm);
+    padding: 1rem;
+  }
+
+  .table-responsive td {
+    display: block;
+    width: 100% !important;
+    padding: 0.5rem 0;
+    border: none;
+  }
+
+  /* ستون نام کارمند را شبیه هدر کارت نمایش بده */
+  .table-responsive td:first-child {
+    font-size: 1rem;
+    font-weight: 700;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--primary-glow);
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+
+  /* ستون رزروها را بدون padding اضافی نمایش بده */
+  .table-responsive td:last-child {
+    padding: 0;
+  }
+
+  /* کانتینر رزروها را در موبایل به عرض کامل و اسکرول داخلی درآور */
+  .reservation-container {
+    min-width: 100% !important; /* دیگر 700px نباشد */
+    overflow-x: auto; /* اگر لازم شد خودش اسکرول شود */
+    -webkit-overflow-scrolling: touch;
+    padding: 0.5rem 0 0.5rem;
+  }
+
+  /* اسلات‌های رزرو در حالت عمودی (همان طرح قبلی) بهینه‌تر شوند */
+  .compact-input-group {
+    flex-direction: row; /* برای اسکرول افقی بهتر است ردیفی بمانند */
+    flex-wrap: nowrap !important; /* یک خطی با قابلیت اسکرول */
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 0.5rem;
+  }
+}
+
+/* Small phones (max-width 480px) */
+@media (max-width: 480px) {
+  .reservation-container {
+    min-width: 350px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .compact-input-group {
+    flex-wrap: wrap;
+    gap: 0.2rem;
+  }
+  .type-label,
+  .food-select,
+  .price-btn,
+  .quantity-input,
+  .price-total {
+    width: 100% !important;
+    min-width: auto;
+    flex: 1 1 auto;
+    margin: 0.1rem 0;
+  }
+  /* Force column layout for slots on very small screens */
+  .compact-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .type-label {
+    text-align: center;
+    min-width: auto;
+    width: 100% !important;
+  }
+  .food-select {
+    width: 100% !important;
+  }
+  .price-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100% !important;
+  }
+  .price-btn small {
+    margin-left: auto;
+  }
+  .quantity-input {
+    width: 100% !important;
+  }
+  .price-total {
+    width: 100% !important;
+    text-align: center;
+  }
+  .remove-extra-btn {
+    align-self: flex-end;
+  }
+
+  .compact-input-group {
+    flex-direction: column !important;
+    align-items: stretch;
+    white-space: normal;
+    overflow-x: visible;
+  }
+}
+
+/* Extra small phones (max-width 375px) */
+@media (max-width: 375px) {
+  .card-header h4 {
+    font-size: 1rem;
+  }
+  .btn-lg {
+    font-size: 0.9rem;
+    padding: 0.8rem 1.5rem;
+  }
+  .table td {
+    padding: 0.8rem 0.5rem;
+  }
+}
+
+/* Tiny phones (max-width 320px) */
+@media (max-width: 320px) {
+  .compact-input-group {
+    font-size: 0.7rem;
+  }
+  .price-btn small {
+    font-size: 0.65rem;
+  }
+}
+
+/* ---------- Animation ---------- */
+.animate__pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ---------- Utility Classes ---------- */
+.text-muted {
+  color: var(--text-muted) !important;
+}
+.fw-bold {
+  font-weight: 700 !important;
+}
+.text-primary {
+  color: var(--primary) !important;
+}
+
+/* اسکرول‌بار اختصاصی */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}

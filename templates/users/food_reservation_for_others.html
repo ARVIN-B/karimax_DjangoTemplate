@@ -298,45 +298,49 @@
         // توابع کمکی
         // ===============================
 
+
+        let activeRequests = {};
         function fetchEmployeeReservationInfo(employeeId, callback) {
-
             const jdateInput = document.getElementById('jdate');
-            const jdatevalue = jdateInput.value.trim();
+            const currentDate = jdateInput.value.trim();
 
-            $.ajax({
+            // 1. لغو درخواست قبلی برای این کارمند (اگر وجود داشته باشد)
+            if (activeRequests[employeeId]) {
+                activeRequests[employeeId].abort();
+            }
+
+            // 2. ارسال درخواست جدید
+            const request = $.ajax({
                 url: URLS.getEmployeeReservationInfo,
                 type: "GET",
-                data: { q: employeeId , for_date: jdatevalue },
-                dataType: "json",
-                success: function (data) {
-
-                    // اگر برای این کارمند state نداریم → بساز
-                    // if (!employeeReservationStates[employeeId]) {
-                    //     employeeReservationStates[employeeId] = {
-                    //         ...data,                              // کپی تمام فیلدها
-                    //         existing_reservations: data.existing_reservations.map(r => ({...r}))  // deep copy آرایه رزروها
-                    //     };
-                    // }
-
-                    // if (!employeeReservationStates[employeeId]) {
-                    employeeReservationStates[employeeId] = {
-                        ...data,                              // کپی تمام فیلدها
-                        existing_reservations: data.existing_reservations.map(r => ({...r}))  // deep copy آرایه رزروها
-                    };
-                    // }
-
-                    // همیشه نسخه کش‌شده رو به callback بده
-                    if (callback) callback(employeeReservationStates[employeeId]);
-                },
-
-                // error: function(xhr) {
-                //     $('#debug-output').text(
-                //         'ERROR:\n' + xhr.responseText
-                //     );
-                //     console.error(xhr);
-                // }
+                data: { q: employeeId, for_date: currentDate },
+                dataType: "json"
             });
-            // console.log('test:', employeeId);
+
+            // ذخیره درخواست فعال
+            activeRequests[employeeId] = request;
+
+            request
+                .done(function(data) {
+                    // 3. بررسی اینکه تاریخ جاری هنوز همان تاریخی است که درخواست برای آن ارسال شده
+                    const nowDate = jdateInput.value.trim();
+                    if (nowDate !== currentDate) {
+                        // پاسخ مربوط به تاریخ قدیمی است → نادیده گرفته شود
+                        return;
+                    }
+                    // ذخیره در state
+                    employeeReservationStates[employeeId] = {
+                        ...data,
+                        existing_reservations: data.existing_reservations.map(r => ({...r}))
+                    };
+                    if (callback) callback(employeeReservationStates[employeeId]);
+                })
+                .always(function() {
+                    // پاک کردن رکورد درخواست پس از اتمام (موفق یا ناموفق)
+                    if (activeRequests[employeeId] === request) {
+                        delete activeRequests[employeeId];
+                    }
+                });
         }
 
 
@@ -616,7 +620,7 @@
 
                     <input type="hidden" name="${baseName}[factory_id]" value="${$(`#reservation-container-${employeeId}`).data('selected-factory') || ''}">
 
-                    ${!isQuota ? '<button type="button" class="btn btn-danger btn-sm remove-extra-btn"><i class="fas fa-trash"></i></button>' : ''}
+                    <button type="button" class="btn btn-danger btn-sm remove-extra-btn"><i class="fas fa-trash"></i></button>
                 </div>
             `;
 
@@ -1182,19 +1186,39 @@
                         location.reload();
                     });
                 },
+                // error: function(xhr) {
+                //     // خطا
+                //     let msg = 'خطایی رخ داد. لطفاً مجدداً تلاش کنید.';
+                //     if (xhr.responseJSON && xhr.responseJSON.message) {
+                //         msg = xhr.responseJSON.message;
+                //     }
+                //     Swal.fire({
+                //         icon: 'error',
+                //         title: 'خطا',
+                //         text: msg,
+                //         confirmButtonText: 'باشه'
+                //     });
+                // },
+
                 error: function(xhr) {
-                    // خطا
                     let msg = 'خطایی رخ داد. لطفاً مجدداً تلاش کنید.';
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         msg = xhr.responseJSON.message;
                     }
+                    // اگر msg یک آرایه است (برای امنیت)
+                    if (Array.isArray(msg)) {
+                        msg = msg.join('<br>');
+                    }
                     Swal.fire({
                         icon: 'error',
                         title: 'خطا',
-                        text: msg,
+                        html: msg,            // ← استفاده از html به جای text
                         confirmButtonText: 'باشه'
                     });
                 },
+
+
+
                 complete: function() {
                     // همیشه در آخر دکمه رو برگردون
                     isSubmitting = false;

@@ -1,0 +1,547 @@
+/* ===== reservation.css ===== */
+:root {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --primary-light: #ffedd5;
+  --primary-glow: rgba(249, 115, 22, 0.3);
+  --secondary: #f59e0b;
+  --secondary-dark: #d97706;
+  --secondary-light: #fef3c7;
+  --secondary-glow: rgba(245, 158, 11, 0.3);
+  --secondary: #0f172a;
+  --bg-page: #f8fafc;
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --radius-sm: 0.75rem;
+  --radius: 1.25rem;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  background: var(--bg-page);
+  font-family:
+    "Vazirmatn",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: var(--text-primary);
+  margin: 0;
+  padding-bottom: 2rem;
+}
+
+/* Utility */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* Factory Picker */
+.factory-picker-wrapper {
+  max-width: 700px;
+  margin: 0 auto;
+}
+.factory-form select {
+  border: 1px solid var(--glass-border);
+  box-shadow: none;
+}
+
+/* Main reservation card */
+.weekly-reservation {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.main-card {
+  border-radius: var(--radius);
+}
+
+.card-header-custom {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+  color: white;
+  padding: 1.25rem 1.5rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.week-alert {
+  background: var(--primary-glow);
+  border: 1px solid var(--primary-glow);
+  color: var(--primary-dark);
+  font-size: 0.95rem;
+}
+
+/* Days Grid */
+.days-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Day Card */
+.day-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition:
+    box-shadow var(--transition),
+    transform var(--transition);
+  border: 2px dashed var(--primary-dark);
+}
+.day-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, var(--secondary-glow), var(--primary-glow));
+  border-bottom: 1px solid var(--primary-glow);
+}
+.day-name {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.day-date {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.03);
+  padding: 0.2rem 0.8rem;
+  border-radius: 2rem;
+}
+
+.day-body {
+  padding: 1rem 1.25rem;
+}
+
+/* Reservation Container */
+.reservation-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Slot (quota & extra) */
+.input-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all var(--transition);
+}
+.input-group:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* Type label */
+.type-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 65px;
+  padding: 0.25rem 0.7rem;
+  border-radius: 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+}
+.factory-label {
+  background: #3b82f6;
+}
+.free-label {
+  background: #ef4444;
+}
+.guest-label {
+  background: #f59e0b;
+  color: #1e293b;
+}
+
+/* Food select */
+.food-select {
+  flex: 3;
+  min-width: 150px;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  background: white;
+  height: 38px;
+}
+
+/* Price buttons */
+.price-buttons {
+  display: flex;
+  gap: 0.3rem;
+}
+.btn-price {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: all var(--transition);
+  min-width: 65px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--text-primary);
+  border: 1px solid transparent;
+}
+.btn-price .price-type-text {
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+}
+.btn-price .price-value {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+.btn-price.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+.btn-price.active .price-value {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+.btn-price:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Quantity input */
+.quantity-input {
+  width: 75px;
+  text-align: center;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  padding: 0.35rem 0.2rem;
+  font-size: 0.95rem;
+  height: 38px;
+  -moz-appearance: textfield;
+}
+.quantity-input::-webkit-inner-spin-button,
+.quantity-input::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+/* Total price */
+.price-total {
+  min-width: 90px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: var(--primary-glow);
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* Add extra button */
+.add-extra-btn {
+  align-self: flex-start;
+  border-radius: 2rem;
+  font-size: 0.85rem;
+  padding: 0.35rem 1.2rem;
+  color: var(--primary);
+  border-color: var(--primary);
+  transition: all var(--transition);
+}
+.add-extra-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary-dark);
+}
+
+/* Remove button inside extras */
+.remove-extra-btn {
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* Orders View */
+.orders-title {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  border-bottom: 2px solid var(--primary-light);
+  padding-bottom: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+}
+.orders-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.order-card {
+  background: white;
+  border-radius: var(--radius-sm);
+  border-left: 4px solid;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  flex: 1 1 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.order-factory {
+  border-left-color: #3b82f6;
+}
+.order-free {
+  border-left-color: #ef4444;
+}
+.order-guest {
+  border-left-color: #f59e0b;
+}
+
+.order-info strong {
+  display: block;
+  font-size: 0.95rem;
+}
+.order-info small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.order-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.order-details .badge {
+  font-size: 0.75rem;
+  padding: 0.2em 0.65em;
+  border-radius: 1rem;
+}
+
+/* Comments */
+.comments-section {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-top: 0.75rem;
+}
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.comment-item {
+  background: white;
+  border-right: 3px solid var(--primary);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+}
+.comment-item.own-comment {
+  background: #eff6ff;
+  border-right-color: #3b82f6;
+}
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+.stars-display .star {
+  color: #cbd5e1;
+  font-size: 1rem;
+}
+.stars-display .star-filled {
+  color: #f59e0b;
+}
+.comment-text {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Comment form */
+.comment-form textarea {
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+.comment-rating-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.star-rating-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.star-rating {
+  direction: rtl;
+  unicode-bidi: bidi-override;
+  display: inline-flex;
+  gap: 0.3rem;
+}
+.star-rating input {
+  display: none;
+}
+.star-rating label {
+  font-size: 1.6rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input:checked ~ label {
+  color: #f59e0b;
+  transform: scale(1.2);
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+/* Submit button */
+.submit-btn {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  border: none;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 0.8rem 2rem;
+  color: white;
+  transition: all 0.3s ease;
+}
+.submit-btn:hover {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  box-shadow: 0 8px 20px var(--primary-glow);
+  transform: translateY(-2px);
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 992px) {
+  .day-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .input-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .type-label {
+    align-self: flex-start;
+  }
+  .food-select {
+    width: 100%;
+    min-width: unset;
+  }
+  .price-buttons {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .btn-price {
+    flex: 1 1 0;
+    min-width: 65px;
+  }
+  .quantity-input {
+    width: 100%;
+  }
+  .price-total {
+    text-align: center;
+    width: 100%;
+  }
+  .add-extra-btn {
+    align-self: center;
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+  .order-card {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-header-custom {
+    font-size: 1.2rem;
+    padding: 1rem;
+  }
+  .day-body {
+    padding: 0.75rem;
+  }
+  .btn-price {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.3rem;
+  }
+  .btn-price .price-type-text {
+    font-size: 0.7rem;
+  }
+  .food-select {
+    font-size: 0.85rem;
+  }
+  .comment-rating-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* اسکرول‌بار اختصاصی */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}

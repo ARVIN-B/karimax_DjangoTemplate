@@ -1,0 +1,278 @@
+/* ===================================
+   استایل مدرن فرم ایجاد اعلان
+   تم شیشه‌ای و ریسپانسیو کامل
+   فونت گلوبال: estedad
+   =================================== */
+
+:root {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --primary-light: #ffedd5;
+  --primary-glow: rgba(249, 115, 22, 0.3);
+  --secondary: #f59e0b;
+  --secondary-dark: #d97706;
+  --secondary-light: #fef3c7;
+  --secondary-glow: rgba(245, 158, 11, 0.3);
+  --bg-page: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+  --radius-sm: 0.75rem;
+  --radius: 1.25rem;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --font-size-base: clamp(0.875rem, 2.5vw, 1rem);
+}
+
+* {
+  font-family: "estedad", sans-serif !important;
+}
+
+.notification-form-page {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.5rem 1rem;
+}
+
+.notification-form-page .card.shadow {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  transition: var(--transition);
+}
+
+.notification-form-page .card-header.bg-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 1.25rem 1.75rem;
+  color: white;
+}
+
+.notification-form-page .card-header h4 {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+.notification-form-page .card-body {
+  padding: 2rem 1.75rem;
+}
+
+/* فرم */
+.notification-form-page .form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.4rem;
+}
+
+.notification-form-page .form-control,
+.notification-form-page .form-select {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.notification-form-page .form-control:focus,
+.notification-form-page .form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+  background: #fff;
+}
+
+.notification-form-page textarea.form-control {
+  resize: vertical;
+  min-height: 120px;
+}
+
+/* input-group (سلکت + دکمه انتخاب همه) */
+.notification-form-page .input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.notification-form-page .input-group .tom-select-target {
+  flex: 1 1 0;
+}
+
+.notification-form-page .btn-select-all {
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: var(--transition);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  backdrop-filter: blur(6px);
+}
+
+.notification-form-page .btn-select-all:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* TomSelect glass styling */
+.notification-form-page .ts-wrapper .ts-control {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-sm) !important;
+  min-height: 42px;
+  padding: 0.375rem 0.75rem;
+  transition: var(--transition);
+}
+
+.notification-form-page .ts-wrapper.multi .ts-control [data-value] {
+  background: var(--primary) !important;
+  border-radius: 2rem !important;
+  color: white !important;
+  font-weight: 500;
+  padding: 0.2em 0.8em;
+  margin: 0.2em;
+}
+
+.notification-form-page .ts-dropdown {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important;
+  box-shadow: var(--shadow-lg) !important;
+  margin-top: 0.25rem;
+}
+
+.notification-form-page .ts-dropdown .option.active {
+  background: var(--primary) !important;
+  color: white !important;
+}
+
+/* alert info */
+.notification-form-page .alert-info {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.notification-form-page .alert-info strong {
+  color: var(--primary-dark);
+}
+
+/* دکمه‌های اصلی */
+.notification-form-page .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.8rem;
+  border-radius: 2rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+  border: none;
+  letter-spacing: -0.2px;
+}
+
+.notification-form-page .btn-success {
+  background: #10b981;
+  color: white;
+}
+
+.notification-form-page .btn-success:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+.notification-form-page .btn-secondary {
+  background: #e2e8f0;
+  color: var(--text-secondary);
+}
+
+.notification-form-page .btn-secondary:hover {
+  background: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.notification-form-page .btn-lg {
+  padding: 0.75rem 2.2rem;
+  font-size: 1rem;
+}
+
+/* فاصله‌بندی بخش‌ها */
+.notification-form-page .mb-4 {
+  margin-bottom: 1.75rem !important;
+}
+
+.notification-form-page .mt-4 {
+  margin-top: 2rem !important;
+}
+
+/* موبایل: تمام عرض، دکمه‌های انتخاب همه زیر سلکت */
+@media (max-width: 576px) {
+  .notification-form-page .card-body {
+    padding: 1.5rem 1rem;
+  }
+
+  .notification-form-page .input-group {
+    flex-direction: column;
+  }
+
+  .notification-form-page .btn-select-all {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .notification-form-page .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .notification-form-page .d-flex {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+/* اسکرول‌بار اختصاصی */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}

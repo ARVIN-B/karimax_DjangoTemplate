@@ -1,0 +1,228 @@
+/* ===================================
+   استایل مدرن صفحه اعلانات
+   تم شیشه‌ای و ریسپانسیو کامل
+   فونت گلوبال: Estedad
+   =================================== */
+
+:root {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --primary-light: #ffedd5;
+  --primary-glow: rgba(249, 115, 22, 0.3);
+  --secondary: #f59e0b;
+  --secondary-dark: #d97706;
+  --secondary-light: #fef3c7;
+  --secondary-glow: rgba(245, 158, 11, 0.3);
+  --bg-page: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.75);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+  --radius-sm: 0.75rem;
+  --radius: 1.25rem;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* محدوده صفحه اعلانات */
+.notifications-page {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 1.5rem 1rem;
+  font-family: "Estedad", sans-serif;
+}
+
+.notifications-page * {
+  font-family: inherit;
+}
+
+/* کارت شیشه‌ای */
+.notifications-page .card.shadow-sm {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  transition: var(--transition);
+  overflow: hidden;
+}
+
+.notifications-page .card-header.bg-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 1.25rem 1.75rem;
+  color: white;
+}
+
+.notifications-page .card-header h5 {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0;
+}
+
+/* تب‌ها (Nav Tabs) */
+.notifications-page .nav-tabs {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0 1rem;
+  flex-wrap: nowrap; /* جلوگیری از شکستن تب‌ها در موبایل */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.notifications-page .nav-tabs .nav-link {
+  border: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 0;
+  white-space: nowrap;
+  transition: var(--transition);
+  position: relative;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.notifications-page .nav-tabs .nav-link.active {
+  color: var(--primary);
+  background: transparent;
+  font-weight: 700;
+}
+
+.notifications-page .nav-tabs .nav-link.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 1rem;
+  right: 1rem;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 3px 3px 0 0;
+}
+
+.notifications-page .nav-tabs .nav-link:hover:not(.active) {
+  color: var(--primary-dark);
+  background: var(--primary-glow);
+}
+
+/* badges در تب‌ها */
+.notifications-page .nav-tabs .badge {
+  font-size: 0.75rem;
+  padding: 0.3em 0.6em;
+  border-radius: 1rem;
+}
+
+/* محتوای تب‌ها */
+.notifications-page .tab-content {
+  background: transparent;
+}
+
+/* آیتم‌های لیست (list-group) */
+.notifications-page .list-group-item {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(6px);
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  margin-bottom: 0;
+  padding: 1.2rem 1.75rem;
+  transition: var(--transition);
+  color: var(--text-primary);
+  text-decoration: none;
+  display: block;
+}
+
+.notifications-page a.list-group-item {
+  text-decoration: none;
+  color: inherit;
+}
+
+.notifications-page .list-group-item:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.04);
+  z-index: 1;
+}
+
+.notifications-page .list-group-item.fw-bold {
+  background: var(--primary-glow);
+  border-left: 4px solid var(--primary);
+}
+
+.notifications-page .list-group-item .text-muted {
+  color: var(--text-muted) !important;
+}
+
+.notifications-page .list-group-item small.text-primary {
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+/* وضعیت خالی */
+.notifications-page .tab-pane .text-center.py-5 {
+  color: var(--text-muted);
+}
+
+.notifications-page .tab-pane .text-center.py-5 i {
+  opacity: 0.6;
+}
+
+/* تنظیمات ریسپانسیو */
+@media (max-width: 768px) {
+  .notifications-page {
+    padding: 1rem 0.5rem;
+  }
+
+  .notifications-page .card-header {
+    padding: 1rem 1.25rem;
+  }
+
+  .notifications-page .nav-tabs .nav-link {
+    padding: 0.7rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .notifications-page .list-group-item {
+    padding: 1rem 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .notifications-page .nav-tabs .nav-link {
+    font-size: 0.75rem;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .notifications-page .list-group-item h6 {
+    font-size: 0.95rem;
+  }
+
+  .notifications-page .list-group-item p {
+    font-size: 0.85rem;
+  }
+}
+
+/* اسکرول‌بار اختصاصی */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}

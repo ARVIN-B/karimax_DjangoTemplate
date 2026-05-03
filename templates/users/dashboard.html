@@ -147,8 +147,13 @@
 
 							<!-- <a href="{% url 'users:insurance_info' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای</a>
                                 <a href="{% url 'users:family_management' %}" class="btn btn-info mb-3 w-100 w-md-auto">مدیریت اطلاعات بیمه‌ای افراد خانواده</a> -->
-
 							{% if can_reserve_for_others %}
+							<a
+								href="{% url 'users:reports_dashboard' %}"
+								class="btn btn-primary mb-3 w-100 w-md-auto"
+								>پنل گزارش گیری</a
+							>
+							{% endif %}{% if can_reserve_for_others %}
 							<a
 								href="{% url 'users:food_reservation_for_others' %}"
 								class="btn btn-primary mb-3 w-100 w-md-auto"
