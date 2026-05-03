@@ -1,0 +1,512 @@
+/* ===========================
+   login.css | Modern & Responsive
+   Theme: Deep Navy + Warm Orange
+   =========================== */
+
+:root {
+  --primary: #f97316;
+  --primary-dark: #ea580c;
+  --primary-light: #ffedd5;
+  --primary-glow: rgba(249, 115, 22, 0.3);
+  --secondary: #f59e0b;
+  --secondary-dark: #d97706;
+  --secondary-light: #fef3c7;
+  --secondary-glow: rgba(245, 158, 11, 0.3);
+  --bg-gradient: linear-gradient(135deg, #f1f1f1 0%, #dedede 100%);
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --card-blur: 20px;
+  --text-color: #0f172a;
+  --text-muted: #64748b;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 25px 50px rgba(0, 0, 0, 0.4);
+  --radius: 1.5rem;
+  --radius-sm: 0.75rem;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Body with subtle pattern overlay */
+body {
+  background: var(--bg-gradient);
+  font-family: "Vazirmatn", "Tahoma", Arial, sans-serif;
+  direction: rtl;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Optional: subtle dot pattern for depth */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle at 20% 80%, var(--primary-glow) 0%, transparent 50%), radial-gradient(circle at 80% 20%, var(--secondary-glow) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Card – modern glassmorphism with improved shadows */
+.login-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(var(--card-blur));
+  -webkit-backdrop-filter: blur(var(--card-blur));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--primary-glow);
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.7s ease;
+  transition:
+    transform 0.3s,
+    box-shadow 0.3s;
+}
+
+.login-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45);
+}
+
+/* Card inner padding controlled by container */
+.card-body {
+  padding: 2.5rem !important;
+}
+
+/* Logo */
+.img-fluid {
+  transition: transform 0.3s;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+.img-fluid:hover {
+  transform: scale(1.03);
+}
+
+/* Headings */
+h3 {
+  color: var(--text-color);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 4vw, 1.8rem);
+  margin-bottom: 1.5rem !important;
+  letter-spacing: -0.3px;
+}
+
+/* Labels */
+.form-label {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.4rem;
+}
+
+/* Input fields – bottom border only, elegant */
+.form-control {
+  background: transparent !important;
+  border: none;
+  border-bottom: 2px solid #cbd5e1;
+  border-radius: 0;
+  padding: 0.6rem 0.75rem;
+  padding-right: 2.8rem; /* space for eye icon */
+  font-size: clamp(0.9rem, 3vw, 1rem);
+  color: var(--text-color);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+  box-shadow: none !important;
+  outline: none;
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px -4px var(--primary-glow) !important;
+}
+
+/* Placeholder color */
+.form-control::placeholder {
+  color: #94a3b8;
+  font-size: 0.9em;
+}
+
+/* Help text */
+.form-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+/* Password toggle button */
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  inset-inline-end: 0.75rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0.25rem;
+  font-size: 1.3rem;
+  transition:
+    color 0.2s,
+    transform 0.2s;
+  z-index: 5;
+}
+
+.password-toggle:hover {
+  color: var(--primary);
+  transform: translateY(-50%) scale(1.2);
+}
+
+/* Primary button – full orange gradient, dynamic shadow */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+  border: none;
+  border-radius: 3rem;
+  padding: 0.85rem;
+  font-weight: 700;
+  font-size: clamp(0.9rem, 3vw, 1rem);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #fff;
+  margin-top: 1.5rem;
+  box-shadow: 0 8px 20px var(--primary-glow);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shine effect */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s;
+}
+
+.btn-primary:hover::after {
+  transform: translateX(100%);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px var(--secondary-glow);
+  outline: none;
+}
+
+.btn-primary:active {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px var(--primary-glow);
+}
+
+/* Forgot password link */
+#forgot-password-btn {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    letter-spacing 0.2s;
+  margin-top: 0.25rem;
+  display: inline-block;
+  letter-spacing: 0.3px;
+}
+
+#forgot-password-btn:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* Alerts – modern, subtle */
+.alert {
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-dismissible .btn-close {
+  padding: 0.5rem;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ================== Responsive Overrides ================== */
+
+/* Tablets & large phones */
+@media (max-width: 768px) {
+  .card-body {
+    padding: 2rem !important;
+  }
+  .login-card {
+    margin: 0 1rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .card-body {
+    padding: 1.5rem !important;
+  }
+  .btn-primary {
+    padding: 0.8rem;
+  }
+}
+
+/* Very small phones (e.g., 360px) */
+@media (max-width: 380px) {
+  .card-body {
+    padding: 1.2rem !important;
+  }
+  .login-card {
+    border-radius: 1rem;
+    margin: 0 0.5rem;
+  }
+  h3 {
+    font-size: 1.3rem;
+  }
+  .img-fluid {
+    max-width: 120px !important;
+  }
+}
+
+/* Extremely small (280px) */
+@media (max-width: 320px) {
+  .card-body {
+    padding: 1rem !important;
+  }
+  .login-card {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: rgba(255, 255, 255, 0.95);
+  }
+  .form-control {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.5rem 0.5rem 2.2rem;
+  }
+  .btn-primary {
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    padding: 0.7rem;
+  }
+}
+
+/* RTL consistency */
+.login-card,
+.card-body,
+form,
+.form-group {
+  direction: rtl;
+  text-align: right;
+}
+
+/* ========== SweetAlert2 Global Modern Popups ========== */
+.swal-popup-modern {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--primary-glow);
+  font-family: "Vazirmatn", "Tahoma", Arial, sans-serif;
+  direction: rtl;
+  text-align: right;
+}
+
+/* دکمه‌های خطا */
+.btn-swal-error {
+  background: #ef4444 !important;
+  border: none !important;
+  border-radius: 3rem;
+  font-weight: 600;
+  color: white !important;
+  transition: 0.3s;
+}
+
+.btn-swal-error:hover {
+  background: #dc2626 !important;
+  transform: translateY(-2px);
+}
+
+/* ========== OTP Modal ========== */
+.otp-popup {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--primary-glow);
+  font-family: "Vazirmatn", "Tahoma", Arial, sans-serif;
+  direction: rtl;
+  text-align: center;
+}
+
+.swal2-input-otp {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+  border-radius: 0 !important;
+  font-size: 2rem !important;
+  letter-spacing: 12px !important;
+  text-align: center !important;
+  color: #0f172a !important;
+  padding: 0.5rem 0.75rem !important;
+  margin: 1rem auto !important;
+  width: 80% !important;
+  box-sizing: border-box;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+  box-shadow: none !important;
+}
+
+.swal2-input-otp:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 4px 12px -4px var(--primary-glow) !important;
+  outline: none;
+}
+
+.btn-otp-confirm {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
+  border: none !important;
+  border-radius: 3rem !important;
+  font-weight: 700;
+  padding: 0.75rem 2rem;
+  letter-spacing: 1px;
+  color: #fff !important;
+  box-shadow: 0 8px 20px var(--primary-glow) !important;
+  transition: all 0.3s;
+}
+
+.btn-otp-confirm:hover {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px var(--secondary-glow) !important;
+}
+
+.password-reset-popup {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--primary-glow);
+  font-family: "Vazirmatn", "Tahoma", Arial, sans-serif;
+  direction: rtl;
+  text-align: right;
+}
+
+.swal2-title-custom {
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 1.5rem;
+  margin-bottom: 1rem !important;
+}
+
+.password-reset-popup .swal2-input {
+  background: transparent !important;
+  border: none;
+  border-bottom: 2px solid #cbd5e1;
+  border-radius: 0;
+  font-size: 1rem;
+  color: #0f172a;
+  padding: 0.6rem 0.75rem;
+  margin: 0.5rem 0;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+  box-shadow: none !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.password-reset-popup .swal2-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px -4px var(--primary-glow) !important;
+  outline: none;
+}
+
+.password-reset-popup .swal2-input::placeholder {
+  color: #94a3b8;
+  font-size: 0.9em;
+}
+
+/* دکمه تأیید */
+.btn-password-reset {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
+  border: none !important;
+  border-radius: 3rem !important;
+  padding: 0.75rem 2rem;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 8px 20px var(--primary-glow) !important;
+  transition: all 0.3s;
+  color: #fff !important;
+}
+
+.btn-password-reset:hover {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px var(--secondary-glow) !important;
+}
+
+/* لودینگ (چرخنده) */
+.password-reset-popup .swal2-loader {
+  border-color: var(--primary) transparent var(--primary) transparent;
+}
+
+/* اسکرول‌بار اختصاصی */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}

@@ -69,6 +69,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",  # اضافه شده برای django-axes
+    # 'users.error_handler.GlobalErrorHandlerMiddleware',  # ← این رو اضافه کن
+    'users.error_handler.GlobalErrorHandlerMiddleware',
 ]
 
 ROOT_URLCONF = "pmss.urls"

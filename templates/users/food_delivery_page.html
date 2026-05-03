@@ -1,417 +1,453 @@
-{% extends 'base.html' %}
-{% load static %}
-{% block title %}تحویل غذا{% endblock %}
-{% block breadcrumb_title %}تحویل غذا{% endblock %}
+{% extends 'base.html' %} {% load static %} {% block title %}تحویل غذا{% endblock %} {% block breadcrumb_title %}تحویل غذا{% endblock %} {% block content %}
+<div class="delivery-page">
+	<!-- Header Section -->
+	<div class="page-header glass-card">
+		<div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+			<h2 class="mb-0">
+				<i class="fas fa-hamburger me-2"></i> تحویل غذا —
+				<span
+					id="today-date-time"
+					class="text-primary"
+				></span>
+			</h2>
+			<div class="search-container">
+				<div class="input-group rounded-pill shadow-sm">
+					<span class="input-group-text bg-white border-0"><i class="fas fa-search text-primary"></i></span>
+					<input
+						type="text"
+						id="employeeSearch"
+						class="form-control border-0"
+						placeholder="جستجوی نام کارمند..."
+						onkeyup="filterNames()"
+					/>
+				</div>
+			</div>
+		</div>
+	</div>
 
-{% block content %}
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0"><i class="fas fa-hamburger me-2"></i> صفحه تحویل غذا — {{ today }}</h4>
-        </div>
-        <div class="card-body">
+	<!-- Role Badge -->
+	<div class="role-badge mb-4">
+		{% if role == 2 %}
+		<div class="alert-notice"><i class="fas fa-building me-2"></i> شما <strong>تحویل‌گیرنده هلدینگ</strong> هستید و همه کارخانه‌ها را می‌بینید.</div>
+		{% else %}
+		<div class="alert-notice"><i class="fas fa-industry me-2"></i> شما <strong>تحویل‌گیرنده کارخانه</strong> هستید و فقط کارخانهٔ خود را می‌بینید.</div>
+		{% endif %}
+	</div>
 
-            <div class="row mb-4">
-                <div class="col-md-6 col-lg-4">
-                    <div class="input-group border rounded-pill shadow-sm">
-                        <span class="input-group-text bg-white border-0"><i class="fas fa-search text-primary"></i></span>
-                        <input type="text" id="employeeSearch" class="form-control border-0" placeholder="جستجوی نام کارمند..." onkeyup="filterNames()">
-                    </div>
-                </div>
-            </div>
+	<!-- Factories List -->
+	{% for factory, rest_map in factories_map.items %}
+	<div
+		class="factory-card glass-card mb-4"
+		id="factory-{{ factory.id }}"
+	>
+		<div class="factory-header">
+			<div class="d-flex align-items-center gap-2">
+				<i class="fas fa-industry fs-4 text-white"></i>
+				<strong class="fs-5">{{ factory.name }}</strong>
+			</div>
+			<button
+				type="button"
+				class="btn btn-light print-btn rounded-pill"
+				onclick="printFactory({{ factory.id }})"
+			>
+				<i class="fas fa-print me-1"></i> پرینت
+			</button>
+		</div>
 
-            {% if role == 2 %}
-                <div class="alert alert-info">شما <strong>تحویل‌گیرنده هلدینگ</strong> هستید و همه کارخانه‌های هلدینگ را می‌بینید.</div>
-            {% else %}
-                <div class="alert alert-info">شما <strong>تحویل‌گیرنده کارخانه</strong> هستید و فقط سفارش‌های کارخانهٔ خود را می‌بینید.</div>
-            {% endif %}
+		<div class="factory-body">
+			{% if rest_map %} {% for restaurant, foods in rest_map.items %}
+			<div class="restaurant-card">
+				<div class="restaurant-title">
+					<div>
+						<i class="fas fa-utensils me-2"></i>
+						<strong>{{ restaurant.name }}</strong>
+						<small class="text-muted">({{ restaurant.department.name }} - {{ restaurant.department.factory.name }})</small>
+					</div>
+				</div>
 
-            {% for factory, rest_map in factories_map.items %}
-                <div class="card mb-4" id="factory-{{ factory.id }}">                    
-                    <div class="card-header bg-warning d-flex justify-content-between align-items-center">
-                        <strong><i class="fas fa-industry me-2"></i> {{ factory.name }}</strong>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="printFactory({{ factory.id }})">
-                            <i class="fas fa-print me-1"></i> پرینت این کارخانه
-                        </button>
-                    </div>
-
-                    <div class="card-body">
-
-                        {% if rest_map %}
-                            {% for restaurant, foods in rest_map.items %}
-                                <div class="border rounded mb-3 p-2">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div>
-                                            <i class="fas fa-utensils me-2"></i>
-                                            <strong>رستوران:</strong> {{ restaurant.name }}
-                                            <small class="text-muted"> ({{ restaurant.department.name }} - {{ restaurant.department.factory.name }})</small>
-                                        </div>
-                                        <div>
-                                            <!-- دکمه تحویل همه غذاهای این رستوران -->
-                                            <form method="post" class="d-inline">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="deliver_food" value="{{ factory.id }}:{{ restaurant.id }}:ALL">
-                                                <!-- اما ما می‌خواهیم برای هر غذا دکمه جداگانه باشه؛ مقدار ALL را حذف می‌کنیم (در زیر) -->
-                                            </form>
-                                        </div>
-                                    </div>
-
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-striped text-center align-middle">
-                                            <thead class="table-dark">
-                                                <tr>
-                                                    <th>نام غذا</th>
-                                                    <th>سهمیه</th>
-                                                    <th>آزاد</th>
-                                                    <th>مهمان</th>
-                                                    <th>مجموع</th>
-                                                    <th>اقلام (رزروها)</th>
-                                                    <!-- <th>عملیات</th> -->
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for food_id, info in foods.items %}
-                                                    <tr class="border-bottom border-dark">
-                                                        <td class="text-start fw-bold">{{ info.food.name }}</td>
-                                                        <td class="text-success">{{ info.quota }}</td>
-                                                        <td class="text-success">{{ info.extra }}</td>
-                                                        <td class="text-success">{{ info.guest }}</td>
-                                                        <td class="fw-bold">{{ info.total }}</td>
-                                                        <td class="text-start">
-                                                            {% for r in info.reservations %}
-                                                                <div class="reservation-row small mb-2 pb-2 border-bottom"> <div class="d-flex justify-content-between align-items-center">
-                                                                        <div>
-                                                                            <strong class="emp-name">{{ r.employee.get_full_name|default:r.employee.username }}</strong>
-                                                                            <span class="text-muted">
-                                                                                — تعداد: {{ r.factory_quantity|add:r.free_quantity|add:r.guest_quantity }}
-                                                                                (سهمیه: {{ r.factory_quantity|default:0 }} | آزاد: {{ r.free_quantity|default:0 }} | مهمان: {{ r.guest_quantity|default:0 }})
-                                                                            </span>
-                                                                        </div>
-
-                                                                        <div>
-                                                                            {% if can_serve_foods %}
-                                                                                {% if r.is_delivered %}
-                                                                                    <span class="text-muted small">تحویل شده</span>
-                                                                                {% else %}
-                                                                                    <form onsubmit="return deliverReservation(this, '{{ r.id }}')">
-                                                                                        {% csrf_token %}
-                                                                                        <input type="hidden" name="deliver_reservation" value="{{ r.id }}">
-                                                                                        <button type="submit" class="btn btn-sm btn-success py-0">تحویل</button>
-                                                                                    </form>
-                                                                                {% endif %}
-                                                                            {% endif %}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            {% endfor %}
-                                                        </td>
-                                                        <!-- <td> -->
-                                                            <!-- # todo : food delivered to user -->
-                                                        <!-- </td> -->
-                                                    </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="alert alert-secondary">هیچ رزروی برای این کارخانه ثبت نشده است.</div>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
+				<div class="table-wrapper">
+					<table class="table delivery-table">
+						<thead>
+							<tr>
+								<th>نام غذا</th>
+								<th>سهمیه</th>
+								<th>آزاد</th>
+								<th>مهمان</th>
+								<th>مجموع</th>
+								<th>اقلام (رزروها)</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for food_id, info in foods.items %}
+							<tr class="food-row">
+								<td
+									data-label="نام غذا"
+									class="fw-bold"
+								>
+									{{ info.food.name }}
+								</td>
+								<td
+									data-label="سهمیه"
+									class="count-cell"
+								>
+									{{ info.quota }}
+								</td>
+								<td
+									data-label="آزاد"
+									class="count-cell"
+								>
+									{{ info.extra }}
+								</td>
+								<td
+									data-label="مهمان"
+									class="count-cell"
+								>
+									{{ info.guest }}
+								</td>
+								<td
+									data-label="مجموع"
+									class="fw-bold count-cell"
+								>
+									{{ info.total }}
+								</td>
+								<td
+									data-label="اقلام"
+									class="reservations-cell"
+								>
+									{% for r in info.reservations %}
+									<div class="reservation-row">
+										<div class="reservation-content">
+											<div class="emp-name">
+												{{ r.employee.get_full_name|default:r.employee.username }} {% if r.is_delivered %}
+												<span class="badge bg-success ms-2">تحویل‌شده</span>
+												{% endif %}
+											</div>
+											<div class="reservation-details">
+												<span class="badge bg-primary">{{ r.factory_quantity|default:0 }}</span>
+												<span class="badge bg-danger">{{ r.free_quantity|default:0 }}</span>
+												<span class="badge bg-warning text-dark">{{ r.guest_quantity|default:0 }}</span>
+												<small class="text-muted">مجموع: {{ r.factory_quantity|add:r.free_quantity|add:r.guest_quantity }}</small>
+											</div>
+											{% if can_serve_foods %}
+											<div class="action-cell">
+												{% if r.is_delivered %}
+												<span class="text-muted small">تحویل داده شد</span>
+												{% else %} {% csrf_token %}
+												<button
+													type="button"
+													class="btn btn-sm btn-success rounded-pill px-3"
+													onclick="confirmDelivery('{{ r.id }}', this)"
+												>
+													<i class="fas fa-check me-1"></i> تحویل
+												</button>
+												{% endif %}
+											</div>
+											{% endif %}
+										</div>
+									</div>
+									{% endfor %}
+								</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</div>
+			{% endfor %} {% else %}
+			<div class="empty-state">
+				<i class="fas fa-inbox fa-2x text-muted"></i>
+				<p>هیچ رزروی برای این کارخانه ثبت نشده است</p>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+	{% endfor %}
 </div>
-{% endblock %}
 
-{% block extra_js %}
-    <script>
-        // تابع تبدیل زمان UTC به زمان تهران
-        function getTehranDateTime() {
-            const now = new Date();
-            
-            // تبدیل به زمان تهران (UTC+3:30)
-            const tehranOffset = 3.5 * 60 * 60 * 1000; // 3:30 ساعت به میلی‌ثانیه
-            const tehranTime = new Date(now.getTime() + tehranOffset);
-            
-            // فرمت تاریخ
-            const year = tehranTime.getUTCFullYear();
-            const month = String(tehranTime.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(tehranTime.getUTCDate()).padStart(2, '0');
-            
-            // فرمت زمان
-            const hours = String(tehranTime.getUTCHours()).padStart(2, '0');
-            const minutes = String(tehranTime.getUTCMinutes()).padStart(2, '0');
-            const seconds = String(tehranTime.getUTCSeconds()).padStart(2, '0');
-            
-            return `${year}/${month}/${day} - ${hours}:${minutes}:${minutes}`;
-        }
-        function printFactory(factoryId) {
-            // اول همه کلاس‌ها را پاک کن
-            document.querySelectorAll('[id^="factory-"]').forEach(function(el) {
-                el.classList.remove('print-factory');
-            });
+<!-- مودال تأیید تحویل -->
+<div
+	class="modal fade"
+	id="confirmationModal"
+	tabindex="-1"
+	aria-hidden="true"
+>
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content glass-modal">
+			<div class="modal-header">
+				<h5 class="modal-title"><i class="fas fa-check-circle me-2 text-primary"></i>تأیید تحویل</h5>
+				<button
+					type="button"
+					class="btn-close"
+					data-bs-dismiss="modal"
+					aria-label="Close"
+				></button>
+			</div>
+			<div class="modal-body">
+				<p id="confirmationMessage">آیا از تحویل این سفارش مطمئن هستید؟</p>
+			</div>
+			<div class="modal-footer">
+				<button
+					type="button"
+					class="btn btn-secondary"
+					data-bs-dismiss="modal"
+				>
+					انصراف
+				</button>
+				<button
+					type="button"
+					class="btn btn-primary"
+					id="confirmActionBtn"
+				>
+					تأیید
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
 
-            // اضافه کردن کلاس به کارخانه مورد نظر
-            const factoryEl = document.getElementById('factory-' + factoryId);
-            if (factoryEl) {
-                factoryEl.classList.add('print-factory');
-                
-                // ایجاد عنصر تاریخ و ساعت
-                const printInfoDiv = document.createElement('div');
-                printInfoDiv.className = 'print-info';
-                printInfoDiv.innerHTML = `
-                    <div style="text-align: left; direction: ltr; font-family: Arial; padding: 10px; border-bottom: 1px solid #ccc; margin-bottom: 15px;">
-                        <strong>Print Date & Time (Tehran):</strong> ${getTehranDateTime()}<br>
-                        <strong>URL:</strong> ${window.location.href}
-                    </div>
-                `;
-                
-                // درج اطلاعات پرینت در ابتدای کارخانه
-                const cardBody = factoryEl.querySelector('.card-body');
-                if (cardBody) {
-                    const existingPrintInfo = cardBody.querySelector('.print-info');
-                    if (existingPrintInfo) {
-                        existingPrintInfo.remove();
-                    }
-                    cardBody.insertBefore(printInfoDiv, cardBody.firstChild);
-                }
-                
-                window.print();
-                
-                // اختیاری: بعد از پرینت کلاس را بردار (وقتی کاربر Cancel یا Print زد)
-                window.onafterprint = function() {
-                    factoryEl.classList.remove('print-factory');
-                    const printInfo = cardBody.querySelector('.print-info');
-                    if (printInfo) {
-                        printInfo.remove();
-                    }
-                };
-            } else {
-                alert('کارخانه یافت نشد!');
-            }
-        }
-    </script>
+<!-- مودال اعلان (موفقیت/خطا) -->
+<div
+	class="modal fade"
+	id="notificationModal"
+	tabindex="-1"
+	aria-hidden="true"
+>
+	<div class="modal-dialog modal-dialog-centered modal-sm">
+		<div class="modal-content glass-modal">
+			<div
+				class="modal-body text-center"
+				id="notificationMessage"
+			>
+				<!-- پیغام نمایش داده می‌شود -->
+			</div>
+			<div class="modal-footer justify-content-center">
+				<button
+					type="button"
+					class="btn btn-primary"
+					data-bs-dismiss="modal"
+				>
+					باشه
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+	// ========== تبدیل تاریخ میلادی به شمسی ==========
+	function gregorianToJalali(gy, gm, gd) {
+		const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+		let gy2 = gm > 2 ? gy + 1 : gy;
+		let days = 355666 + 365 * gy + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) + gd + g_d_m[gm - 1];
+		let jy = -1595 + 33 * Math.floor(days / 12053);
+		days %= 12053;
+		jy += 4 * Math.floor(days / 1461);
+		days %= 1461;
+		if (days > 365) {
+			jy += Math.floor((days - 1) / 365);
+			days = (days - 1) % 365;
+		}
+		let jm, jd;
+		if (days < 186) {
+			jm = 1 + Math.floor(days / 31);
+			jd = 1 + (days % 31);
+		} else {
+			jm = 7 + Math.floor((days - 186) / 30);
+			jd = 1 + ((days - 186) % 30);
+		}
+		return [jy, jm, jd];
+	}
 
-    <script>
-        function deliverReservation(form, reservationId) {
-            if (!confirm('آیا از تحویل این سفارش مطمئن هستید؟')) {
-                return false;
-            }
+	function getTehranJalaliDateTime() {
+		const now = new Date();
+		const tehranOffset = 3.5 * 60 * 60 * 1000;
+		const tehranTime = new Date(now.getTime() + tehranOffset);
+		const gy = tehranTime.getUTCFullYear();
+		const gm = tehranTime.getUTCMonth() + 1;
+		const gd = tehranTime.getUTCDate();
+		const [jy, jm, jd] = gregorianToJalali(gy, gm, gd);
+		const hours = String(tehranTime.getUTCHours()).padStart(2, "0");
+		const minutes = String(tehranTime.getUTCMinutes()).padStart(2, "0");
+		const seconds = String(tehranTime.getUTCSeconds()).padStart(2, "0");
+		return `${jy}/${String(jm).padStart(2, "0")}/${String(jd).padStart(2, "0")} - ${hours}:${minutes}:${seconds}`;
+	}
 
-            fetch('', {
-                method: 'POST',
-                body: new FormData(form),
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // اصلاح اصلی اینجاست: 
-                    // به جای کل ردیف، فقط محفظه دکمه را پیدا می‌کنیم
-                    const buttonContainer = form.parentElement; 
-                    buttonContainer.innerHTML = '<span class="text-muted small">تحویل شده</span>';
-                    
-                    // اگر دوست دارید نشان "تحویل شده" (بج) کنار اسم هم اضافه شود (اختیاری):
-                    const nameContainer = buttonContainer.previousElementSibling;
-                    if (nameContainer) {
-                        const badge = document.createElement('span');
-                        badge.className = 'badge bg-secondary ms-2';
-                        badge.innerText = 'تحویل‌شده';
-                        nameContainer.appendChild(badge);
-                    }
-                } else {
-                    alert('خطا در تحویل: ' + (data.message || 'نامشخص'));
-                }
-            })
-            .catch(err => {
-                alert('خطای ارتباط با سرور');
-                console.error(err);
-            });
+	// ========== Modal helpers ==========
+	let pendingReservationId = null;
+	let pendingButton = null;
 
-            return false;
-        }
-    </script>
-    <script>
-        function filterNames() {
-            const filter = document.getElementById('employeeSearch').value.trim().toLowerCase();
+	function confirmDelivery(reservationId, button) {
+		pendingReservationId = reservationId;
+		pendingButton = button;
+		const modal = new bootstrap.Modal(document.getElementById("confirmationModal"));
+		modal.show();
+	}
 
-            let hasAnyVisible = false; // برای چک کردن اینکه آیا چیزی پیدا شد یا نه
+	// Handle confirm button click
+	document.getElementById("confirmActionBtn").addEventListener("click", function () {
+		if (pendingReservationId && pendingButton) {
+			console.log("pedig btn", pendingButton);
 
-            // تمام ردیف‌های جدول غذا (tr داخل tbody) را بررسی کن
-            document.querySelectorAll('table tbody tr').forEach(tr => {
-                const reservationRows = tr.querySelectorAll('.reservation-row');
-                let rowHasMatch = false;
+			const reservationId = pendingReservationId;
+			const button = pendingButton;
+			bootstrap.Modal.getInstance(document.getElementById("confirmationModal")).hide();
+			executeDelivery(reservationId, button);
+			pendingReservationId = null;
+			pendingButton = null;
+		}
+	});
 
-                // اگر فیلتر خالی باشه، همه رو نشون بده
-                if (filter === '') {
-                    reservationRows.forEach(row => {
-                        row.style.display = '';
-                    });
-                    tr.style.display = '';
-                    hasAnyVisible = true;
-                    return;
-                }
+	function executeDelivery(reservationId, button) {
+		console.log(button);
 
-                // بررسی رزروها داخل این ردیف
-                reservationRows.forEach(row => {
-                    const nameElement = row.querySelector('.emp-name');
-                    if (nameElement) {
-                        const fullName = nameElement.textContent.trim().toLowerCase();
-                        if (fullName.includes(filter)) {
-                            row.style.display = ''; // رزرو مطابق رو نشون بده
-                            rowHasMatch = true;
-                            hasAnyVisible = true;
-                        } else {
-                            row.style.display = 'none'; // رزرو نامطابق رو مخفی کن
-                        }
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
+		const formData = new FormData();
+		formData.append("deliver_reservation", reservationId);
+		formData.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
 
-                // اگر هیچ رزرو مطابق در این ردیف نبود → کل ردیف جدول رو مخفی کن
-                if (rowHasMatch) {
-                    tr.style.display = '';
-                } else {
-                    tr.style.display = 'none';
-                }
-            });
+		fetch("", {
+			method: "POST",
+			body: formData,
+			headers: {
+				"X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+				"X-Requested-With": "XMLHttpRequest",
+			},
+		})
+			.then((response) => response.json())
+			.then((data) => {
+				if (data.success) {
+					const row = button.closest(".reservation-row");
+					const nameEl = row.querySelector(".emp-name");
+					const buttonContainer = button.parentElement;
+					buttonContainer.innerHTML = '<span class="text-muted small">تحویل داده شد</span>';
 
-            // نمایش پیام "یافت نشد" اگر هیچ نتیجه‌ای نبود
-            let noResultMsg = document.getElementById('no-result-message');
-            if (!noResultMsg) {
-                noResultMsg = document.createElement('div');
-                noResultMsg.id = 'no-result-message';
-                noResultMsg.className = 'alert alert-warning text-center mt-4';
-                noResultMsg.innerHTML = '<strong>هیچ کارمندی با این نام یافت نشد.</strong>';
-                // اضافه کردن پیام بعد از باکس جستجو
-                const searchRow = document.querySelector('.row.mb-4');
-                searchRow.parentNode.insertBefore(noResultMsg, searchRow.nextSibling);
-            }
+					if (nameEl && !nameEl.querySelector(".badge")) {
+						const badge = document.createElement("span");
 
-            noResultMsg.style.display = hasAnyVisible || filter === '' ? 'none' : 'block';
-        }
+						badge.className = "badge bg-success ms-2";
+						badge.innerText = "تحویل‌شده";
+						nameEl.appendChild(badge);
+					}
+					showNotification("تحویل با موفقیت انجام شد.", "success");
+				} else {
+					showNotification("خطا در تحویل: " + (data.message || "نامشخص"), "danger");
+				}
+			})
+			.catch((err) => {
+				showNotification("خطای ارتباط با سرور", "danger");
+				console.error(err);
+			});
+	}
 
-        // رویداد جستجو در لحظه تایپ
-        document.getElementById('employeeSearch').addEventListener('input', filterNames);
-    </script>
-{% endblock %}
-{% block extra_css %}
-<style>
-    @media print {
-        @page {
-            size: A4 portrait;
-            margin: 15mm;
-        }
+	function showNotification(message, type = "info") {
+		const notifModal = document.getElementById("notificationModal");
+		const msgEl = document.getElementById("notificationMessage");
+		msgEl.innerHTML = `<i class="fas fa-${type === "success" ? "check-circle" : "exclamation-circle"} fa-2x text-${type} mb-2"></i><p class="mb-0">${message}</p>`;
+		const modal = new bootstrap.Modal(notifModal);
+		modal.show();
+	}
 
-        /* مخفی کردن همه چیز در ابتدا */
-        body * {
-            visibility: hidden;
-        }
+	// ========== Print functionality ==========
+	function printFactory(factoryId) {
+		document.querySelectorAll(".print-factory").forEach((el) => el.classList.remove("print-factory"));
 
-        /* نمایش فقط کارخانه‌ای که کلاس print-factory دارد */
-        .print-factory,
-        .print-factory * {
-            visibility: visible !important;
-        }
+		const factoryEl = document.getElementById("factory-" + factoryId);
+		if (!factoryEl) {
+			alert("کارخانه یافت نشد!");
+			return;
+		}
 
-        .print-factory {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white;
-        }
+		factoryEl.classList.add("print-factory");
 
-        /* استایل اطلاعات پرینت */
-        .print-info {
-            font-size: 10pt;
-            color: #333;
-            background: #f9f9f9;
-            padding: 8px 10px;
-            border: 1px solid #ddd;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            page-break-inside: avoid;
-        }
+		const printInfoDiv = document.createElement("div");
+		printInfoDiv.className = "print-info";
+		printInfoDiv.innerHTML = `
+      <div style="text-align: left; direction: ltr; font-family: Arial; padding: 10px; border-bottom: 1px solid #ccc; margin-bottom: 15px;">
+        <strong>Print Date & Time (Tehran):</strong> ${getTehranJalaliDateTime()}<br>
+        <strong>URL:</strong> ${window.location.href}
+      </div>
+    `;
 
-        /* مخفی کردن عناصر اضافی در پرینت */
-        .btn,
-        .alert-info,
-        .card-header .btn,
-        nav,
-        header,
-        footer,
-        .card.shadow-sm > .card-header,  /* هدر اصلی صفحه (تحویل غذا) */
-        .card.shadow-sm > .card-body > .alert-info,
-        #employeeSearch, /* مخفی کردن جعبه جستجو */
-        .input-group /* مخفی کردن جعبه جستجو */ {
-            display: none !important;
-        }
+		const cardBody = factoryEl.querySelector(".factory-body");
+		if (cardBody) {
+			const existingPrintInfo = cardBody.querySelector(".print-info");
+			if (existingPrintInfo) existingPrintInfo.remove();
+			cardBody.insertBefore(printInfoDiv, cardBody.firstChild);
+		}
 
-        /* حذف سایه و بوردر کارت‌ها در پرینت */
-        .card {
-            border: none !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
+		window.print();
 
-        /* هدر کارخانه رو قشنگ‌تر کن */
-        .card-header {
-            background: #ffc107 !important;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
-            padding: 15px !important;
-            margin-bottom: 20px !important;
-            page-break-inside: avoid;
-        }
+		window.onafterprint = function () {
+			factoryEl.classList.remove("print-factory");
+			const printInfo = cardBody ? cardBody.querySelector(".print-info") : null;
+			if (printInfo) printInfo.remove();
+			document.querySelectorAll(".print-factory").forEach((el) => el.classList.remove("print-factory"));
+		};
+	}
 
-        .card-header strong {
-            font-size: 24px !important;
-            font-weight: bold;
-        }
+	// ========== Search filter ==========
+	function filterNames() {
+		const filter = document.getElementById("employeeSearch").value.trim().toLowerCase();
+		let hasAnyVisible = false;
 
-        /* جدول‌ها رو خواناتر کن */
-        .table {
-            font-size: 11pt;
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
+		document.querySelectorAll("table.delivery-table tbody tr").forEach((tr) => {
+			const reservationRows = tr.querySelectorAll(".reservation-row");
+			let rowHasMatch = false;
 
-        .table th,
-        .table td {
-            border: 1px solid #000 !important;
-            padding: 8px !important;
-            text-align: center;
-        }
+			if (filter === "") {
+				reservationRows.forEach((row) => (row.style.display = ""));
+				tr.style.display = "";
+				hasAnyVisible = true;
+				return;
+			}
 
-        .table th {
-            background-color: #343a40 !important;
-            color: white !important;
-            -webkit-print-color-adjust: exact;
-        }
+			reservationRows.forEach((row) => {
+				const nameElement = row.querySelector(".emp-name");
+				if (nameElement) {
+					const fullName = nameElement.textContent.trim().toLowerCase();
+					if (fullName.includes(filter)) {
+						row.style.display = "";
+						rowHasMatch = true;
+						hasAnyVisible = true;
+					} else {
+						row.style.display = "none";
+					}
+				} else {
+					row.style.display = "none";
+				}
+			});
 
-        .table-striped tbody tr:nth-of-type(odd) {
-            background-color: #f8f9fa !important;
-            -webkit-print-color-adjust: exact;
-        }
+			tr.style.display = rowHasMatch ? "" : "none";
+		});
 
-        /* متن رزروها رو خواناتر کن */
-        .small {
-            font-size: 10pt;
-        }
-    }
-    
-    /* در حالت عادی مخفی کردن اطلاعات پرینت */
-    .print-info {
-        display: none;
-    }
-</style>
+		// مدیریت پیام "یافت نشد"
+		let noResultMsg = document.getElementById("no-result-message");
+		if (!noResultMsg) {
+			noResultMsg = document.createElement("div");
+			noResultMsg.id = "no-result-message";
+			noResultMsg.className = "alert-notice text-center mt-4";
+			noResultMsg.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i><strong>هیچ کارمندی با این نام یافت نشد.</strong>';
+
+			// اصلاح: پیدا کردن محل مناسب برای درج پیام
+			const deliveryPage = document.querySelector(".page-header");
+			if (deliveryPage) {
+				deliveryPage.appendChild(noResultMsg);
+			}
+		}
+
+		noResultMsg.style.display = hasAnyVisible || filter === "" ? "none" : "block";
+	}
+
+	document.getElementById("employeeSearch").addEventListener("input", filterNames);
+	document.addEventListener("DOMContentLoaded", function () {
+		const dateSpan = document.querySelector("#today-date-time");
+		if (dateSpan) {
+			dateSpan.textContent = getTehranJalaliDateTime().split(" - ")[0]; // فقط تاریخ
+		}
+	});
+</script>
+{% endblock %} {% block extra_css %}
+<link
+	rel="stylesheet"
+	href="{% static 'css/delivery.css' %}"
+/>
 {% endblock %}

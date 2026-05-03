@@ -1,1059 +1,687 @@
-{% extends 'base.html' %}
-{% load static %}
-{% load custom_filters %}
-{% load humanize %}
-{% block title %}رزرو غذا{% endblock %}
-{% block breadcrumb_title %}رزرو غذا{% endblock %}
-
-{% block content %}
-    {% if can_choose_factory %}
-    <div class="container-fluid mt-4 mb-3">
-        <div class="card border-primary shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h6 class="mb-0">انتخاب کارخانه</h6>
-            </div>
-            <div class="card-body py-3">
-                <form method="get" id="factory-filter-form" class="row g-3 align-items-center">
-                    <div class="col-auto">
-                        <label for="target_factory_id" class="form-label mb-0 text-muted small">کارخانه:</label>
-                    </div>
-                    <div class="col-auto flex-grow-1" style="max-width: 400px;">
-                        <select name="target_factory_id" id="target_factory_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                            <option value="">-- انتخاب کارخانه --</option>
-                            {% for fac in available_factories %}
-                                <option value="{{ fac.id }}"
-                                    {% if selected_factory_id == fac.id %}selected{% endif %}>
-                                    {{ fac.name }}{% if fac.code %} ({{ fac.code }}){% endif %}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-auto">
-                        <small class="text-muted">
-                            کارخانه فعلی:
-                            <strong class="text-primary">
-                                {{ factory.name }}{% if factory.code %} ({{ factory.code }}){% endif %}
-                            </strong>
-                        </small>
-                    </div>
-                </form>
-            </div>
+{% extends 'base.html' %} {% load static %} {% load custom_filters %} {% load humanize %} {% block title %}رزرو غذا{% endblock %} {% block breadcrumb_title %}رزرو غذا{% endblock %} {% block content %} {% if can_choose_factory %}
+<div class="factory-picker-wrapper mb-4">
+  <div class="glass-card p-3">
+    <form
+      method="get"
+      id="factory-filter-form"
+      class="factory-form"
+    >
+      <div class="row align-items-center g-2">
+        <div class="col-12 col-md-auto">
+          <label class="form-label mb-0 fw-bold text-dark"><i class="fas fa-industry me-1"></i>کارخانه:</label>
         </div>
-    </div>
-    {% endif %}
-<div class="container-fluid mt-4">
-    <div class="card shadow-lg border-0 rounded-lg overflow-hidden">
-        <div class="card-header bg-gradient-primary text-white d-flex align-items-center py-3">
-            <h4 class="mb-0 flex-grow-1"><i class="fas fa-utensils me-2 animate__animated animate__pulse"></i>صفحه رزرو غذای هفتگی</h4>
+        <div class="col-12 col-md flex-grow-1">
+          <select
+            name="target_factory_id"
+            id="target_factory_id"
+            class="form-select form-select-lg rounded-pill shadow-sm"
+            onchange="this.form.submit()"
+          >
+            <option value="">-- انتخاب کارخانه --</option>
+            {% for fac in available_factories %}
+            <option
+              value="{{ fac.id }}"
+              {% if selected_factory_id|stringformat:"s" == fac.id|stringformat:"s" %}selected{% endif %}
+            >
+              {{ fac.name }}{% if fac.code %} ({{ fac.code }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
         </div>
-        <div class="card-body p-4 bg-light">
-            <!-- توضیحات کلی هفته با افکت -->
-            <div class="alert-info alert-dismissible fade show mb-4" role="alert">
-                <i class="fas fa-calendar-alt me-2 text-primary"></i> منوی هفته: از شنبه <strong>{{ week_start_jdate_str|default:"(تاریخ شروع هفته)" }}</strong>
-                {% if user_factory_name %}
-                    (کارخانه <span class="badge bg-warning text-dark">{{ user_factory_name }}</span>)
-                {% endif %}
-                <br>
-                <i class="fas fa-clock me-2 text-primary"></i> توجه: رزرو برای روز جاری، تا ساعت <strong>۱۰:۰۰ صبح</strong> امکان‌پذیر خواهد بود.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <!-- جدول اصلی رزروها با افکت hover و رنگ‌بندی -->
-
-
-            <form method="post" id="reservation-main-form" data-submitting="false">
-                {% csrf_token %}
-                <input type="hidden" name="form_token" value="{{ form_token }}" form="reservation-main-form">
-
-                <div class="table-responsive shadow-md rounded-lg overflow-hidden">
-                    <!-- <table class="table table-hover table-striped table-bordered align-middle text-center mb-0"> -->
-                    <table class="table table-hover table-striped table-bordered align-middle text-center mb-0" style="table-layout: fixed; min-width: 1200px;">
-                        <thead class="table-dark bg-gradient-dark text-white">
-                            <tr>
-                                <th scope="col" style="width: 10%;"><i class="fas fa-calendar-day me-1"></i>روز و تاریخ</th>
-                                <th scope="col" style="width: 90%;"><i class="fas fa-concierge-bell me-1"></i>انتخاب غذا از رستوران‌ها</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for day_data in weekly_data %}
-                                <tr class="animate__animated animate__fadeIn {% cycle 'bg-white' 'bg-light' %}">
-                                    <td class="text-center">
-                                        <div class="fw-bold text-success">
-                                            <i class="fas fa-sun me-1" {% if day_data.day_name == 'جمعه' %}style="color: red;"{% endif %}></i>
-                                            {{ day_data.day_name }}
-                                        </div>
-                                        <small class="text-muted">{{ day_data.jdate_str|default:"—" }}</small>
-                                    </td>
-
-                                    <td>
-                                        {% if day_data.is_reservation_possible and not day_data.is_reservation_time_passed %}
-                                            <div class="reservation-container" id="reservation-container-{{ day_data.gdate_str }}">
-                                                <!-- <input type="hidden" name="date_{{ day_data.gdate_str }}" value="1"> -->
-
-                                                <!-- خط سهمیه (quota) -->
-                                                <div class="input-group mb-2 quota-slot compact-input-group flex-nowrap" data-date="{{ day_data.gdate_str }}" data-index="0" data-price-type="factory">
-                                                    <span class="input-group-text type-label bg-primary text-white" style="width: 60px; justify-content: center; font-size: 0.85rem;">سهمیه</span>
-                                                    <select class="form-select food-select compact-select flex-grow-1" name="reservations[{{ day_data.gdate_str }}][0][food_choice]" style="font-size: 0.85rem; min-width: 150px;">
-                                                        <option value="0" selected>بدون رزرو</option>
-                                                        {% for menu_item in day_data.menus %}
-                                                            <option value="{{ menu_item.id }}"
-                                                                    data-factory-price="{{ menu_item.food.factory_price }}"
-                                                                    data-free-price="{{ menu_item.food.free_price }}"
-                                                                    data-guest-price="{{ menu_item.food.guest_price }}">
-                                                                {{ menu_item.food.name }} ({{ menu_item.weekly_menu.restaurant.name }})
-                                                            </option>
-                                                        {% endfor %}
-                                                    </select>
-                                                    <button type="button" class="btn btn-outline-primary price-btn factory-btn neon-btn" data-type="factory" style="font-size: 0.8rem; padding: 0.2rem 0.4rem; min-width: 70px;">
-                                                        سهمیه<br><span class="price-value">0 ریال</span>
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-danger price-btn free-btn neon-btn" data-type="free" style="font-size: 0.8rem; padding: 0.2rem 0.4rem; min-width: 70px;">
-                                                        آزاد<br><span class="price-value">0 ریال</span>
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-warning price-btn guest-btn neon-btn" data-type="guest" style="font-size: 0.8rem; padding: 0.2rem 0.4rem; min-width: 70px;" {% if not can_reserve_guest %} disabled {% endif %}>
-                                                        مهمان<br><span class="price-value">0 ریال</span>
-                                                    </button>
-
-
-
-                                                    <input type="number" class="form-control quantity-input" name="reservations[{{ day_data.gdate_str }}][0][quantity]" value="0" min="0" style="width: 110px !important; max-width: 110px !important; height: 35px !important; font-size: 1rem; padding: 0.2rem 0.4rem;">
-                                                    <span class="input-group-text price-total" style="width: 90px; justify-content: center; font-size: 0.85rem;">0 ریال</span>
-
-                                                    <input type="hidden" name="reservations[{{ day_data.gdate_str }}][0][price_type]" value="factory">
-                                                </div>
-
-                                                <!-- خطوط اضافی (ابتدا خالی) -->
-
-                                                <button type="button" class="btn btn-outline-success btn-sm add-extra-btn w-90" data-date="{{ day_data.gdate_str }}">
-                                                    <i class="fas fa-plus me-1"></i>افزودن سفارش اضافی
-                                                </button>
-                                            </div>
-
-
-                                        <!--امروز-->
-                                        {% elif day_data.is_reservation_possible and day_data.is_reservation_time_passed %}
-
-                                            <div class="mt-3 p-3 bg-white border rounded shadow-sm">
-                                                <h6 class="mb-3 text-info fw-bold">
-                                                    <i class="fas fa-clipboard-list me-2"></i>
-                                                    سفارش‌های ثبت‌شده شما برای این روز
-                                                </h6>
-
-                                                {% if day_data.day_reservations.exists %}
-                                                    <div class="row g-3">
-                                                        {% for reservation in day_data.day_reservations %}
-                                                            {% if reservation.factory_quantity > 0 or reservation.free_quantity > 0 or reservation.guest_quantity > 0 %}
-                                                                <div class="col-12 col-md-6 col-lg-4 mb-3">
-                                                                    <div class="card h-100 shadow-sm border-start border-4
-                                                                        {% if reservation.factory_quantity > 0 %}border-primary
-                                                                        {% elif reservation.free_quantity > 0 %}border-danger
-                                                                        {% else %}border-warning{% endif %}">
-                                                                        <div class="card-body py-3">
-                                                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                                                <h6 class="card-title mb-1 text-dark fw-bold">
-                                                                                    {{ reservation.menu_item.food.name }}
-                                                                                </h6>
-                                                                                <small class="text-muted">
-                                                                                    {{ reservation.menu_item.weekly_menu.restaurant.name }}
-                                                                                </small>
-                                                                            </div>
-
-                                                                            <!-- نمایش انواع سفارش با تعداد -->
-                                                                            <div class="mt-2">
-                                                                                {% if reservation.factory_quantity > 0 %}
-                                                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                                        <span class="badge bg-primary">سهمیه</span>
-                                                                                        <span class="text-success fw-bold">تعداد: {{ reservation.factory_quantity }}</span>
-                                                                                    </div>
-                                                                                {% endif %}
-
-                                                                                {% if reservation.free_quantity > 0 %}
-                                                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                                        <span class="badge bg-danger">آزاد</span>
-                                                                                        <span class="text-success fw-bold">تعداد: {{ reservation.free_quantity }}</span>
-                                                                                    </div>
-                                                                                {% endif %}
-
-                                                                                {% if reservation.guest_quantity > 0 %}
-                                                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                                        <span class="badge bg-warning text-dark">مهمان</span>
-                                                                                        <span class="text-success fw-bold">تعداد: {{ reservation.guest_quantity }}</span>
-                                                                                    </div>
-                                                                                    </div>
-                                                                                {% endif %}
-                                                                            </div>
-
-                                                                            <hr class="my-2">
-
-                                                                            <div class="d-flex justify-content-between align-items-center text-muted small">
-                                                                                <span>ساعت ثبت:</span>
-                                                                                <span>{{ reservation.reserved_at|time:"H:i" }}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            {% endif %}
-
-
-
-                                                            <!-- نظرات -->
-                                                            <div class="mt-3 p-3 bg-white border rounded shadow-sm">
-                                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                    <h6 class="mb-0 text-primary">
-                                                                        <i class="fas fa-comments me-2"></i>نظرات درباره این غذا
-                                                                        <small class="text-warning ms-2">(میانگین: {{ day_data.average_ratings }} از 5)</small>
-                                                                    </h6>
-                                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#comments-{{ day_data.gdate_str }}">
-                                                                        <i class="fas fa-chevron-down"></i>
-                                                                    </button>
-                                                                </div>
-
-                                                                <div class="collapse" id="comments-{{ day_data.gdate_str }}">
-                                                                    <!-- نمایش نظرات قبلی -->
-                                                                    <div class="comments-list mb-3" style="max-height: 200px; overflow-y: auto;">
-                                                                        {% for food_id, feedback_data in day_data.day_food_feedbacks.items %}
-                                                                            {% if food_id == reservation.menu_item.id %}
-                                                                                <!-- نمایش نظرات سایر کاربران -->
-                                                                                {% for comment in feedback_data.comments %}
-                                                                                    <div class="border-start border-primary border-3 ps-3 py-2 mb-2 {% if comment.user == request.user.full_name %}bg-info{% endif %} rounded">
-                                                                                        <div class="d-flex justify-content-between">
-                                                                                            <!-- <small class="fw-bold">{{ comment.user }}</small> -->
-                                                                                            <small class="text-muted">{{ comment.date|date:"d/m/Y" }}</small>
-                                                                                        </div>
-                                                                                        <div class="text-dark">{{ comment.text }}</div>
-                                                                                        <div class="text-warning small">
-                                                                                            {% for i in "12345" %}
-                                                                                                <label class="star-label" for="star{{ i }}-{{ comment.date|date:'Ymd' }}">
-                                                                                                    {% if forloop.counter <= comment.rating %}
-                                                                                                        ★
-                                                                                                    {% else %}
-                                                                                                        ☆
-                                                                                                    {% endif %}
-                                                                                                </label>
-                                                                                            {% endfor %}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                {% endfor %}
-
-
-                                                                            {% endif %}
-                                                                        {% empty %}
-                                                                            <p class="text-muted small">هنوز نظری ثبت نشده است.</p>
-                                                                        {% endfor %}
-                                                                    </div>
-
-                                                                    {{day_data.user_can_comment}}
-
-                                                                    {% if day_data.user_can_comment %}
-                                                                        <!-- فرم ثبت نظر جدید -->
-                                                                        <form method="post" id="comment-form-{{ day_data.gdate_str }}">
-                                                                            {% csrf_token %}
-                                                                            <input type="hidden" name="comment_for_date" value="{{ day_data.gdate_str }}" form="comment-form-{{ day_data.gdate_str }}">
-                                                                            <div class="mb-2">
-                                                                                <textarea class="form-control form-control-sm" name="comment_text" form="comment-form-{{ day_data.gdate_str }}" rows="2" placeholder="نظر شما درباره این غذا..."></textarea>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                                <div>
-                                                                                    <small class="text-muted me-3">امتیاز شما:</small>
-                                                                                    <div class="star-rating" id="rating-{{ day_data.gdate_str }}">
-                                                                                        {% for i in "54321" reversed %}
-                                                                                            <label class="star-label" for="star{{ i }}-{{ day_data.gdate_str }}"ستاره">★</label>
-                                                                                            <input type="radio" name="rating_{{ day_data.gdate_str }}" id="star{{ i }}-{{ day_data.gdate_str }}" form="comment-form-{{ day_data.gdate_str }}" value="{{ i }}">
-                                                                                        {% endfor %}
-                                                                                    </div>
-                                                                                </div>
-                                                                                <button type="submit"
-                                                                                        name="submit_comment"
-                                                                                        class="btn btn-sm btn-primary"
-                                                                                        form="comment-form-{{ day_data.gdate_str }}">
-                                                                                    ارسال نظر
-                                                                                </button>
-                                                                            </div>
-                                                                        </form>
-                                                                    {% endif %}
-
-
-
-                                                                </div>
-                                                            </div>
-
-                                                        {% endfor %}
-                                                    </div>
-                                                {% else %}
-                                                    <p class="text-muted text-center py-3">
-                                                        <i class="fas fa-info-circle me-2"></i>
-                                                        شما برای این روز سفارشی ثبت نکرده‌اید.
-                                                    </p>
-                                                {% endif %}
-
-
-                                        {% elif not day_data.is_reservation_possible %}
-
-                                                <div class="mt-3 p-3 bg-white border rounded shadow-sm">
-                                                <h6 class="mb-3 text-info fw-bold">
-                                                    <i class="fas fa-clipboard-list me-2"></i>
-                                                    سفارش‌های ثبت‌شده شما برای این روز
-                                                </h6>
-
-                                                {% if day_data.day_reservations.exists %}
-                                                    <div class="row g-3">
-                                                        {% for reservation in day_data.day_reservations %}
-                                                            {% if reservation.factory_quantity > 0 or reservation.free_quantity > 0 or reservation.guest_quantity > 0 %}
-                                                                <div class="col-12 col-md-6 col-lg-4 mb-3">
-                                                                    <div class="card h-100 shadow-sm border-start border-4
-                                                                        {% if reservation.factory_quantity > 0 %}border-primary
-                                                                        {% elif reservation.free_quantity > 0 %}border-danger
-                                                                        {% else %}border-warning{% endif %}">
-                                                                        <div class="card-body py-3">
-                                                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                                                <h6 class="card-title mb-1 text-dark fw-bold">
-                                                                                    {{ reservation.menu_item.food.name }}
-                                                                                </h6>
-                                                                                <small class="text-muted">
-                                                                                    {{ reservation.menu_item.weekly_menu.restaurant.name }}
-                                                                                </small>
-                                                                            </div>
-
-                                                                            <!-- نمایش انواع سفارش با تعداد -->
-                                                                            <div class="mt-2">
-                                                                                {% if reservation.factory_quantity > 0 %}
-                                                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                                        <span class="badge bg-primary">سهمیه</span>
-                                                                                        <span class="text-success fw-bold">تعداد: {{ reservation.factory_quantity }}</span>
-                                                                                    </div>
-                                                                                {% endif %}
-
-                                                                                {% if reservation.free_quantity > 0 %}
-                                                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                                        <span class="badge bg-danger">آزاد</span>
-                                                                                        <span class="text-success fw-bold">تعداد: {{ reservation.free_quantity }}</span>
-                                                                                    </div>
-                                                                                {% endif %}
-
-                                                                                {% if reservation.guest_quantity > 0 %}
-                                                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                                                        <span class="badge bg-warning text-dark">مهمان</span>
-                                                                                        <span class="text-success fw-bold">تعداد: {{ reservation.guest_quantity }}</span>
-                                                                                    </div>
-                                                                                    </div>
-                                                                                {% endif %}
-                                                                            </div>
-
-                                                                            <hr class="my-2">
-
-                                                                            <div class="d-flex justify-content-between align-items-center text-muted small">
-                                                                                <span>ساعت ثبت:</span>
-                                                                                <span>{{ reservation.reserved_at|time:"H:i" }}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            {% endif %}
-
-
-
-                                                            <!-- نظرات -->
-                                                            <div class="mt-3 p-3 bg-white border rounded shadow-sm">
-                                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                    <h6 class="mb-0 text-primary">
-                                                                        <i class="fas fa-comments me-2"></i>نظرات درباره این غذا
-                                                                        <small class="text-warning ms-2">(میانگین: {{ day_data.average_ratings }} از 5)</small>
-                                                                    </h6>
-                                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#comments-{{ day_data.gdate_str }}">
-                                                                        <i class="fas fa-chevron-down"></i>
-                                                                    </button>
-                                                                </div>
-
-                                                                <div class="collapse" id="comments-{{ day_data.gdate_str }}">
-                                                                    <!-- نمایش نظرات قبلی -->
-                                                                    <div class="comments-list mb-3" style="max-height: 200px; overflow-y: auto;">
-                                                                        {% for food_id, feedback_data in day_data.day_food_feedbacks.items %}
-                                                                            {% if food_id == reservation.menu_item.id %}
-                                                                                <!-- نمایش نظرات سایر کاربران -->
-                                                                                {% for comment in feedback_data.comments %}
-                                                                                    <div class="border-start border-primary border-3 ps-3 py-2 mb-2 {% if comment.user == request.user.full_name %}bg-info{% endif %} rounded">
-                                                                                        <div class="d-flex justify-content-between">
-                                                                                            <!-- <small class="fw-bold">{{ comment.user }}</small> -->
-                                                                                            <small class="text-muted">{{ comment.date|date:"d/m/Y" }}</small>
-                                                                                        </div>
-                                                                                        <div class="text-dark">{{ comment.text }}</div>
-                                                                                        <div class="text-warning small">
-                                                                                            {% for i in "12345" %}
-                                                                                                <label class="star-label" for="star{{ i }}-{{ comment.date|date:'Ymd' }}">
-                                                                                                    {% if forloop.counter <= comment.rating %}
-                                                                                                        ★
-                                                                                                    {% else %}
-                                                                                                        ☆
-                                                                                                    {% endif %}
-                                                                                                </label>
-                                                                                            {% endfor %}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                {% endfor %}
-
-
-                                                                            {% endif %}
-                                                                        {% empty %}
-                                                                            <p class="text-muted small">هنوز نظری ثبت نشده است.</p>
-                                                                        {% endfor %}
-                                                                    </div>
-
-
-                                                                    {% if day_data.user_can_comment %}
-                                                                        <!-- فرم ثبت نظر جدید -->
-                                                                        <form method="post" class="mt-3" id="comment-form-{{ day_data.gdate_str }}">
-                                                                            {% csrf_token %}
-
-                                                                            <!-- فیلد مخفی برای تاریخ و شماره منو -->
-                                                                            <input type="hidden" name="comment_date" value="{{ day_data.gdate_str }}">
-                                                                            <input type="hidden" name="menu_item_id" value="{{ reservation.menu_item.id }}">
-
-                                                                            <!-- فیلد نظر -->
-                                                                            <div class="mb-2">
-                                                                                <textarea name="comment_text"
-                                                                                          class="form-control form-control-sm"
-                                                                                          rows="2"
-                                                                                          placeholder="نظر شما درباره این غذا..."></textarea>
-                                                                            </div>
-
-                                                                            <!-- امتیاز ستاره‌ها -->
-                                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                                <div>
-                                                                                    <small class="text-muted d-block mb-1">امتیاز شما:</small>
-                                                                                    <div class="star-rating">
-                                                                                        {% for i in "54321" %}
-                                                                                            <input type="radio" id="rate-{{ reservation.id }}-{{ i }}" name="rating" value="{{ i }}">
-                                                                                            <label for="rate-{{ reservation.id }}-{{ i }}">★</label>
-                                                                                        {% endfor %}
-                                                                                    </div>
-                                                                                </div>
-
-                                                                                <!-- دکمه ارسال -->
-                                                                                <button type="submit"
-                                                                                        name="submit_comment"
-                                                                                        class="btn btn-sm btn-success px-4">
-                                                                                    ارسال نظر
-                                                                                </button>
-                                                                            </div>
-                                                                        </form>
-
-                                                                    {% endif %}
-
-
-
-                                                                </div>
-                                                            </div>
-
-                                                        {% endfor %}
-                                                    </div>
-                                                {% else %}
-                                                    <p class="text-muted text-center py-3">
-                                                        <i class="fas fa-info-circle me-2"></i>
-                                                        شما برای این روز سفارشی ثبت نکرده‌اید.
-                                                    </p>
-                                                {% endif %}
-
-                                        {% endif %}
-
-
-
-
-
-
-
-
-
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-
-
-
-
-
-
-
-                    </table>
-                </div>
-                <!-- دکمه ثبت نهایی با افکت -->
-                <!-- دکمه ثبت نهایی — داخل فرم اصلی -->
-                <div class="d-grid gap-2 mt-5">
-                    <button type="submit" name="submit_reservations" class="btn btn-success btn-lg shadow-lg">
-                        ثبت نهایی رزروهای غذا
-                    </button>
-                </div>
-            </form>
+        <div class="col-12 col-md-auto text-muted">
+          <i class="fas fa-map-marker-alt me-1 text-primary"></i>
+          کارخانه فعلی:
+          <strong class="text-primary">{{ factory.name }}{% if factory.code %} ({{ factory.code }}){% endif %}</strong>
         </div>
-    </div>
+      </div>
+    </form>
+  </div>
 </div>
-{% endblock %}
+{% endif %}
 
+<div class="weekly-reservation">
+  <div class="glass-card main-card">
+    <div class="card-header-custom">
+      <h2 class="mb-0"><i class="fas fa-utensils me-2"></i>صفحه رزرو غذای هفتگی</h2>
+    </div>
+    <div class="card-body-custom p-3 p-lg-4">
+      <!-- توضیحات هفته -->
+      <div class="week-alert mb-4 p-3 rounded-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <i class="fas fa-calendar-alt fs-5 text-primary"></i>
+          <span>منوی هفته: <strong>{{ week_start_jdate_str|default:"—" }}</strong></span>
+          {% if user_factory_name %}
+          <span class="badge bg-warning text-dark ms-2">{{ user_factory_name }}</span>
+          {% endif %}
+          <span class="text-muted ms-auto small"><i class="fas fa-clock me-1"></i>تا ۱۰ صبح روز جاری</span>
+        </div>
+      </div>
 
-{% block extra_js %}
+      <form
+        method="post"
+        id="reservation-main-form"
+        data-submitting="false"
+      >
+        {% csrf_token %}
+        <input
+          type="hidden"
+          name="form_token"
+          value="{{ form_token }}"
+        />
+
+        <div class="days-grid">
+          {% for day_data in weekly_data %}
+          <div class="day-card animate__animated animate__fadeIn">
+            <div class="day-header">
+              <div class="day-name">
+                <i
+                  class="fas fa-sun me-1"
+                  {%
+                  if
+                  day_data.day_name=""
+                  ="جمعه"
+                  %}style="color: #ff4d4d"
+                  {%
+                  endif
+                  %}
+                ></i>
+                {{ day_data.day_name }}
+              </div>
+              <small class="day-date">{{ day_data.jdate_str|default:"—" }}</small>
+            </div>
+
+            <div class="day-body">
+              <!-- حالت اول: رزرو باز و زمان اجازه می‌دهد -->
+              {% if day_data.is_reservation_possible and not day_data.is_reservation_time_passed %}
+              <div
+                class="reservation-container"
+                id="reservation-container-{{ day_data.gdate_str }}"
+              >
+                <!-- خط سهمیه -->
+                <div
+                  class="input-group quota-slot"
+                  data-date="{{ day_data.gdate_str }}"
+                  data-index="0"
+                  data-price-type="factory"
+                >
+                  <span class="type-label factory-label">سهمیه</span>
+                  <select
+                    class="food-select"
+                    name="reservations[{{ day_data.gdate_str }}][0][food_choice]"
+                  >
+                    <option
+                      value="0"
+                      selected
+                    >
+                      بدون رزرو
+                    </option>
+                    {% for menu_item in day_data.menus %}
+                    <option
+                      value="{{ menu_item.id }}"
+                      data-factory-price="{{ menu_item.food.factory_price }}"
+                      data-free-price="{{ menu_item.food.free_price }}"
+                      data-guest-price="{{ menu_item.food.guest_price }}"
+                    >
+                      {{ menu_item.food.name }} ({{ menu_item.weekly_menu.restaurant.name }})
+                    </option>
+                    {% endfor %}
+                  </select>
+                  <div class="price-buttons">
+                    <button
+                      type="button"
+                      class="btn-price factory-btn active"
+                      data-type="factory"
+                    >
+                      <span class="price-type-text">سهمیه</span>
+                      <span class="price-value">0 ریال</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-price free-btn"
+                      data-type="free"
+                    >
+                      <span class="price-type-text">آزاد</span>
+                      <span class="price-value">0 ریال</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-price guest-btn"
+                      data-type="guest"
+                      {%
+                      if
+                      not
+                      can_reserve_guest
+                      %}
+                      disabled
+                      {%
+                      endif
+                      %}
+                    >
+                      <span class="price-type-text">مهمان</span>
+                      <span class="price-value">0 ریال</span>
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    class="quantity-input"
+                    name="reservations[{{ day_data.gdate_str }}][0][quantity]"
+                    value="0"
+                    min="0"
+                  />
+                  <span class="price-total">0 ریال</span>
+                  <input
+                    type="hidden"
+                    name="reservations[{{ day_data.gdate_str }}][0][price_type]"
+                    value="factory"
+                  />
+                  <!-- دکمه حذف فقط برای خطوط اضافی -->
+                </div>
+
+                <!-- دکمه افزودن سفارش اضافی -->
+                <button
+                  type="button"
+                  class="add-extra-btn btn btn-sm btn-outline-primary mt-2 rounded-pill"
+                  data-date="{{ day_data.gdate_str }}"
+                >
+                  <i class="fas fa-plus me-1"></i>افزودن سفارش اضافی
+                </button>
+              </div>
+
+              <!-- حالت دوم: رزرو ممکن ولی زمان گذشته (نمایش سفارش‌ها و امکان نظر) -->
+              {% elif day_data.is_reservation_possible and day_data.is_reservation_time_passed %}
+              <div class="orders-view">
+                <h6 class="orders-title"><i class="fas fa-clipboard-list me-2"></i>سفارش‌های ثبت‌شده شما</h6>
+                {% if day_data.day_reservations.exists %}
+                <div class="orders-list">
+                  {% for reservation in day_data.day_reservations %} {% if reservation.factory_quantity > 0 or reservation.free_quantity > 0 or reservation.guest_quantity > 0 %}
+                  <div class="order-card {% if reservation.factory_quantity > 0 %}order-factory {% elif reservation.free_quantity > 0 %}order-free {% else %}order-guest{% endif %}">
+                    <div class="order-info">
+                      <strong class="food-name">{{ reservation.menu_item.food.name }}</strong>
+                      <small class="restaurant-name">{{ reservation.menu_item.weekly_menu.restaurant.name }}</small>
+                    </div>
+                    <div class="order-details">
+                      {% if reservation.factory_quantity > 0 %}
+                      <span class="badge bg-primary">سهمیه × {{ reservation.factory_quantity }}</span>
+                      {% endif %} {% if reservation.free_quantity > 0 %}
+                      <span class="badge bg-danger">آزاد × {{ reservation.free_quantity }}</span>
+                      {% endif %} {% if reservation.guest_quantity > 0 %}
+                      <span class="badge bg-warning text-dark">مهمان × {{ reservation.guest_quantity }}</span>
+                      {% endif %}
+                      <small class="text-muted ms-2">{{ reservation.reserved_at|time:"H:i" }}</small>
+                    </div>
+                  </div>
+                  {% endif %} {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3"><i class="fas fa-info-circle me-2"></i>هیچ سفارشی برای این روز ندارید.</p>
+                {% endif %}
+
+                <!-- بخش نظرات -->
+                <div class="comments-section mt-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 text-primary"><i class="fas fa-comments me-2"></i>نظرات</h6>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary rounded-pill"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#comments-{{ day_data.gdate_str }}"
+                    >
+                      <i class="fas fa-chevron-down"></i>
+                    </button>
+                  </div>
+                  <div
+                    class="collapse"
+                    id="comments-{{ day_data.gdate_str }}"
+                  >
+                    <div class="comments-list">
+                      {% for reservation in day_data.day_reservations %} {% for food_id, feedback_data in day_data.day_food_feedbacks.items %} {% if food_id == reservation.menu_item.id %} {% for comment in feedback_data.comments %}
+                      <div class="comment-item {% if comment.user == request.user.full_name %}own-comment{% endif %}">
+                        <div class="comment-meta">
+                          <small class="text-muted">{{ comment.date|date:"d/m/Y" }}</small>
+                          <div class="stars-display">
+                            {% for i in "12345" %}
+                            <span class="star {% if forloop.counter <= comment.rating %}star-filled{% else %}star-empty{% endif %}">★</span>
+                            {% endfor %}
+                          </div>
+                        </div>
+                        <p class="comment-text">{{ comment.text }}</p>
+                      </div>
+                      {% endfor %} {% endif %} {% endfor %} {% endfor %} {% if not day_data.day_food_feedbacks %}
+                      <p class="text-muted small">هنوز نظری ثبت نشده است.</p>
+                      {% endif %}
+                    </div>
+
+                    {% if day_data.user_can_comment %}
+                    <form
+                      method="post"
+                      id="comment-form-{{ day_data.gdate_str }}"
+                      class="comment-form"
+                    >
+                      {% csrf_token %}
+                      <input
+                        type="hidden"
+                        name="comment_for_date"
+                        value="{{ day_data.gdate_str }}"
+                      />
+                      <input
+                        type="hidden"
+                        name="menu_item_id"
+                        value="{{ reservation.menu_item.id }}"
+                      />
+                      <textarea
+                        class="form-control form-control-sm mb-2"
+                        name="comment_text"
+                        rows="2"
+                        placeholder="نظر شما..."
+                      ></textarea>
+                      <div class="comment-rating-row">
+                        <div class="star-rating-wrapper">
+                          <small class="me-2">امتیاز:</small>
+                          <div class="star-rating">
+                            {% for i in "54321" reversed %}
+                            <input
+                              type="radio"
+                              id="star-{{ day_data.gdate_str }}-{{ forloop.counter }}"
+                              name="rating"
+                              value="{{ forloop.counter }}"
+                            />
+                            <label for="star-{{ day_data.gdate_str }}-{{ forloop.counter }}">★</label>
+                            {% endfor %}
+                          </div>
+                        </div>
+                        <button
+                          type="submit"
+                          name="submit_comment"
+                          class="btn btn-sm btn-primary rounded-pill"
+                        >
+                          ارسال نظر
+                        </button>
+                      </div>
+                    </form>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <!-- حالت سوم: امکان رزرو وجود ندارد (نمایش سفارش‌ها بدون امکان نظر جدید) -->
+              {% else %}
+              <div class="orders-view disabled-day">
+                <h6 class="orders-title"><i class="fas fa-clipboard-list me-2"></i>سفارش‌های ثبت‌شده شما</h6>
+                {% if day_data.day_reservations.exists %}
+                <div class="orders-list">
+                  {% for reservation in day_data.day_reservations %} {% if reservation.factory_quantity > 0 or reservation.free_quantity > 0 or reservation.guest_quantity > 0 %}
+                  <div class="order-card {% if reservation.factory_quantity > 0 %}order-factory {% elif reservation.free_quantity > 0 %}order-free {% else %}order-guest{% endif %}">
+                    <div class="order-info">
+                      <strong>{{ reservation.menu_item.food.name }}</strong>
+                      <small>{{ reservation.menu_item.weekly_menu.restaurant.name }}</small>
+                    </div>
+                    <div class="order-details">
+                      {% if reservation.factory_quantity > 0 %}<span class="badge bg-primary">سهمیه × {{ reservation.factory_quantity }}</span>{% endif %} {% if reservation.free_quantity > 0 %}<span class="badge bg-danger">آزاد × {{ reservation.free_quantity }}</span>{% endif %} {% if reservation.guest_quantity > 0 %}<span class="badge bg-warning text-dark">مهمان × {{ reservation.guest_quantity }}</span>{% endif %}
+                      <small class="text-muted ms-2">{{ reservation.reserved_at|time:"H:i" }}</small>
+                    </div>
+                  </div>
+                  {% endif %} {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3"><i class="fas fa-info-circle me-2"></i>هیچ سفارشی برای این روز ندارید.</p>
+                {% endif %}
+
+                <!-- نظرات فقط نمایشی -->
+                <div class="comments-section mt-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 text-primary"><i class="fas fa-comments me-2"></i>نظرات</h6>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary rounded-pill"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#comments-{{ day_data.gdate_str }}"
+                    >
+                      <i class="fas fa-chevron-down"></i>
+                    </button>
+                  </div>
+                  <div
+                    class="collapse"
+                    id="comments-{{ day_data.gdate_str }}"
+                  >
+                    <div class="comments-list">
+                      {% for reservation in day_data.day_reservations %} {% for food_id, feedback_data in day_data.day_food_feedbacks.items %} {% if food_id == reservation.menu_item.id %} {% for comment in feedback_data.comments %}
+                      <div class="comment-item {% if comment.user == request.user.full_name %}own-comment{% endif %}">
+                        <div class="comment-meta">
+                          <small class="text-muted">{{ comment.date|date:"d/m/Y" }}</small>
+                          <div class="stars-display">
+                            {% for i in "12345" %}
+                            <span class="star {% if forloop.counter <= comment.rating %}star-filled{% else %}star-empty{% endif %}">★</span>
+                            {% endfor %}
+                          </div>
+                        </div>
+                        <p class="comment-text">{{ comment.text }}</p>
+                      </div>
+                      {% endfor %} {% endif %} {% endfor %} {% endfor %} {% if not day_data.day_food_feedbacks %}
+                      <p class="text-muted small">هنوز نظری ثبت نشده است.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- دکمه ثبت نهایی -->
+        <div class="d-grid mt-5">
+          <button
+            type="submit"
+            name="submit_reservations"
+            class="btn btn-primary btn-lg submit-btn shadow-lg rounded-pill"
+          >
+            <i class="fas fa-check-circle me-2"></i>ثبت نهایی رزروهای غذا
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // داده‌های منوها برای هر روز
-        const foodMenus = {};
-        {% for day_data in weekly_data %}
-            foodMenus['{{ day_data.gdate_str }}'] = [
-                { id: 0, name: 'بدون رزرو', factory_price: 0, free_price: 0, guest_price: 0 },
-                {% for menu_item in day_data.menus %}
-                    {
-                        id: {{ menu_item.id }},
-                        name: "{{ menu_item.food.name|escapejs }} ({{ menu_item.weekly_menu.restaurant.name|escapejs }})",
-                        factory_price: {{ menu_item.food.factory_price }},
-                        free_price: {{ menu_item.food.free_price }},
-                        guest_price: {{ menu_item.food.guest_price }}
-                    },
-                {% endfor %}
-            ];
-        {% endfor %}
-
-        // محدودیت‌ها (از context)
-        const maxQuantities = {
-            factory: {{ max_factory_quantity }},
-            free: {{ max_free_quantity }},
-            guest: {{ max_guest_quantity }}
-        };
-
-        // تابع فرمت قیمت
-        function formatPrice(price) {
-            return new Intl.NumberFormat('fa-IR').format(price) + ' ریال';
-        }
-
-        // تابع محاسبه مجموع تعداد برای یک نوع در یک روز
-        function getTotalQuantity(dateStr, priceType) {
-            let total = 0;
-            document.querySelectorAll(`#reservation-container-${dateStr} .input-group[data-price-type="${priceType}"]`).forEach(slot => {
-                const qty = parseInt(slot.querySelector('.quantity-input').value) || 0;
-                total += qty;
-            });
-            return total;
-        }
-
-        // تابع اعمال محدودیت تعداد
-        function enforceQuantityLimit(slot) {
-            const dateStr = slot.getAttribute('data-date');
-            const priceType = slot.getAttribute('data-price-type');
-            const maxQty = maxQuantities[priceType];
-            const input = slot.querySelector('.quantity-input');
-            let qty = parseInt(input.value) || 0;
-
-            // محاسبه مجموع بدون این اسلات
-            let otherTotal = getTotalQuantity(dateStr, priceType) - qty;
-
-            // حداکثر ممکن برای این اسلات
-            const remaining = maxQty - otherTotal;
-            if (qty > remaining) {
-                qty = remaining >= 0 ? remaining : 0;
-                input.value = qty;
-            }
-
-            // اگر quota و factory، max 1 اگر max_factory=1
-            if (slot.classList.contains('quota-slot') && priceType === 'factory') {
-                if (qty > maxQuantities.factory) qty = maxQuantities.factory;
-                // if (qty > 1) qty = 1;  // فرض محدودیت quota 1
-                input.value = qty;
-            }
-
-            updateTotal(slot);
-        }
-
-        // تابع آپدیت قیمت‌ها در دکمه‌ها و label نوع
-        function updatePrices(slot) {
-            const select = slot.querySelector('.food-select');
-            const selectedId = parseInt(select.value);
-            const dateStr = slot.getAttribute('data-date');
-            const menuData = foodMenus[dateStr].find(item => item.id === selectedId);
-
-            if (!menuData) return;
-
-            // آپدیت قیمت در دکمه‌ها
-            slot.querySelector('.factory-btn .price-value').textContent = formatPrice(menuData.factory_price);
-            slot.querySelector('.free-btn .price-value').textContent = formatPrice(menuData.free_price);
-            slot.querySelector('.guest-btn .price-value').textContent = formatPrice(menuData.guest_price);
-
-            // آپدیت label نوع بر اساس نوع فعلی
-            updateTypeLabel(slot);
-
-            // آپدیت قیمت کل
-            updateTotal(slot);
-        }
-
-        // تابع آپدیت label نوع (سمت راست) و رنگ آن
-        function updateTypeLabel(slot) {
-            const type = slot.getAttribute('data-price-type');
-            const typeLabel = slot.querySelector('.type-label');
-            if (type === 'factory') {
-                typeLabel.textContent = 'سهمیه';
-                typeLabel.classList.remove('bg-danger', 'bg-warning');
-                typeLabel.classList.add('bg-primary');
-            } else if (type === 'free') {
-                typeLabel.textContent = 'آزاد';
-                typeLabel.classList.remove('bg-primary', 'bg-warning');
-                typeLabel.classList.add('bg-danger');
-            } else if (type === 'guest') {
-                typeLabel.textContent = 'مهمان';
-                typeLabel.classList.remove('bg-primary', 'bg-danger');
-                typeLabel.classList.add('bg-warning');
-            }
-        }
-
-        // تابع آپدیت قیمت کل
-        function updateTotal(slot) {
-            const select = slot.querySelector('.food-select');
-            const selectedId = parseInt(select.value);
-            if (selectedId === 0) {
-                slot.querySelector('.price-total').textContent = formatPrice(0);
-                return;
-            }
-
-            const dateStr = slot.getAttribute('data-date');
-            const menuData = foodMenus[dateStr].find(item => item.id === selectedId);
-            const priceType = slot.getAttribute('data-price-type');
-            const quantity = parseInt(slot.querySelector('.quantity-input').value) || 0;
-
-            let unitPrice = 0;
-            if (priceType === 'factory') unitPrice = menuData.factory_price;
-            else if (priceType === 'free') unitPrice = menuData.free_price;
-            else if (priceType === 'guest') unitPrice = menuData.guest_price;
-
-            const total = unitPrice * quantity;
-            slot.querySelector('.price-total').textContent = formatPrice(total);
-        }
-
-        // مدیریت تغییر select و quantity
-        document.body.addEventListener('change', function(e) {
-            const target = e.target;
-            const slot = target.closest('.quota-slot, .extra-slot');
-            if (!slot) return;
-
-            if (target.classList.contains('food-select')) {
-                if (parseInt(target.value) === 0) {
-                    slot.querySelector('.quantity-input').value = 0;
-                } else {
-                    slot.querySelector('.quantity-input').value = slot.classList.contains('quota-slot') ? 1 : 1;
-                }
-                updatePrices(slot);
-                enforceQuantityLimit(slot);
-            } else if (target.classList.contains('quantity-input')) {
-                enforceQuantityLimit(slot);
-                // updateTotal در enforce فراخوانی شده
-            }
-        });
-
-        // مدیریت کلیک روی دکمه‌های قیمت (تغییر نوع)
-        document.body.addEventListener('click', function(e) {
-            const target = e.target.closest('.price-btn');
-            if (!target) return;
-
-            const slot = target.closest('.quota-slot, .extra-slot');
-            const newType = target.getAttribute('data-type');
-            slot.setAttribute('data-price-type', newType);
-            slot.querySelector('input[type="hidden"]').value = newType;
-
-            // highlight دکمه فعال
-            slot.querySelectorAll('.price-btn').forEach(btn => btn.classList.remove('active'));
-            target.classList.add('active');
-
-            updateTypeLabel(slot);
-            enforceQuantityLimit(slot);  // چون نوع تغییر کرد، محدودیت جدید اعمال شود
-        });
-
-        // تابع ایجاد خط اضافی (پیشفرض آزاد)
-        function createExtraSlot(dateStr, index) {
-            const container = document.getElementById(`reservation-container-${dateStr}`);
-            const newSlot = document.createElement('div');
-            newSlot.classList.add('input-group', 'mb-2', 'extra-slot', 'compact-input-group');
-            newSlot.setAttribute('data-date', dateStr);
-            newSlot.setAttribute('data-index', index);
-            newSlot.setAttribute('data-price-type', 'free');  // پیشفرض آزاد
-
-            let options = foodMenus[dateStr].map(item => `
-                <option value="${item.id}"
-                        data-factory-price="${item.factory_price}"
-                        data-free-price="${item.free_price}"
-                        data-guest-price="${item.guest_price}">
-                    ${item.name}
-                </option>
-            `).join('');
-
-            newSlot.innerHTML = `
-                <span class="input-group-text type-label bg-danger text-white" style="width: 60px; justify-content: center; font-size: 0.85rem;">آزاد</span>
-                <select class="form-select food-select compact-select flex-grow-1" name="reservations[${dateStr}][${index}][food_choice]" style="font-size: 0.85rem; min-width: 150px;">
-                    ${options}
-                </select>
-                <button type="button" class="btn btn-outline-primary price-btn factory-btn neon-btn" data-type="factory" style="font-size: 0.8rem; padding: 0.2rem 0.4rem; min-width: 70px;">
-                    سهمیه<br><span class="price-value">0 ریال</span>
-                </button>
-                <button type="button" class="btn btn-outline-danger price-btn free-btn neon-btn active" data-type="free" style="font-size: 0.8rem; padding: 0.2rem 0.4rem; min-width: 70px;">
-                    آزاد<br><span class="price-value">0 ریال</span>
-                </button>
-                <button type="button" class="btn btn-outline-warning price-btn guest-btn neon-btn" data-type="guest" style="font-size: 0.8rem; padding: 0.2rem 0.4rem; min-width: 70px;" {% if not can_reserve_guest %} disabled {% endif %}>
-                    مهمان<br><span class="price-value">0 ریال</span>
-                </button>
-                <input type="number" class="form-control quantity-input" name="reservations[${dateStr}][${index}][quantity]" value="1" min="1" style="width: 110px !important; max-width: 110px !important; height: 35px !important; font-size: 1rem; padding: 0.2rem 0.4rem;">
-                <span class="input-group-text price-total" style="width: 90px; justify-content: center; font-size: 0.85rem;">0 ریال</span>
-                <button type="button" class="btn btn-danger btn-sm remove-extra-btn"><i class="fas fa-trash"></i></button>
-                <input type="hidden" name="reservations[${dateStr}][${index}][price_type]" value="free">
-            `;
-
-            container.querySelector('.add-extra-btn').before(newSlot);
-
-            // آپدیت اولیه قیمت‌ها
-            updatePrices(newSlot);
-            enforceQuantityLimit(newSlot);
-        }
-
-        // مدیریت افزودن خط اضافی
-        document.querySelectorAll('.add-extra-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const dateStr = this.getAttribute('data-date');
-                const container = document.getElementById(`reservation-container-${dateStr}`);
-                const existingExtras = container.querySelectorAll('.extra-slot');
-                const newIndex = existingExtras.length + 1;
-                createExtraSlot(dateStr, newIndex);
-            });
-        });
-
-        // مدیریت حذف خط اضافی
-        document.body.addEventListener('click', function(e) {
-            if (e.target.closest('.remove-extra-btn')) {
-                const slot = e.target.closest('.extra-slot');
-                slot.remove();
-                // بعد از حذف، برای بقیه اسلات‌ها enforce چون مجموع تغییر کرد (اجازه بیشتر)
-                const dateStr = slot.getAttribute('data-date');
-                document.querySelectorAll(`#reservation-container-${dateStr} .input-group`).forEach(remainingSlot => {
-                    enforceQuantityLimit(remainingSlot);
-                });
-            }
-        });
-
-
-
-
-
-
-
-
-        // آپدیت اولیه برای تمام اسلات‌های quota (پیشفرض سهمیه فعال)
-        document.querySelectorAll('.quota-slot').forEach(slot => {
-            slot.querySelector('.factory-btn').classList.add('active');
-            updatePrices(slot);
-            enforceQuantityLimit(slot);
-        });
-        // ===== Prefill existing reservations: replace the old "آپدیت اولیه..." block with this =====
-        (function prefillReservations() {
-            // ساختار داده‌ای از رزرو‌های سمت سرور
-            const initialReservations = {
-                {% for day_data in weekly_data %}
-                    '{{ day_data.gdate_str }}': [
-                        {% for reservation in day_data.day_reservations %}
-                            {
-                                menu_item_id: {{ reservation.menu_item.id }},
-                                factory_quantity: {{ reservation.factory_quantity|default:0 }},
-                                free_quantity: {{ reservation.free_quantity|default:0 }},
-                                guest_quantity: {{ reservation.guest_quantity|default:0 }},
-                                // reserved_at not needed for filling inputs
-                            }{% if not forloop.last or not forloop.parentloop.last %},{% endif %}
-                        {% endfor %}
-                    ]{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            };
-
-            // برای هر تاریخ: اگر رزروی موجود باشه، برای هر reservation هر نوعی که >0 باشه یک slot بساز/مقداردهی کن
-            Object.keys(initialReservations).forEach(dateStr => {
-                const reservations = initialReservations[dateStr] || [];
-                const container = document.getElementById(`reservation-container-${dateStr}`);
-                if (!container) return;
-
-                // اول، مقداردهیِ خط quota موجود (index = 0) فقط اگر لازمه
-                const quotaSlot = container.querySelector('.quota-slot[data-date="' + dateStr + '"]');
-
-                // شمارنده‌ی index برای نام‌گذاری پارامترها (0 برای quota، بقیه برای extra)
-                let nextIndex = 1; // چون quota index=0 هست
-
-                // برای هر reservation موجود روی اون روز
-                reservations.forEach(res => {
-                    // ترتیب: factory, free, guest — برای هرکدوم که >0 باشه یک slot یا مقداردهی quota انجام بده
-                    const types = [
-                        { key: 'factory_quantity', type: 'factory' },
-                        { key: 'free_quantity', type: 'free' },
-                        { key: 'guest_quantity', type: 'guest' },
-                    ];
-
-                    types.forEach(t => {
-                        const qty = parseInt(res[t.key]) || 0;
-                        if (qty <= 0) return;
-
-                        // اگر quota-slot خالی و نوعش factory و هنوز استفاده نشده، از quota استفاده کن
-                        const useQuota =
-                            quotaSlot &&
-                            quotaSlot.querySelector('.food-select').value == '0' && // هنوز انتخاب نشده
-                            quotaSlot.getAttribute('data-date') === dateStr &&
-                            quotaSlot.getAttribute('data-index') === '0' &&
-                            t.type === 'factory'; // معمولاً سهمیه روی quota هست
-
-                        if (useQuota) {
-                            // مقداردهی quota-slot
-                            quotaSlot.querySelector('.food-select').value = res.menu_item_id;
-                            quotaSlot.querySelector('.quantity-input').value = qty;
-                            quotaSlot.setAttribute('data-price-type', t.type);
-                            // hidden input (price_type)
-                            const hidden = quotaSlot.querySelector('input[type="hidden"]');
-                            if (hidden) hidden.value = t.type;
-
-                            // فعال کردن دکمه مربوطه
-                            quotaSlot.querySelectorAll('.price-btn').forEach(btn => btn.classList.remove('active'));
-                            const activeBtn = quotaSlot.querySelector(`.price-btn[data-type="${t.type}"]`);
-                            if (activeBtn) activeBtn.classList.add('active');
-
-                            // آپدیت قیمت‌ها و محدودیت‌ها
-                            updatePrices(quotaSlot);
-                            enforceQuantityLimit(quotaSlot);
-                        } else {
-                            // بساز یک extra slot با index = nextIndex
-                            createExtraSlot(dateStr, nextIndex);
-                            // پیدا کن همین اسلات تازه ایجاد شده (قبل از دکمه‌ی add قرار میگیره)
-                            const newSlot = container.querySelector(`.extra-slot[data-date="${dateStr}"][data-index="${nextIndex}"]`);
-                            if (newSlot) {
-                                // مقداردهی
-                                newSlot.querySelector('.food-select').value = res.menu_item_id;
-                                newSlot.querySelector('.quantity-input').value = qty;
-                                newSlot.setAttribute('data-price-type', t.type);
-                                const hidden = newSlot.querySelector('input[type="hidden"]');
-                                if (hidden) hidden.value = t.type;
-
-                                // فعال کردن دکمه مربوطه
-                                newSlot.querySelectorAll('.price-btn').forEach(btn => btn.classList.remove('active'));
-                                const activeBtn = newSlot.querySelector(`.price-btn[data-type="${t.type}"]`);
-                                if (activeBtn) activeBtn.classList.add('active');
-
-                                // آپدیت قیمت‌ها و محدودیت‌ها
-                                updatePrices(newSlot);
-                                enforceQuantityLimit(newSlot);
-                            }
-                            nextIndex += 1;
-                        }
-                    });
-                });
-
-                // اگر quota-slot هنوز بدون انتخاب هست → بردار دکمه‌ی active و مقداردهی اولیه رو انجام بده (همان رفتار سابق)
-                if (quotaSlot) {
-                    // اگر هنوز انتخاب نشده، روی سهمیه دکمه active بذار و آپدیت قیمت
-                    if (parseInt(quotaSlot.querySelector('.food-select').value) === 0) {
-                        quotaSlot.querySelector('.factory-btn').classList.add('active');
-                    }
-                    updatePrices(quotaSlot);
-                    enforceQuantityLimit(quotaSlot);
-                }
-            });
-        })();
-
-
-
-
-
-
-
-
-
-
-
-
-        // document.getElementById('reservation-main-form').addEventListener('submit', function(e) {
-        //     if (this.getAttribute('data-submitting') === 'true') {
-        //         e.preventDefault();
-        //         alert('لطفاً صبر کنید، در حال ارسال...');
-        //         return false;
-        //     }
-        //     this.setAttribute('data-submitting', 'true');
-            
-        //     // غیرفعال کردن دکمه
-        //     const submitBtn = this.querySelector('button[type="submit"]');
-        //     if (submitBtn) {
-        //         submitBtn.disabled = true;
-        //         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>در حال ثبت...';
-        //     }
-        // });
-
-    });
+  /* ==========  بدون تغییر در منطق، فقط بروزرسانی HTML خطوط اضافی  ========== */
+  document.addEventListener('DOMContentLoaded', function() {
+      const foodMenus = {};
+      {% for day_data in weekly_data %}
+          foodMenus['{{ day_data.gdate_str }}'] = [
+              { id: 0, name: 'بدون رزرو', factory_price: 0, free_price: 0, guest_price: 0 },
+              {% for menu_item in day_data.menus %}
+                  {
+                      id: {{ menu_item.id }},
+                      name: "{{ menu_item.food.name|escapejs }} ({{ menu_item.weekly_menu.restaurant.name|escapejs }})",
+                      factory_price: {{ menu_item.food.factory_price }},
+                      free_price: {{ menu_item.food.free_price }},
+                      guest_price: {{ menu_item.food.guest_price }}
+                  },
+              {% endfor %}
+          ];
+      {% endfor %}
+
+      const maxQuantities = {
+          factory: {{ max_factory_quantity }},
+          free: {{ max_free_quantity }},
+          guest: {{ max_guest_quantity }}
+      };
+
+      function formatPrice(price) {
+          return new Intl.NumberFormat('fa-IR').format(price) + ' ریال';
+      }
+
+      function getTotalQuantity(dateStr, priceType) {
+          let total = 0;
+          document.querySelectorAll(`#reservation-container-${dateStr} .input-group[data-price-type="${priceType}"]`).forEach(slot => {
+              const qty = parseInt(slot.querySelector('.quantity-input').value) || 0;
+              total += qty;
+          });
+          return total;
+      }
+
+      function enforceQuantityLimit(slot) {
+          const dateStr = slot.getAttribute('data-date');
+          const priceType = slot.getAttribute('data-price-type');
+          const maxQty = maxQuantities[priceType];
+          const input = slot.querySelector('.quantity-input');
+          let qty = parseInt(input.value) || 0;
+
+          let otherTotal = getTotalQuantity(dateStr, priceType) - qty;
+          const remaining = maxQty - otherTotal;
+          if (qty > remaining) {
+              qty = remaining >= 0 ? remaining : 0;
+              input.value = qty;
+          }
+
+          if (slot.classList.contains('quota-slot') && priceType === 'factory') {
+              if (qty > maxQuantities.factory) qty = maxQuantities.factory;
+              input.value = qty;
+          }
+
+          updateTotal(slot);
+      }
+
+      function updatePrices(slot) {
+          const select = slot.querySelector('.food-select');
+          const selectedId = parseInt(select.value);
+          const dateStr = slot.getAttribute('data-date');
+          const menuData = foodMenus[dateStr].find(item => item.id === selectedId);
+          if (!menuData) return;
+
+          slot.querySelector('.factory-btn .price-value').textContent = formatPrice(menuData.factory_price);
+          slot.querySelector('.free-btn .price-value').textContent = formatPrice(menuData.free_price);
+          slot.querySelector('.guest-btn .price-value').textContent = formatPrice(menuData.guest_price);
+
+          updateTypeLabel(slot);
+          updateTotal(slot);
+      }
+
+      function updateTypeLabel(slot) {
+          const type = slot.getAttribute('data-price-type');
+          const label = slot.querySelector('.type-label');
+          if (type === 'factory') {
+              label.textContent = 'سهمیه';
+              label.className = 'type-label factory-label';
+          } else if (type === 'free') {
+              label.textContent = 'آزاد';
+              label.className = 'type-label free-label';
+          } else if (type === 'guest') {
+              label.textContent = 'مهمان';
+              label.className = 'type-label guest-label';
+          }
+      }
+
+      function updateTotal(slot) {
+          const select = slot.querySelector('.food-select');
+          const selectedId = parseInt(select.value);
+          if (selectedId === 0) {
+              slot.querySelector('.price-total').textContent = formatPrice(0);
+              return;
+          }
+          const dateStr = slot.getAttribute('data-date');
+          const menuData = foodMenus[dateStr].find(item => item.id === selectedId);
+          const priceType = slot.getAttribute('data-price-type');
+          const quantity = parseInt(slot.querySelector('.quantity-input').value) || 0;
+          let unitPrice = 0;
+          if (priceType === 'factory') unitPrice = menuData.factory_price;
+          else if (priceType === 'free') unitPrice = menuData.free_price;
+          else if (priceType === 'guest') unitPrice = menuData.guest_price;
+          const total = unitPrice * quantity;
+          slot.querySelector('.price-total').textContent = formatPrice(total);
+      }
+
+      document.body.addEventListener('change', function(e) {
+          const target = e.target;
+          const slot = target.closest('.quota-slot, .extra-slot');
+          if (!slot) return;
+          if (target.classList.contains('food-select')) {
+              if (parseInt(target.value) === 0) {
+                  slot.querySelector('.quantity-input').value = 0;
+              } else {
+                  slot.querySelector('.quantity-input').value = slot.classList.contains('quota-slot') ? 1 : 1;
+              }
+              updatePrices(slot);
+              enforceQuantityLimit(slot);
+          } else if (target.classList.contains('quantity-input')) {
+              enforceQuantityLimit(slot);
+          }
+      });
+
+      document.body.addEventListener('click', function(e) {
+          const target = e.target.closest('.btn-price');
+          if (!target) return;
+          const slot = target.closest('.quota-slot, .extra-slot');
+          const newType = target.getAttribute('data-type');
+          slot.setAttribute('data-price-type', newType);
+          slot.querySelector('input[type="hidden"]').value = newType;
+
+          slot.querySelectorAll('.btn-price').forEach(btn => btn.classList.remove('active'));
+          target.classList.add('active');
+
+          updateTypeLabel(slot);
+          enforceQuantityLimit(slot);
+      });
+
+      function createExtraSlot(dateStr, index) {
+          const container = document.getElementById(`reservation-container-${dateStr}`);
+          const newSlot = document.createElement('div');
+          newSlot.classList.add('input-group', 'extra-slot');
+          newSlot.setAttribute('data-date', dateStr);
+          newSlot.setAttribute('data-index', index);
+          newSlot.setAttribute('data-price-type', 'free');
+
+          let options = foodMenus[dateStr].map(item => `
+              <option value="${item.id}"
+                      data-factory-price="${item.factory_price}"
+                      data-free-price="${item.free_price}"
+                      data-guest-price="${item.guest_price}">
+                  ${item.name}
+              </option>
+          `).join('');
+
+          newSlot.innerHTML = `
+              <span class="type-label free-label">آزاد</span>
+              <select class="food-select" name="reservations[${dateStr}][${index}][food_choice]">
+                  ${options}
+              </select>
+              <div class="price-buttons">
+                  <button type="button" class="btn-price factory-btn" data-type="factory">
+                      <span class="price-type-text">سهمیه</span><span class="price-value">0 ریال</span>
+                  </button>
+                  <button type="button" class="btn-price free-btn active" data-type="free">
+                      <span class="price-type-text">آزاد</span><span class="price-value">0 ریال</span>
+                  </button>
+                  <button type="button" class="btn-price guest-btn" data-type="guest" {% if not can_reserve_guest %} disabled {% endif %}>
+                      <span class="price-type-text">مهمان</span><span class="price-value">0 ریال</span>
+                  </button>
+              </div>
+              <input type="number" class="quantity-input" name="reservations[${dateStr}][${index}][quantity]" value="1" min="1">
+              <span class="price-total">0 ریال</span>
+              <button type="button" class="btn btn-sm btn-danger remove-extra-btn rounded-pill"><i class="fas fa-trash"></i></button>
+              <input type="hidden" name="reservations[${dateStr}][${index}][price_type]" value="free">
+          `;
+
+          container.querySelector('.add-extra-btn').before(newSlot);
+          updatePrices(newSlot);
+          enforceQuantityLimit(newSlot);
+      }
+
+      document.querySelectorAll('.add-extra-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+              const dateStr = this.getAttribute('data-date');
+              const container = document.getElementById(`reservation-container-${dateStr}`);
+              const existingExtras = container.querySelectorAll('.extra-slot');
+              const newIndex = existingExtras.length + 1;
+              createExtraSlot(dateStr, newIndex);
+          });
+      });
+
+      document.body.addEventListener('click', function(e) {
+          if (e.target.closest('.remove-extra-btn')) {
+              const slot = e.target.closest('.extra-slot');
+              slot.remove();
+              const dateStr = slot.getAttribute('data-date');
+              document.querySelectorAll(`#reservation-container-${dateStr} .input-group`).forEach(remainingSlot => {
+                  enforceQuantityLimit(remainingSlot);
+              });
+          }
+      });
+
+      // مقداردهی اولیه خط سهمیه
+      document.querySelectorAll('.quota-slot').forEach(slot => {
+          slot.querySelector('.factory-btn').classList.add('active');
+          updatePrices(slot);
+          enforceQuantityLimit(slot);
+      });
+
+      // ===== Prefill از رزروهای موجود =====
+      (function prefillReservations() {
+          const initialReservations = {
+              {% for day_data in weekly_data %}
+                  '{{ day_data.gdate_str }}': [
+                      {% for reservation in day_data.day_reservations %}
+                          {
+                              menu_item_id: {{ reservation.menu_item.id }},
+                              factory_quantity: {{ reservation.factory_quantity|default:0 }},
+                              free_quantity: {{ reservation.free_quantity|default:0 }},
+                              guest_quantity: {{ reservation.guest_quantity|default:0 }},
+                          }{% if not forloop.last %},{% endif %}
+                      {% endfor %}
+                  ]{% if not forloop.last %},{% endif %}
+              {% endfor %}
+          };
+
+          Object.keys(initialReservations).forEach(dateStr => {
+              const reservations = initialReservations[dateStr] || [];
+              const container = document.getElementById(`reservation-container-${dateStr}`);
+              if (!container) return;
+
+              const quotaSlot = container.querySelector('.quota-slot');
+              let nextIndex = 1;
+
+              reservations.forEach(res => {
+                  const types = [
+                      { key: 'factory_quantity', type: 'factory' },
+                      { key: 'free_quantity', type: 'free' },
+                      { key: 'guest_quantity', type: 'guest' },
+                  ];
+
+                  types.forEach(t => {
+                      const qty = parseInt(res[t.key]) || 0;
+                      if (qty <= 0) return;
+
+                      const useQuota = quotaSlot &&
+                          quotaSlot.querySelector('.food-select').value == '0' &&
+                          t.type === 'factory';
+
+                      if (useQuota) {
+                          quotaSlot.querySelector('.food-select').value = res.menu_item_id;
+                          quotaSlot.querySelector('.quantity-input').value = qty;
+                          quotaSlot.setAttribute('data-price-type', t.type);
+                          quotaSlot.querySelector('input[type="hidden"]').value = t.type;
+
+                          quotaSlot.querySelectorAll('.btn-price').forEach(btn => btn.classList.remove('active'));
+                          const activeBtn = quotaSlot.querySelector(`.btn-price[data-type="${t.type}"]`);
+                          if (activeBtn) activeBtn.classList.add('active');
+
+                          updatePrices(quotaSlot);
+                          enforceQuantityLimit(quotaSlot);
+                      } else {
+                          createExtraSlot(dateStr, nextIndex);
+                          const newSlot = container.querySelector(`.extra-slot[data-date="${dateStr}"][data-index="${nextIndex}"]`);
+                          if (newSlot) {
+                              newSlot.querySelector('.food-select').value = res.menu_item_id;
+                              newSlot.querySelector('.quantity-input').value = qty;
+                              newSlot.setAttribute('data-price-type', t.type);
+                              newSlot.querySelector('input[type="hidden"]').value = t.type;
+
+                              newSlot.querySelectorAll('.btn-price').forEach(btn => btn.classList.remove('active'));
+                              const activeBtn = newSlot.querySelector(`.btn-price[data-type="${t.type}"]`);
+                              if (activeBtn) activeBtn.classList.add('active');
+
+                              updatePrices(newSlot);
+                              enforceQuantityLimit(newSlot);
+                          }
+                          nextIndex += 1;
+                      }
+                  });
+              });
+
+              if (quotaSlot && parseInt(quotaSlot.querySelector('.food-select').value) === 0) {
+                  quotaSlot.querySelector('.factory-btn').classList.add('active');
+                  updatePrices(quotaSlot);
+                  enforceQuantityLimit(quotaSlot);
+              }
+          });
+      })();
+  });
 </script>
-{% endblock extra_js %}
-
-
-{% block extra_css %}
-<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"> -->
-
-<style>
-    .bg-gradient-primary {
-        background: linear-gradient(90deg, #007bff, #00c6ff);
-    }
-    .bg-gradient-dark {
-        background: linear-gradient(90deg, #343a40, #495057);
-    }
-    .table tr:hover {
-        transform: scale(1.01);
-        transition: transform 0.2s ease-in-out;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .card-body {
-        border-radius: 0.5rem;
-    }
-    .compact-input-group .input-group-text,
-    .compact-input-group .form-select,
-    .compact-input-group .btn {
-        padding: 0.2rem 0.4rem;
-        height: 35px;  /* ارتفاع کمتر */
-    }
-    .compact-select {
-        font-size: 0.9rem;
-    }
-    .neon-btn {
-        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);  /* نئون آبی پیشفرض */
-        transition: box-shadow 0.3s ease;
-    }
-    .neon-btn:hover {
-        box-shadow: 0 0 15px rgba(0, 123, 255, 0.8);
-    }
-    .neon-btn.active.factory-btn {
-        box-shadow: 0 0 15px #007bff, 0 0 25px #007bff;
-    }
-    .neon-btn.active.free-btn {
-        box-shadow: 0 0 15px #dc3545, 0 0 25px #dc3545;
-    }
-    .neon-btn.active.guest-btn {
-        box-shadow: 0 0 15px #ffc107, 0 0 25px #ffc107;
-    }
-    .price-btn {
-        white-space: normal;
-        text-align: center;
-        line-height: 1.1;
-        min-width: 70px;  /* کوچکتر */
-    }
-    .price-btn .price-value {
-        font-size: 0.75rem;
-    }
-    .reservation-container {
-        min-width: 800px;  /* حداقل عرض برای فعال کردن اسکرول */
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 10px;  /* فضای برای اسکرول بار */
-    }
-    .input-group {
-        flex-wrap: nowrap;
-        white-space: nowrap;
-    }
-    .quantity-input {
-        max-width: 50px !important;  /* فیکس کوچکتر */
-    }
-    @media (max-width: 768px) {
-        .table-responsive {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch !important;
-            margin: 0 -15px;  /* گسترش به عرض کامل */
-            padding: 0 15px;
-        }
-        .reservation-container {
-            min-width: 600px;  /* تنظیم برای موبایل */
-        }
-        .price-btn {
-            min-width: 60px;
-            font-size: 0.7rem;
-            padding: 0.1rem 0.2rem;
-        }
-        .price-btn .price-value {
-            font-size: 0.65rem;
-        }
-        .type-label {
-            width: 50px !important;
-            font-size: 0.75rem !important;
-        }
-        .quantity-input {
-            width: 110px !important;
-            max-width: 110px !important;
-            height: 35px !important;
-            font-size: 1rem !important;
-            padding: 0.2rem 0.4rem !important;
-        }
-        .food-select {
-            min-width: 100px !important;   /* قبلاً 140px بود → حالا 100px (کاهش 40px) */
-            font-size: 0.78rem !important;
-        }
-        .price-total {
-            width: 80px !important;
-            font-size: 0.75rem !important;
-        }
-        .add-extra-btn {
-            font-size: 0.8rem;
-        }
-    }
-    .star-rating {
-        direction: rtl;
-        unicode-bidi: bidi-override;
-        display: inline-flex;
-        gap: 8px;
-        align-items: center;
-    }
-
-    .star-rating input {
-        display: none;
-    }
-
-    .star-rating label {
-        font-size: 2rem;
-        color: #555;
-        cursor: pointer;
-        transition: all 0.25s ease;
-        text-shadow: 0 0 5px rgba(255, 193, 7, 0.3);
-        transform: scale(1);
-    }
-
-    /* وقتی کاربر روی ستاره هاور می‌کنه → همه ستاره‌های سمت راست روشن بشن */
-    .star-rating label:hover,
-    .star-rating label:hover ~ label {
-        color: #ffdd00;
-        text-shadow: 0 0 20px #ffc107, 0 0 40px #ff8c00;
-        transform: scale(1.2);
-    }
-
-    /* ستاره‌های انتخاب شده (تا ستاره انتخابی) → همیشه روشن بمونن */
-    .star-rating input:checked ~ label {
-        color: #ffc107;
-        text-shadow: 0 0 20px #ffc107, 0 0 40px #ff8c00;
-        animation: glow 1.5s ease-in-out infinite alternate;
-    }
-
-    @keyframes glow {
-        from { text-shadow: 0 0 20px #ffc107, 0 0 40px #ff8c00; }
-        to   { text-shadow: 0 0 30px #ffc107, 0 0 60px #ff8c00, 0 0 80px #ff6b00; }
-    }
-
-    /* وقتی قبلاً نظر داده شده بود → فقط نمایش بده، انتخاب نکنه */
-    .star-rating.disabled label {
-        cursor: default;
-    }
-    .star-rating.disabled label:hover,
-    .star-rating.disabled label:hover ~ label {
-        transform: none;
-    }
-    .star-label {
-        font-size: 28px;     /* اندازه ستاره */
-        cursor: default;    /* دست نشه = کلیک‌خور نشه */
-        user-select: none;
-    }
-    #factory-filter-form select {
-        border: 2px solid #007bff;
-        font-weight: 500;
-    }
-
-    #factory-filter-form select:focus {
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        border-color: #0056b3;
-    }
-
-    .card-header.bg-primary {
-        background: linear-gradient(90deg, #007bff, #0069d9) !important;
-    }
-</style>
+{% endblock extra_js %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="{% static 'css/reservation.css' %}"
+/>
 {% endblock %}

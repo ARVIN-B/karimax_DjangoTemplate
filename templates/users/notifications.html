@@ -1,89 +1,134 @@
-{% extends "base.html" %}
-{% load static %}
-
-{% block title %}اعلانات - PMS{% endblock %}
-
-{% block breadcrumb_title %}اعلانات{% endblock %}
-
-{% block content %}
-<div class="row">
+{% extends "base.html" %} {% load static %} {% block title %}اعلانات - PMS{% endblock %} {% block breadcrumb_title %}اعلانات{% endblock %} {% block extra_css %}
+<!-- استایل اختصاصی صفحه اعلانات -->
+<link
+  rel="stylesheet"
+  href="{% static 'css/notifications.css' %}"
+/>
+{% endblock %} {% block content %}
+<div class="notifications-page">
+  <div class="row">
     <div class="col-12">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-bell me-2"></i>اعلانات شما</h5>
-            </div>
-            <div class="card-body p-0">
-                <!-- Nav Tabs -->
-                <ul class="nav nav-tabs" id="notificationTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab">
-                            <i class="fas fa-inbox me-1"></i>اعلانات موجود
-                            {% if active_notifications|length > 0 %}
-                                <span class="badge bg-light text-dark ms-1">{{ active_notifications|length }}</span>
-                            {% endif %}
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="expired-tab" data-bs-toggle="tab" data-bs-target="#expired" type="button" role="tab">
-                            <i class="fas fa-archive me-1"></i>اعلانات منقضی شده
-                            {% if expired_notifications|length > 0 %}
-                                <span class="badge bg-secondary ms-1">{{ expired_notifications|length }}</span>
-                            {% endif %}
-                        </button>
-                    </li>
-                </ul>
-
-                <!-- Tab Content -->
-                <div class="tab-content" id="notificationTabContent">
-                    <!-- تب اعلانات موجود -->
-                    <div class="tab-pane fade show active" id="active" role="tabpanel" aria-labelledby="active-tab">
-                        {% if active_notifications %}
-                            <div class="list-group list-group-flush">
-                                {% for notif in active_notifications %}
-                                    <a href="#" class="list-group-item list-group-item-action {% if not notif.is_read %}fw-bold{% endif %}">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1">{{ notif.title }}</h6>
-                                            <small>{{ notif.date }}</small>
-                                        </div>
-                                        <p class="mb-1 text-muted">{{ notif.message }}</p>
-                                        {% if not notif.is_read %}
-                                            <small class="text-primary"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> جدید</small>
-                                        {% endif %}
-                                    </a>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <div class="text-center py-5 text-muted">
-                                <i class="fas fa-bell-slash fa-3x mb-3"></i>
-                                <p>اعلان فعالی وجود ندارد.</p>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- تب اعلانات منقضی شده -->
-                    <div class="tab-pane fade" id="expired" role="tabpanel" aria-labelledby="expired-tab">
-                        {% if expired_notifications %}
-                            <div class="list-group list-group-flush">
-                                {% for notif in expired_notifications %}
-                                    <div class="list-group-item">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1 text-muted">{{ notif.title }}</h6>
-                                            <small class="text-muted">{{ notif.date }}</small>
-                                        </div>
-                                        <p class="mb-1 text-muted">{{ notif.message }}</p>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <div class="text-center py-5 text-muted">
-                                <i class="fas fa-archive fa-3x mb-3"></i>
-                                <p>اعلان منقضی شده‌ای وجود ندارد.</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white rounded-top-4">
+          <h5 class="mb-0 fw-bold"><i class="fas fa-bell me-2"></i>اعلانات شما</h5>
         </div>
+        <div class="card-body p-0">
+          <!-- Nav Tabs -->
+          <ul
+            class="nav nav-tabs"
+            id="notificationTab"
+            role="tablist"
+          >
+            <li
+              class="nav-item"
+              role="presentation"
+            >
+              <button
+                class="nav-link active"
+                id="active-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#active"
+                type="button"
+                role="tab"
+              >
+                <i class="fas fa-inbox me-1"></i>اعلانات موجود {% if active_notifications|length > 0 %}
+                <span class="badge bg-light text-dark ms-1">{{ active_notifications|length }}</span>
+                {% endif %}
+              </button>
+            </li>
+            <li
+              class="nav-item"
+              role="presentation"
+            >
+              <button
+                class="nav-link"
+                id="expired-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#expired"
+                type="button"
+                role="tab"
+              >
+                <i class="fas fa-archive me-1"></i>اعلانات منقضی شده {% if expired_notifications|length > 0 %}
+                <span class="badge bg-secondary ms-1">{{ expired_notifications|length }}</span>
+                {% endif %}
+              </button>
+            </li>
+          </ul>
+
+          <!-- Tab Content -->
+          <div
+            class="tab-content"
+            id="notificationTabContent"
+          >
+            <!-- تب اعلانات موجود -->
+            <div
+              class="tab-pane fade show active"
+              id="active"
+              role="tabpanel"
+              aria-labelledby="active-tab"
+            >
+              {% if active_notifications %}
+              <div class="list-group list-group-flush">
+                {% for notif in active_notifications %}
+                <a
+                  href="#"
+                  class="list-group-item list-group-item-action {% if not notif.is_read %}fw-bold{% endif %}"
+                >
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">{{ notif.title }}</h6>
+                    <small>{{ notif.date }}</small>
+                  </div>
+                  <p class="mb-1 text-muted">{{ notif.message }}</p>
+                  {% if not notif.is_read %}
+                  <small class="text-primary"
+                    ><i
+                      class="fas fa-circle"
+                      style="font-size: 0.5rem"
+                    ></i>
+                    جدید</small
+                  >
+                  {% endif %}
+                </a>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="text-center py-5 text-muted">
+                <i class="fas fa-bell-slash fa-3x mb-3"></i>
+                <p>اعلان فعالی وجود ندارد.</p>
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- تب اعلانات منقضی شده -->
+            <div
+              class="tab-pane fade"
+              id="expired"
+              role="tabpanel"
+              aria-labelledby="expired-tab"
+            >
+              {% if expired_notifications %}
+              <div class="list-group list-group-flush">
+                {% for notif in expired_notifications %}
+                <div class="list-group-item">
+                  <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1 text-muted">{{ notif.title }}</h6>
+                    <small class="text-muted">{{ notif.date }}</small>
+                  </div>
+                  <p class="mb-1 text-muted">{{ notif.message }}</p>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="text-center py-5 text-muted">
+                <i class="fas fa-archive fa-3x mb-3"></i>
+                <p>اعلان منقضی شده‌ای وجود ندارد.</p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

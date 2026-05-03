@@ -2,19 +2,36 @@
 <html
 	lang="fa"
 	dir="rtl"
+	data-bs-theme="dark"
 >
 	<head>
 		{% load static %}
+		<script>
+			(function () {
+				try {
+					var stored = localStorage.getItem("site-theme");
+					if (stored) {
+						var vars = JSON.parse(stored);
+						var style = document.documentElement.style;
+						for (var key in vars) {
+							if (vars.hasOwnProperty(key)) {
+								style.setProperty(key, vars[key]);
+							}
+						}
+					}
+				} catch (e) {
+					/* بی‌صدا */
+				}
+			})();
+		</script>
 		<style>
 			@font-face {
 				font-family: "estedad";
 				src: url("{% static 'cdn/fonts/Estedad-v7.3/webfonts/variable/Estedad-FD[KSHD,wght].woff2' %}") format("woff2");
 			}
-
 			* {
 				font-family: "estedad" !important;
 			}
-
 			i {
 				font-family: "Font Awesome 6 Free" !important;
 			}
@@ -22,7 +39,7 @@
 		<meta charset="UTF-8" />
 		<meta
 			name="viewport"
-			content="width=device-width, initial-scale=1.0"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover"
 		/>
 		<meta
 			name="description"
@@ -32,14 +49,21 @@
 			name="robots"
 			content="noindex, nofollow"
 		/>
+		<meta
+			name="theme-color"
+			content="#0f172a"
+		/>
+		<meta
+			name="apple-mobile-web-app-capable"
+			content="yes"
+		/>
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content="black-translucent"
+		/>
 		<title>{% block title %}karimax - سیستم مدیریت پرسنل{% endblock %}</title>
 
-		<!-- Load static files -->
-
-		<!-- ///////////////////////// -->
-
-		<!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
-		<!-- <script src="{% static 'cdn/jquery/3.6.0/jquery.min.js' %}"></script> -->
+		<!-- jQuery -->
 		<script
 			src="https://lib.arvancloud.ir/jquery/3.6.3/jquery.js"
 			crossorigin="anonymous"
@@ -50,79 +74,53 @@
 			crossorigin="anonymous"
 			referrerpolicy="no-referrer"
 		></script>
-		<!-- <script src="https://lib.arvancloud.ir/jquery/3.6.0/jquery.js"></script> -->
-		<!-- <script src="https://lib.arvancloud.ir/jquery/3.6.0/jquery.min.js"></script> -->
 
-		<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"> -->
-		<!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+		<!-- SweetAlert2 -->
 		<script
 			src="https://lib.arvancloud.ir/sweetalert2/9.17.4/sweetalert2.all.js"
 			crossorigin="anonymous"
 			referrerpolicy="no-referrer"
 		></script>
-		<!-- <script src="https://lib.arvancloud.ir/sweetalert2/9.17.4/sweetalert2.css" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
-		<!-- <script src="https://lib.arvancloud.ir/sweetalert2/9.17.4/sweetalert2.d.ts" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
 		<link
 			rel="stylesheet"
 			href="https://lib.arvancloud.ir/sweetalert2/9.17.4/sweetalert2.css"
 		/>
 
-		<!-- <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" /> -->
-		<!-- <script src="https://lib.arvancloud.ir/vazir-font/33.003/Farsi-Digits-Non-Latin/Vazirmatn-FD-NL-font-face.css" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
-		<!-- <link href="https://lib.arvancloud.ir/vazir-font/33.003/Farsi-Digits-Non-Latin/Vazirmatn-FD-NL-font-face.css" rel="stylesheet" type="text/css" /> -->
+		<!-- Vazirmatn font -->
 		<link
 			href="{% static 'cdn/vazir-font/33.003/Farsi-Digits-Non-Latin/Vazirmatn-FD-NL-font-face.css' %}"
 			rel="stylesheet"
 			type="text/css"
 		/>
 
-		<!-- ///////////////////////// -->
-
+		<!-- Favicon -->
 		<link
 			rel="icon"
 			href="{% static 'favicon.ico' %}"
 			type="image/x-icon"
 		/>
 
-		<!-- Bootstrap 5 CSS -->
-		<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet"> -->
+		<!-- Bootstrap 5 RTL -->
 		<link
 			href="https://lib.arvancloud.ir/bootstrap/5.1.3/css/bootstrap.rtl.min.css"
 			rel="stylesheet"
 		/>
-		<!-- <link href="{% static 'cdn/bootstrap/5.1.3/css/bootstrap.rtl.min.css' %}" rel="stylesheet"> -->
-
-		<!-- <script src="https://lib.arvancloud.ir/bootstrap/5.1.3/css/bootstrap.rtl.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
 
 		<!-- Font Awesome -->
-		<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"> -->
-		<!-- <link rel="stylesheet" href="{% static 'cdn/font-awesome/6.0.0/css/all.min.css' %}"> -->
 		<link
 			rel="stylesheet"
 			href="https://lib.arvancloud.ir/font-awesome/6.0.0/css/all.min.css"
 		/>
-		<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
-		<!-- <link rel="stylesheet" href="{% static 'cdn/font-awesome/6.3.0/css/all.min.css' %}" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
-		<!-- <link rel="stylesheet" href="{% static 'cdn/font-awesome/6.3.0/css/all.min.css' %}"/> -->
 		<link
 			rel="stylesheet"
 			href="https://lib.arvancloud.ir/font-awesome/6.3.0/css/all.min.css"
 		/>
 
-		<!-- Google Fonts - Vazir -->
-		<!-- <link href="https://fonts.googleapis.com/css2?family=Vazir:wght@300;400;700&display=swap" rel="stylesheet"> -->
-		<!-- Custom CSS -->
-		<link
-			rel="stylesheet"
-			href="{% static 'css/style.css' %}"
-		/>
-		{% block extra_css %}{% endblock %}
-		<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"> -->
+		<!-- bootstrap icons -->
 		<link
 			rel="stylesheet"
 			href="{% static 'cdn/bootstrap-icons/1.9.1/font/bootstrap-icons.min.css' %}"
 		/>
-
 		<link
 			rel="stylesheet"
 			href="{% static 'cdn/bootstrap-icons/1.13.0/font/bootstrap-icon.min.css' %}"
@@ -132,70 +130,65 @@
 			href="{% static 'cdn/bootstrap-icons/1.13.0/font/bootstrap-icons-optimized.min.css' %}"
 		/>
 
-		<!-- <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> -->
-		<!-- <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script> -->
-
+		<!-- select2 -->
 		<link
 			href="{% static 'cdn/select2/4.1.0-rc.0/css/select2.min.css' %}"
 			rel="stylesheet"
 		/>
-		<!-- <script src="https://lib.arvancloud.ir/select2/4.1.0-rc.0/css/select2.min.css" rel="stylesheet"></script> -->
-
 		<script src="{% static 'cdn/select2/4.1.0-rc.0/js/select2.min.js' %}"></script>
-		<!-- <script src="https://lib.arvancloud.ir/select2/4.1.0-rc.0/js/select2.min.js"></script> -->
 
+		<!-- Jalali datepicker -->
 		<link
 			rel="stylesheet"
 			href="{% static 'cdn/jalalidatepicker/dist/jalalidatepicker.min.css' %}"
 		/>
 		<script src="{% static 'cdn/jalalidatepicker/dist/jalalidatepicker.min.js' %}"></script>
 
-		<!-- <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet"> -->
-		<!-- <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script> -->
+		<!-- Tom Select -->
 		<link
 			href="{% static 'cdn/tom-select/2.2.2/css/tom-select.css' %}"
 			rel="stylesheet"
 		/>
-		<!-- <script src="{% static 'cdn/tom-select/2.2.2/js/tom-select.complete.min.js' %}"></script> -->
 		<script src="https://lib.arvancloud.ir/tom-select/2.2.2/js/tom-select.complete.min.js"></script>
 
-		<!-- <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" /> -->
+		<!-- select2 bootstrap5 theme -->
 		<link
 			href="{% static 'cdn/select2-bootstrap-5-theme/1.3.0/select2-bootstrap-5-theme.min.css' %}"
 			rel="stylesheet"
 		/>
 
-		<!-- Scripts -->
-		<!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script> -->
+		<!-- Bootstrap JS -->
 		<script src="{% static 'cdn/bootstrap/5.1.3/js/bootstrap.bundle.min.js' %}"></script>
 
+		<!-- Custom JS -->
 		<script src="{% static 'js/custom.js' %}"></script>
 
-		<!-- <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script> -->
+		<!-- Audio recording -->
 		<script src="{% static 'cdn/lamejs/1.2.1/lame.min.js' %}"></script>
-		<!-- <script src="https://lib.arvancloud.ir/lamejs/1.2.1/lame.min.js"></script> -->
 
-		<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script> -->
+		<!-- Chart.js -->
 		<script src="{% static 'cdn/Chart.js/4.2.1/chart.umd.js' %}"></script>
 		<script src="{% static 'cdn/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js' %}"></script>
 
+		<!-- animate.css -->
 		<link
 			rel="stylesheet"
 			href="{% static 'cdn/animate.css/4.1.1/animate.min.css' %}"
 		/>
 
-		<!-- <script src="https://lib.arvancloud.ir/choices.js/9.1.0/choices.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-        <script src="https://lib.arvancloud.ir/choices.js/9.1.0/choices.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-        <script src="https://cdn.jsdelivr.net/npm/choices.js@9.0.1/public/assets/scripts/choices.min.js"></script>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@9.0.1/public/assets/styles/choices.min.css" /> -->
-
+		<!-- choices.js -->
 		<script src="{% static 'cdn/choices.js/9.1.0/choices.min.js' %}"></script>
 		<link
 			rel="stylesheet"
 			href="{% static 'cdn/choices.js/9.1.0/choices.min.css' %}"
 		/>
+
+		<!-- Custom CSS (بازنویسی کامل - مدرن و ریسپانسیو) -->
+		<link
+			rel="stylesheet"
+			href="{% static 'css/style.css' %}"
+		/>
+		{% block extra_css %}{% endblock %}
 	</head>
 	<body>
 		<!-- Loading Spinner -->
@@ -204,40 +197,54 @@
 			class="loading-overlay"
 			style="display: none"
 		>
-			<div
-				class="spinner-border text-primary"
-				role="status"
-			>
-				<span class="visually-hidden">در حال بارگذاری...</span>
+			<div class="spinner-container">
+				<div
+					class="spinner-visual"
+					role="status"
+				>
+					<span class="visually-hidden">در حال بارگذاری...</span>
+				</div>
+				<p class="loading-text">لطفاً شکیبا باشید...</p>
 			</div>
 		</div>
 
-		<!-- Top Navigation (only for authenticated users) -->
 		{% if user.is_authenticated %}
-		<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+		<!-- نوار ناوبری مدرن شیشه‌ای با قابلیت Sidebar در موبایل -->
+		<nav
+			class="navbar navbar-expand-lg fixed-top glass-navbar"
+			id="mainNavbar"
+		>
 			<div class="container-fluid">
 				<a
 					class="navbar-brand d-flex align-items-center"
 					href="{% url 'users:dashboard' %}"
 				>
-					<i class="fas fa-users me-2"></i>
-					<span>karimax</span>
+					<i class="fas fa-users me-2 brand-icon"></i>
+					<span class="brand-text">karimax</span>
 				</a>
 
+				<!-- دکمه همبرگری برای موبایل -->
 				<button
-					class="navbar-toggler"
+					class="navbar-toggler border-0"
 					type="button"
 					data-bs-toggle="collapse"
 					data-bs-target="#navbarNav"
+					aria-controls="navbarNav"
+					aria-expanded="false"
+					aria-label="Toggle navigation"
 				>
-					<span class="navbar-toggler-icon"></span>
+					<span class="navbar-toggler-icon-custom">
+						<span></span>
+						<span></span>
+						<span></span>
+					</span>
 				</button>
 
 				<div
 					class="collapse navbar-collapse"
 					id="navbarNav"
 				>
-					<ul class="navbar-nav me-auto">
+					<ul class="navbar-nav me-auto mb-2 mb-lg-0">
 						<li class="nav-item">
 							<a
 								class="nav-link"
@@ -252,13 +259,10 @@
 								class="nav-link"
 								href="{% url 'users:food_reservation' %}"
 							>
-								<i class="fas fa-utensils me-1"></i> رزرو غذا
+								<i class="fas fa-utensils me-1"></i>رزرو غذا
 							</a>
 						</li>
-						{% endif %}
-
-						<!-- فقط شرط‌های ساده و بدون loop -->
-						{% if has_management_access %}
+						{% endif %} {% if has_management_access %}
 						<li class="nav-item">
 							<a
 								class="nav-link"
@@ -276,17 +280,7 @@
 								<i class="fas fa-user-cog me-1"></i>مدیریت کاربران
 							</a>
 						</li>
-						{% endif %}
-
-						<!-- {% if can_access_evaluation_panel %} -->
-						<!-- <li class="nav-item"> -->
-						<!-- <a class="nav-link" href="{% url 'users:evaluation_panel' %}"> -->
-						<!-- <i class="fas fa-chart-line me-1"></i>پنل ارزیابی -->
-						<!-- </a> -->
-						<!-- </li> -->
-						<!-- {% endif %} -->
-
-						{% if is_super_admin %}
+						{% endif %} {% if is_super_admin %}
 						<li class="nav-item">
 							<a
 								class="nav-link"
@@ -307,7 +301,6 @@
 							>
 								شبکه‌های اجتماعی
 							</a>
-
 							<ul
 								class="dropdown-menu social-dropdown-menu"
 								aria-labelledby="socialDropdown"
@@ -326,7 +319,6 @@
 										<span class="icon-label">اینستاگرام</span>
 									</a>
 								</li>
-
 								<li>
 									<a
 										class="dropdown-item social-icon-item"
@@ -341,7 +333,6 @@
 										<span class="icon-label">واتساپ</span>
 									</a>
 								</li>
-
 								<li>
 									<a
 										class="dropdown-item social-icon-item"
@@ -358,17 +349,15 @@
 								</li>
 							</ul>
 						</li>
-
-						<!-- # todo : notifications -->
 						<li class="nav-item me-3">
 							<a
-								class="nav-link position-relative"
+								class="nav-link position-relative notification-bell"
 								href="{% url 'users:notifications' %}"
 							>
 								<i class="fas fa-bell fa-lg"></i>
 								{% if unread_notifications_count > 0 %}
 								<span
-									class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+									class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge"
 									style="font-size: 0.7rem"
 								>
 									{{ unread_notifications_count }}
@@ -378,141 +367,245 @@
 							</a>
 						</li>
 					</ul>
-
-					<!-- User Dropdown -->
+					<!-- منوی کاربر -->
 					<ul class="navbar-nav">
-						<li class="nav-item dropdown">
+						<li class="nav-item dropdown user-dropdown-wrapper">
 							<a
-								class="nav-link dropdown-toggle d-flex align-items-center"
+								class="nav-link dropdown-toggle d-flex align-items-center user-dropdown-toggle"
 								href="#"
 								id="userDropdown"
 								role="button"
 								data-bs-toggle="dropdown"
 								aria-expanded="false"
+								data-bs-auto-close="outside"
 							>
 								<img
 									src="{% static 'images/user-avatar.png' %}"
-									class="rounded-circle me-2"
+									class="rounded-circle me-2 user-avatar"
 									width="32"
 									height="32"
 									alt="Avatar"
+									loading="lazy"
 								/>
-								{% if role_name == 'super_admin' %}مدیر سیستم : {{ user.full_name }}{% endif %} {% if role_name == 'holding_manager' %}مدیر هلدینگ : {{ user.full_name }}{% endif %} {% if role_name == 'factory_manager' %}مدیر کارخانه : {{ user.full_name }}{% endif %} {% if role_name == 'department_manager' %}مدیر بخش : {{ user.full_name }}{% endif %} {% if role_name == 'supervisor' %}سرپرست بخش : {{ user.full_name }}{% endif %} {% if role_name == 'employee' %}کارمند : {{ user.full_name }}{% endif %}
-								<!-- <span class="badge badge-{% if role_name == 'super_admin' %}danger -->
-								<!-- {% elif role_name == 'department_manager' %}warning -->
-								<!-- {% elif role_name == 'supervisor' %}info -->
-								<!-- {% else %}secondary -->
-								<!-- {% endif %} ms-2"> -->
-								<!-- </span> -->
+								<span class="user-display-name"> {% if role_name == 'super_admin' %}مدیر سیستم : {{ user.full_name }}{% endif %} {% if role_name == 'holding_manager' %}مدیر هلدینگ : {{ user.full_name }}{% endif %} {% if role_name == 'factory_manager' %}مدیر کارخانه : {{ user.full_name }}{% endif %} {% if role_name == 'department_manager' %}مدیر بخش : {{ user.full_name }}{% endif %} {% if role_name == 'supervisor' %}سرپرست بخش : {{ user.full_name }}{% endif %} {% if role_name == 'employee' %}کارمند : {{ user.full_name }}{% endif %} </span>
 							</a>
-							<!-- <ul class="dropdown-menu dropdown-menu-end"> -->
-							<!-- <li><hr class="dropdown-divider"></li> -->
-							<!-- <li> -->
-							<!-- <form action="{% url 'users:logout' %}" method="post" style="display:inline;"> -->
-							<!-- {% csrf_token %} -->
-							<!-- <button type="submit" class="dropdown-item"> -->
-							<!-- <i class="fas fa-sign-out-alt me-2"></i>خروج -->
-							<!-- </button> -->
-							<!-- </form> -->
-							<!-- </li> -->
-							<!-- </ul> -->
 							<ul
-								class="dropdown-menu dropdown-menu-end"
+								class="dropdown-menu dropdown-menu-end user-roles-menu"
 								aria-labelledby="userDropdown"
+								data-bs-auto-close="outside"
+								id="userRolesDropdown"
 							>
-								<li>
+								<li class="dropdown-header-main">
 									<a
 										class="dropdown-item"
 										href="{% url 'users:change_password' %}"
-										>تغییر رمز عبور</a
 									>
+										<i class="fas fa-key me-2"></i>تغییر رمز عبور
+									</a>
 								</li>
-
-								<!-- بخش سوییچ نقش بدون تغییر -->
+								<li
+									class="dropdown-item theme-picker-container"
+									role="presentation"
+								>
+									<div class="d-flex align-items-center justify-content-between">
+										<span style="font-size: 0.85rem; opacity: 0.8">انتخاب تم</span>
+										<div class="theme-colors d-flex gap-1">
+											<button
+												type="button"
+												class="theme-btn"
+												data-theme="orange"
+												style="background-color: #f97316"
+												title="نارنجی"
+											></button>
+											<button
+												type="button"
+												class="theme-btn"
+												data-theme="blue"
+												style="background-color: #3b82f6"
+												title="آبی"
+											></button>
+											<button
+												type="button"
+												class="theme-btn"
+												data-theme="green"
+												style="background-color: #10b981"
+												title="سبز"
+											></button>
+											<button
+												type="button"
+												class="theme-btn"
+												data-theme="purple"
+												style="background-color: #8b5cf6"
+												title="بنفش"
+											></button>
+											<button
+												type="button"
+												class="theme-btn"
+												data-theme="red"
+												style="background-color: #ef4444"
+												title="قرمز"
+											></button>
+											<button
+												type="button"
+												class="theme-btn"
+												data-theme="rose"
+												style="background-color: #f43f5e"
+												title="صورتی"
+											></button>
+										</div>
+									</div>
+								</li>
 								<li><hr class="dropdown-divider" /></li>
-								<li class="dropdown-header">نقش‌های شما:</li>
-
+								<li class="dropdown-header tree-header-title">نقش‌های شما:</li>
 								{% for system in management_tree %}
-								<li class="dropdown-item-text">سامانه</li>
-								{% if system.role != 'None' %}
-								<li>
+								<li class="tree-item tree-root">
+									<span class="tree-node-label system-label">سامانه</span>
+									{% if system.role != 'None' %}
 									<a
-										class="dropdown-item text-primary"
+										class="dropdown-item tree-role-link system-role-link"
 										href="{% url 'users:switch_role' %}?role={{ system.role }}&holding_id=None&factory_id=None&department_id=None&subdepartment_id=None"
 									>
-										مدیر سیستم
+										<i class="fas fa-shield-haltered me-1"></i>مدیر سیستم
 									</a>
+									{% endif %}
 								</li>
-								{% endif %} {% for holding in system.holdings %}
-								<li class="dropdown-item-text">{{ holding.name }}</li>
-								{% if holding.role %}
-								<li>
-									<a
-										class="dropdown-item text-primary"
-										href="{% url 'users:switch_role' %}?role={{ holding.role }}&holding_id={{ holding.id }}&factory_id=None&department_id=None&subdepartment_id=None"
+								{% for holding in system.holdings %}
+								<li class="tree-item tree-branch">
+									<button
+										class="tree-toggle collapsed"
+										data-bs-toggle="collapse"
+										data-bs-target="#holding-{{ holding.id }}"
+										aria-expanded="false"
+										type="button"
 									>
-										مدیر هلدینگ
-									</a>
+										<i class="fas fa-chevron-left tree-chevron"></i>
+										<span class="tree-node-label">{{ holding.name }}</span>
+									</button>
+									<ul
+										class="tree-sub collapse"
+										id="holding-{{ holding.id }}"
+									>
+										{% if holding.role %}
+										<li>
+											<a
+												class="dropdown-item tree-role-link"
+												href="{% url 'users:switch_role' %}?role={{ holding.role }}&holding_id={{ holding.id }}&factory_id=None&department_id=None&subdepartment_id=None"
+											>
+												<i class="fas fa-building me-1"></i>مدیر هلدینگ
+											</a>
+										</li>
+										{% endif %} {% for factory in holding.factories %}
+										<li class="tree-item tree-branch">
+											<button
+												class="tree-toggle collapsed"
+												data-bs-toggle="collapse"
+												data-bs-target="#factory-{{ factory.id }}"
+												type="button"
+											>
+												<i class="fas fa-chevron-left tree-chevron"></i>
+												<span class="tree-node-label">{{ factory.name }}</span>
+											</button>
+											<ul
+												class="tree-sub collapse"
+												id="factory-{{ factory.id }}"
+											>
+												{% if factory.role %}
+												<li>
+													<a
+														class="dropdown-item tree-role-link"
+														href="{% url 'users:switch_role' %}?role={{ factory.role }}&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id=None&subdepartment_id=None"
+													>
+														<i class="fas fa-industry me-1"></i>مدیر کارخانه
+													</a>
+												</li>
+												{% endif %} {% for department in factory.departments %}
+												<li class="tree-item tree-branch">
+													<button
+														class="tree-toggle collapsed"
+														data-bs-toggle="collapse"
+														data-bs-target="#dept-{{ department.id }}"
+														type="button"
+													>
+														<i class="fas fa-chevron-left tree-chevron"></i>
+														<span class="tree-node-label">{{ department.name }}</span>
+													</button>
+													<ul
+														class="tree-sub collapse"
+														id="dept-{{ department.id }}"
+													>
+														{% if department.roles %} {% for dept_role in department.roles %} {% if dept_role == 'department_manager' %}
+														<li>
+															<a
+																class="dropdown-item tree-role-link"
+																href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=1"
+															>
+																<i class="fas fa-user-tie me-1"></i>مدیر بخش (اصلی)
+															</a>
+														</li>
+														{% elif dept_role == 'department_manager_2' %}
+														<li>
+															<a
+																class="dropdown-item tree-role-link"
+																href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager_2&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=2"
+															>
+																<i class="fas fa-user-tie me-1"></i>مدیر بخش (کمیته 2)
+															</a>
+														</li>
+														{% elif dept_role == 'department_manager_3' %}
+														<li>
+															<a
+																class="dropdown-item tree-role-link"
+																href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager_3&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=3"
+															>
+																<i class="fas fa-user-tie me-1"></i>مدیر بخش (کمیته 3)
+															</a>
+														</li>
+														{% endif %} {% endfor %} {% endif %} {% for subdepartment in department.subdepartments %}
+														<li class="tree-item tree-branch">
+															<button
+																class="tree-toggle collapsed"
+																data-bs-toggle="collapse"
+																data-bs-target="#subdept-{{ subdepartment.id }}"
+																type="button"
+															>
+																<i class="fas fa-chevron-left tree-chevron"></i>
+																<span class="tree-node-label">{{ subdepartment.name }}</span>
+															</button>
+															<ul
+																class="tree-sub collapse"
+																id="subdept-{{ subdepartment.id }}"
+															>
+																{% if subdepartment.roles %}
+																<li>
+																	{% if 'supervisor' in subdepartment.roles %}
+																	<a
+																		class="dropdown-item tree-role-link"
+																		href="{% url 'users:switch_role' %}?role=supervisor&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id={{ subdepartment.id }}"
+																	>
+																		<i class="fas fa-clipboard-check me-1"></i>سرپرست
+																	</a>
+																	{% endif %} {% if 'employee' in subdepartment.roles %}
+																	<a
+																		class="dropdown-item tree-role-link"
+																		href="{% url 'users:switch_role' %}?role=employee&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id={{ subdepartment.id }}"
+																	>
+																		<i class="fas fa-user me-1"></i>کارمند
+																	</a>
+																	{% endif %}
+																</li>
+																{% endif %}
+															</ul>
+														</li>
+														{% endfor %}
+													</ul>
+												</li>
+												{% endfor %}
+											</ul>
+										</li>
+										{% endfor %}
+									</ul>
 								</li>
-								{% endif %} {% for factory in holding.factories %}
-								<li class="dropdown-item-text ms-3">{{ factory.name }}</li>
-								{% if factory.role %}
-								<li class="ms-3">
-									<a
-										class="dropdown-item text-primary"
-										href="{% url 'users:switch_role' %}?role={{ factory.role }}&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id=None&subdepartment_id=None"
-									>
-										مدیر کارخانه
-									</a>
-								</li>
-								{% endif %} {% for department in factory.departments %}
-								<li class="dropdown-item-text ms-5">{{ department.name }}</li>
-								{% if department.roles %} {% for dept_role in department.roles %} {% if dept_role == 'department_manager' %}
-								<li class="ms-5">
-									<a
-										class="dropdown-item text-primary"
-										href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=1"
-									>
-										مدیر بخش (اصلی)
-									</a>
-								</li>
-								{% elif dept_role == 'department_manager_2' %}
-								<li class="ms-5">
-									<a
-										class="dropdown-item text-primary"
-										href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager_2&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=2"
-									>
-										مدیر بخش (کمیته 2)
-									</a>
-								</li>
-								{% elif dept_role == 'department_manager_3' %}
-								<li class="ms-5">
-									<a
-										class="dropdown-item text-primary"
-										href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager_3&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=3"
-									>
-										مدیر بخش (کمیته 3)
-									</a>
-								</li>
-								{% endif %} {% endfor %} {% endif %} {% for subdepartment in department.subdepartments %}
-								<li class="dropdown-item-text ms-5">{{ subdepartment.name }}</li>
-								{% if subdepartment.roles %}
-								<li class="ms-5">
-									<a
-										class="dropdown-item text-primary"
-										href="{% url 'users:switch_role' %}?role=supervisor&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id={{ subdepartment.id }}"
-									>
-										{% if 'supervisor' in subdepartment.roles%} سرپرست {% endif %}
-									</a>
-									<a
-										class="dropdown-item text-primary"
-										href="{% url 'users:switch_role' %}?role=employee&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id={{ subdepartment.id }}"
-									>
-										{% if 'employee' in subdepartment.roles%} کارمند {% endif %}
-									</a>
-								</li>
-								{% endif %} {% endfor %} {% endfor %} {% endfor %} {% endfor %} {% endfor %}
-
+								{% endfor %} {% endfor %}
 								<li><hr class="dropdown-divider" /></li>
 								<li>
 									<form
@@ -523,10 +616,10 @@
 										{% csrf_token %}
 										<button
 											type="submit"
-											class="dropdown-item"
+											class="dropdown-item logout-btn"
 											style="width: 100%; text-align: right"
 										>
-											خروج
+											<i class="fas fa-sign-out-alt me-2"></i>خروج
 										</button>
 									</form>
 								</li>
@@ -539,16 +632,15 @@
 		{% endif %}
 
 		<!-- Main Content -->
-		<div class="container-fluid mt-5 pt-3">
-			<!-- Breadcrumb (only for authenticated users) -->
+		<div class="container-fluid mt-5 pt-3 main-container">
 			{% if user.is_authenticated and request.resolver_match %}
 			<nav
-				style="--bs-breadcrumb-divider: &quot;>&quot;"
+				style="--bs-breadcrumb-divider: &quot;›&quot;"
 				aria-label="breadcrumb"
 			>
 				<ol class="breadcrumb">
 					<li class="breadcrumb-item">
-						<a href="{% url 'users:dashboard' %}">داشبورد</a>
+						<a href="{% url 'users:dashboard' %}"><i class="fas fa-home me-1"></i>داشبورد</a>
 					</li>
 					<li
 						class="breadcrumb-item active"
@@ -558,31 +650,412 @@
 					</li>
 				</ol>
 			</nav>
-			{% endif %}
-
-			<!-- Messages -->
-			{% if messages %} {% for message in messages %}
+			{% endif %} {% if messages %} {% for message in messages %}
 			<div
-				class="alert alert-{{ message.tags }} alert-dismissible fade show"
+				class="alert alert-{{ message.tags }} alert-dismissible fade show glass-alert"
 				role="alert"
 			>
-				<i class="fas fa-{% if message.tags == 'success' %}check-circle {% elif message.tags == 'error' %}exclamation-triangle {% elif message.tags == 'warning' %}exclamation {% else %}info-circle {% endif %} me-2"></i>
+				<i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'warning' %}exclamation{% else %}info-circle{% endif %} me-2"></i>
 				{{ message }}
 				<button
 					type="button"
 					class="btn-close"
 					data-bs-dismiss="alert"
+					aria-label="Close"
 				></button>
 			</div>
 			{% endfor %} {% endif %} {% block content %}{% endblock %}
 		</div>
 
 		<!-- Footer -->
-		<footer class="bg-light text-center text-lg-start mt-5 py-3">
-			<div class="text-center">
-				<p class="text-muted mb-0">&copy; {{ "now"|date:"Y" }} سیستم مدیریت پرسنل - تمامی حقوق محفوظ است</p>
-			</div>
+		<footer class="text-center mt-5 py-3 footer-modern">
+			<p class="text-muted mb-0">&copy; {{ "now"|date:"Y" }} سیستم مدیریت پرسنل - تمامی حقوق محفوظ است</p>
 		</footer>
+
+		<!-- اسکریپت تثبیت رفتار درخت نقش‌ها (بدون بسته شدن دراپ‌داون) -->
+		<script>
+			(function () {
+				"use strict";
+
+				/**
+				 * رفع مشکل بسته شدن دراپ‌داون بوت‌استرپ هنگام کلیک روی
+				 * دکمه‌های باز/بسته شدن درخت نقش‌ها (tree-toggle).
+				 * با هر کلیک/تـَپ، منو دیگر بسته نمی‌شود و کاربر
+				 * می‌تواند به‌راحتی در ساختار درختی پیمایش کند.
+				 */
+				function initTreeDropdownFix() {
+					const dropdownElement = document.getElementById("userRolesDropdown");
+					if (!dropdownElement) return;
+
+					// Bootstrap 5 dropdown instance
+					const bsDropdown = bootstrap.Dropdown.getInstance(dropdownElement) || bootstrap.Dropdown.getOrCreateInstance(dropdownElement);
+
+					// جلوگیری از بسته شدن هنگام کلیک روی toggle های درختی
+					dropdownElement.addEventListener("click", function (e) {
+						const toggleBtn = e.target.closest(".tree-toggle");
+						if (toggleBtn) {
+							e.stopPropagation();
+							e.preventDefault();
+
+							// مدیریت دستی collapse بوت‌استرپ
+							const targetId = toggleBtn.getAttribute("data-bs-target");
+							if (targetId) {
+								const targetEl = document.querySelector(targetId);
+								if (targetEl) {
+									const bsCollapse = bootstrap.Collapse.getInstance(targetEl) || new bootstrap.Collapse(targetEl, { toggle: false });
+									bsCollapse.toggle();
+
+									// چرخاندن آیکون شِورون
+									toggleBtn.classList.toggle("collapsed");
+									const isExpanded = targetEl.classList.contains("show");
+									toggleBtn.setAttribute("aria-expanded", isExpanded);
+								}
+							}
+							return false;
+						}
+
+						// جلوگیری از بسته شدن روی لینک‌های تغییر نقش
+						const roleLink = e.target.closest(".tree-role-link");
+						if (roleLink) {
+							// اجازه می‌دهیم لینک کار کند اما دراپ‌داون را هم باز نگه می‌داریم
+							// (کاربر پس از تغییر نقش رفرش می‌شود)
+							e.stopPropagation();
+						}
+					});
+
+					// اطمینان از باز ماندن هنگام تعامل با آیتم‌های داخلی
+					dropdownElement.addEventListener("hide.bs.dropdown", function (e) {
+						// اگر کاربر در حال تعامل با toggle درختی است، از بسته شدن جلوگیری کن
+						if (dropdownElement.contains(document.activeElement) && document.activeElement.closest(".tree-toggle")) {
+							e.preventDefault();
+						}
+					});
+				}
+
+				// اجرا پس از آماده‌شدن DOM
+				if (document.readyState === "loading") {
+					document.addEventListener("DOMContentLoaded", initTreeDropdownFix);
+				} else {
+					initTreeDropdownFix();
+				}
+			})();
+			(function () {
+				"use strict";
+
+				var themes = {
+					orange: {
+						"--primary": "#f97316",
+						"--primary-dark": "#ea580c",
+						"--primary-light": "#ffedd5",
+						"--primary-glow": "rgba(249, 115, 22, 0.3)",
+						"--secondary": "#f59e0b",
+						"--secondary-dark": "#d97706",
+						"--secondary-light": "#fef3c7",
+						"--secondary-glow": "rgba(245, 158, 11, 0.3)",
+					},
+					blue: {
+						"--primary": "#3b82f6",
+						"--primary-dark": "#2563eb",
+						"--primary-light": "#dbeafe",
+						"--primary-glow": "rgba(59, 130, 246, 0.3)",
+						"--secondary": "#14b8a6", // فیروزه‌ای
+						"--secondary-dark": "#0d9488",
+						"--secondary-light": "#ccfbf1",
+						"--secondary-glow": "rgba(20, 184, 166, 0.3)",
+					},
+					green: {
+						"--primary": "#10b981",
+						"--primary-dark": "#059669",
+						"--primary-light": "#d1fae5",
+						"--primary-glow": "rgba(16, 185, 129, 0.3)",
+						"--secondary": "#84cc16", // لیمویی
+						"--secondary-dark": "#65a30d",
+						"--secondary-light": "#ecfccb",
+						"--secondary-glow": "rgba(132, 204, 22, 0.3)",
+					},
+					purple: {
+						"--primary": "#8b5cf6",
+						"--primary-dark": "#7c3aed",
+						"--primary-light": "#ede9fe",
+						"--primary-glow": "rgba(139, 92, 246, 0.3)",
+						"--secondary": "#ec4899", // صورتی پررنگ
+						"--secondary-dark": "#db2777",
+						"--secondary-light": "#fce7f3",
+						"--secondary-glow": "rgba(236, 72, 153, 0.3)",
+					},
+					red: {
+						"--primary": "#ef4444",
+						"--primary-dark": "#dc2626",
+						"--primary-light": "#fee2e2",
+						"--primary-glow": "rgba(239, 68, 68, 0.3)",
+						"--secondary": "#eab308", // زرد
+						"--secondary-dark": "#ca8a04",
+						"--secondary-light": "#fef9c3",
+						"--secondary-glow": "rgba(234, 179, 8, 0.3)",
+					},
+					rose: {
+						"--primary": "#f43f5e",
+						"--primary-dark": "#e11d48",
+						"--primary-light": "#ffe4e6",
+						"--primary-glow": "rgba(244, 63, 94, 0.3)",
+						"--secondary": "#a855f7", // بنفش
+						"--secondary-dark": "#9333ea",
+						"--secondary-light": "#f3e8ff",
+						"--secondary-glow": "rgba(168, 85, 247, 0.3)",
+					},
+				};
+
+				var root = document.documentElement;
+
+				// اعمال تم
+				function applyTheme(themeName) {
+					var vars = themes[themeName];
+					if (!vars) return;
+
+					// تنظیم متغیرها روی root
+					for (var key in vars) {
+						if (vars.hasOwnProperty(key)) {
+							root.style.setProperty(key, vars[key]);
+						}
+					}
+
+					// ذخیره در localStorage
+					try {
+						localStorage.setItem("site-theme", JSON.stringify(vars));
+						localStorage.setItem("site-theme-name", themeName);
+					} catch (e) {}
+
+					// بروزرسانی کلاس‌های active روی دکمه‌ها
+					var buttons = document.querySelectorAll(".theme-btn");
+					buttons.forEach(function (btn) {
+						btn.classList.remove("active-theme");
+						if (btn.getAttribute("data-theme") === themeName) {
+							btn.classList.add("active-theme");
+						}
+					});
+				}
+
+				// راه‌اندازی اولیه در DOM
+				function initThemeButtons() {
+					var container = document.querySelector(".theme-colors");
+					if (!container) return;
+
+					// مشخص کردن تم فعلی
+					var currentTheme = null;
+					try {
+						currentTheme = localStorage.getItem("site-theme-name") || "orange";
+					} catch (e) {
+						currentTheme = "orange";
+					}
+					applyTheme(currentTheme);
+
+					// event delegation
+					container.addEventListener("click", function (e) {
+						var btn = e.target.closest(".theme-btn");
+						if (!btn) return;
+						e.stopPropagation(); // جلوگیری از بسته‌شدن dropdown
+						var theme = btn.getAttribute("data-theme");
+						if (theme) {
+							applyTheme(theme);
+						}
+					});
+				}
+
+				if (document.readyState === "loading") {
+					document.addEventListener("DOMContentLoaded", initThemeButtons);
+				} else {
+					initThemeButtons();
+				}
+			})();
+		</script>
+
+		<!-- /////////////////////////// error handler /////////////////////////// -->
+		<script>
+			(function () {
+				"use strict";
+
+				// ==================== نمایش پیام‌های Django با SweetAlert2 ====================
+				document.addEventListener("DOMContentLoaded", function () {
+					const djangoMessages = document.querySelectorAll(".alert-dismissible");
+					djangoMessages.forEach(function (alert) {
+						const text = alert.textContent.trim();
+						if (!text || text.length < 2) return;
+
+						let icon = "info";
+						let title = "پیام";
+
+						if (alert.classList.contains("alert-success")) {
+							icon = "success";
+							title = "موفق";
+						} else if (alert.classList.contains("alert-danger") || alert.classList.contains("alert-error")) {
+							icon = "error";
+							title = "خطا";
+						} else if (alert.classList.contains("alert-warning")) {
+							icon = "warning";
+							title = "هشدار";
+						}
+
+						Swal.fire({
+							icon: icon,
+							title: title,
+							html: `<p class="mb-0">${text}</p>`,
+							confirmButtonText: "باشه",
+							confirmButtonColor: icon === "error" ? "#d33" : icon === "warning" ? "#f59e0b" : "#3085d6",
+							customClass: {
+								popup: "text-right",
+								title: "text-right",
+								htmlContainer: "text-right",
+							},
+						});
+
+						// مخفی کردن alert اصلی Django
+						alert.style.display = "none";
+					});
+				});
+
+				// ==================== AJAX Error Handler (jQuery) ====================
+				if (typeof jQuery !== "undefined") {
+					$(document).ajaxError(function (event, jqXHR, settings, thrownError) {
+						if (jqXHR.handled) return;
+						if (jqXHR.status === 0) return;
+
+						let message = _extractMessage(jqXHR);
+						let icon = "error";
+						let title = "خطا";
+
+						if (jqXHR.status === 400) {
+							title = "اخطار";
+							icon = "warning";
+						} else if (jqXHR.status === 403) {
+							title = "دسترسی محدود";
+							icon = "warning";
+						} else if (jqXHR.status === 404) {
+							title = "یافت نشد";
+							icon = "warning";
+						} else if (jqXHR.status === 500) {
+							title = "خطای سرور";
+							icon = "error";
+						}
+
+						_showSwal(icon, title, message);
+					});
+				}
+
+				// ==================== Fetch API Interceptor ====================
+				const originalFetch = window.fetch;
+				window.fetch = function (...args) {
+					return originalFetch
+						.apply(this, args)
+						.then((response) => {
+							if (!response.ok) {
+								return response
+									.clone()
+									.text()
+									.then((text) => {
+										let data = null;
+										try {
+											data = JSON.parse(text);
+										} catch (e) {
+											data = { message: text };
+										}
+										return Promise.reject({
+											status: response.status,
+											data: data,
+											handled: false,
+										});
+									});
+							}
+							return response;
+						})
+						.catch((error) => {
+							if (error && error.status && !error.handled) {
+								error.handled = true;
+
+								let message = _extractMessage(error);
+								let icon = "error";
+								let title = "خطا";
+
+								if (error.status === 400) {
+									title = "اخطار";
+									icon = "warning";
+								} else if (error.status === 403) {
+									title = "دسترسی محدود";
+									icon = "warning";
+								} else if (error.status === 404) {
+									title = "یافت نشد";
+									icon = "warning";
+								} else if (error.status === 500) {
+									title = "خطای سرور";
+									icon = "error";
+								} else if (error.status === 0 || error.message === "Failed to fetch") {
+									title = "قطع ارتباط";
+									message = "ارتباط با سرور قطع شد.";
+									icon = "warning";
+								}
+
+								_showSwal(icon, title, message);
+							}
+							return Promise.reject(error);
+						});
+				};
+
+				// ==================== توابع کمکی ====================
+				function _extractMessage(source) {
+					let message = "خطایی در ارتباط با سرور رخ داد.";
+
+					try {
+						let data = source;
+						// اگر jqXHR هست
+						if (source.responseText) {
+							try {
+								data = JSON.parse(source.responseText);
+							} catch (e) {}
+						}
+						// اگر fetch error data داره
+						else if (source.data) {
+							data = source.data;
+						}
+
+						if (typeof data === "string") {
+							message = data;
+						} else if (data.message) {
+							message = data.message;
+						} else if (data.detail) {
+							message = data.detail;
+						} else if (data.error) {
+							message = data.error;
+						}
+
+						// پاکسازی کاراکترهای اضافی
+						message = message
+							.replace(/^\[|\]$/g, "")
+							.replace(/^'|'$/g, "")
+							.replace(/\\n/g, "<br>");
+					} catch (e) {
+						if (source.status === 500) message = "خطای داخلی سرور.";
+						else if (source.status === 403) message = "دسترسی محدود.";
+						else if (source.status === 404) message = "منبع یافت نشد.";
+					}
+
+					return message;
+				}
+
+				function _showSwal(icon, title, message) {
+					Swal.fire({
+						icon: icon,
+						title: title,
+						html: String(message).replace(/\n/g, "<br>"),
+						confirmButtonText: "باشه",
+						confirmButtonColor: icon === "error" ? "#d33" : "#f59e0b",
+						customClass: {
+							popup: "text-right",
+							title: "text-right",
+							htmlContainer: "text-right",
+						},
+					});
+				}
+			})();
+		</script>
 
 		{% block extra_js %}{% endblock %}
 	</body>

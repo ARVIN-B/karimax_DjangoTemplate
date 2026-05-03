@@ -1,430 +1,461 @@
-{% extends 'base.html' %}
-{% load static %}
-{% load custom_filters %}
-
-{% block title %} ایجاد اعلان {% endblock %}
-{% block breadcrumb_title %} ایجاد اعلان {% endblock %}
-
-
-{% block content %}
-<div class="container mt-4">
-    <div class="card shadow">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">
-                <i class="bi bi-megaphone-fill me-2"></i>
-                ارسال اعلان جدید
-            </h4>
-        </div>
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-
-                <div class="mb-3">
-                    <label class="form-label">عنوان اعلان <span class="text-danger">*</span></label>
-                    <input type="text" name="title" class="form-control" value="{{ title|default:'' }}" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">توضیحات اعلان <span class="text-danger">*</span></label>
-                    <textarea name="description" class="form-control" rows="6" required>{{ description|default:'' }}</textarea>
-                </div>
-
-                <!-- تاریخ انقضا شمسی -->
-                <div class="mb-3">
-                    <label class="form-label">تاریخ انقضا (شمسی - اختیاری)</label>
-                    <input type="text"
-                           name="expires_at"
-                           id="expires_at_jalali"
-                           data-jdp
-                           class="form-control"
-                           placeholder="مثال: ۱۴۰۴/۰۹/۲۵"
-                           value="{{ expires_at_jalali|default:'' }}">
-                    <small class="text-muted">
-                        اگر خالی باشد، اعلان تا همیشه فعال می‌ماند.
-                    </small>
-                </div>
-
-<!--                {{holdings}}-->
-<!--                {{factories}}-->
-<!--                {{departments}}-->
-<!--                {{subdepartments}}-->
-
-
-
-                {% if can_choose_employee %}
-                    {% if can_choose_subdepartments %}
-                        {% if can_choose_departments %}
-                            {% if can_choose_factories %}
-                                {% if can_choose_holdings %}
-                                    <div class="mb-4">
-                                        <label class="form-label fw-bold">هلدینگ‌های هدف</label>
-                                        <div class="input-group">
-                                            <select name="target_holdings" id="target_holdings_select" multiple placeholder="هلدینگ‌ها را انتخاب کنید..." class="tom-select-target">
-                                                {% for holding in holdings %}
-                                                    <option value="{{ holding.id }}">{{ holding.name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                            <button type="button" class="btn btn-outline-secondary btn-select-all" data-target="target_holdings_select">انتخاب همه</button>
-                                        </div>
-                                    </div>
-                                {% else %}
-                                    {% if holdings %}
-                                        <input type="hidden" name="target_holdings" id="fixed_holding_id" value="{{ holdings.id }}">
-                                        <div class="alert alert-info small mb-3">
-                                            هلدینگ هدف: <strong>{{ holdings.name }}</strong>
-                                        </div>
-                                    {% endif %}
-                                {% endif %}
-
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold">کارخانه‌های هدف</label>
-                                    <div class="input-group">
-                                        <select name="target_factories" id="target_factories_select" multiple placeholder="کارخانه‌ها را انتخاب کنید..." class="tom-select-target">
-                                            {% for factory in factories %}
-                                                <option value="{{ factory.id }}" data-parent-id="{{ factory.holding_id }}">{{ factory.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <button type="button" class="btn btn-outline-secondary btn-select-all" data-target="target_factories_select">انتخاب همه</button>
-                                    </div>
-                                </div>
-
-                            {% else %}
-                                {% if holdings %}
-                                    <input type="hidden" name="target_holdings" id="fixed_holding_id" value="{{ holdings.id }}">
-                                {% endif %}
-                                {% if factories %}
-                                    <input type="hidden" name="target_factories" id="fixed_factory_id" value="{{ factories.id }}">
-                                    <div class="alert alert-info small mb-3">
-                                        کارخانه هدف: <strong>{{ factories.name }}</strong> ({{ factories.holding.name }})
-                                    </div>
-                                {% endif %}
-                            {% endif %}
-
-                            <div class="mb-4">
-                                <label class="form-label fw-bold">بخش‌های هدف</label>
-                                <div class="input-group">
-                                    <select name="target_departments" id="target_departments_select" multiple placeholder="بخش‌ها را انتخاب کنید..." class="tom-select-target">
-                                        {% for department in departments %}
-                                            <option value="{{ department.id }}" data-parent-id="{{ department.factory_id }}">{{ department.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <button type="button" class="btn btn-outline-secondary btn-select-all" data-target="target_departments_select">انتخاب همه</button>
-                                </div>
-                            </div>
-
-                        {% else %}
-                            {% if holdings %}<input type="hidden" name="target_holdings" id="fixed_holding_id" value="{{ holdings.id }}">{% endif %}
-                            {% if factories %}<input type="hidden" name="target_factories" id="fixed_factory_id" value="{{ factories.id }}">{% endif %}
-                            {% if departments %}
-                                <input type="hidden" name="target_departments" id="fixed_department_id" value="{{ departments.id }}">
-                                <div class="alert alert-info small mb-3">
-                                    بخش هدف: <strong>{{ departments.name }}</strong> ({{ departments.factory.name }})
-                                </div>
-                            {% endif %}
-                        {% endif %}
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">زیربخش‌های هدف</label>
-                            <div class="input-group">
-                                <select name="target_subdepartments" id="target_subdepartments_select" multiple placeholder="زیربخش‌ها را انتخاب کنید..." class="tom-select-target">
-                                    {% for subdepartment in subdepartments %}
-                                        <option value="{{ subdepartment.id }}" data-parent-id="{{ subdepartment.department_id }}">{{ subdepartment.name }}</option>
-                                    {% endfor %}
-                                </select>
-                                <button type="button" class="btn btn-outline-secondary btn-select-all" data-target="target_subdepartments_select">انتخاب همه</button>
-                            </div>
-                        </div>
-                    {% else %}
-                        {% if holdings %}<input type="hidden" name="target_holdings" value="{{ holdings.id }}">{% endif %}
-                        {% if factories %}<input type="hidden" name="target_factories" value="{{ factories.id }}">{% endif %}
-                        {% if departments %}<input type="hidden" name="target_departments" value="{{ departments.id }}">{% endif %}
-                        {% if subdepartments %}
-                            <input type="hidden" name="target_subdepartments" value="{{ subdepartments.id }}">
-                            <div class="alert alert-info small mb-3">
-                                شما در حال ارسال اعلان برای واحد خود (<strong>{{ subdepartments.name }}</strong>) هستید.
-                            </div>
-                        {% endif %}
-                    {% endif %}
-
-                    <div class="mb-4" id="employee-subdepartments-block">
-                        <label class="form-label fw-bold">۵. پرسنل زیربخش های هدف</label>
-                        <div class="input-group">
-                            <select name="employee_subdepartments" id="employee_subdepartments_select" multiple placeholder="پرسنل عادی زیربخش‌های انتخابی را هدف بگیرید..." class="tom-select-target">
-                                {% if can_choose_subdepartments %}
-                                    {% for s in subdepartments %}
-                                        <option value="{{ s.id }}">{{ s.name }}</option>
-                                    {% endfor %}
-                                {% else %}
-                                    <option value="{{ subdepartments.id }}">{{ s.name }}</option>
-                                {% endif %}
-                            </select>
-                            <button type="button" class="btn btn-outline-secondary btn-select-all" data-target="employee_subdepartments_select">انتخاب همه</button>
-                        </div>
-                        <small class="text-muted">پرسنل عادی در زیربخش‌هایی که در این لیست انتخاب می‌شوند، اعلان را دریافت می‌کنند. این لیست زیرمجموعه‌ای از زیربخش‌های هدف اصلی است.</small>
-                    </div>
-                {% endif %}
-
-
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-success btn-lg">
-                        <i class="bi bi-send-fill me-2"></i>
-                        ارسال اعلان
-                    </button>
-                    <a href="{% url 'users:dashboard' %}" class="btn btn-secondary btn-lg">انصراف</a>
-                </div>
-            </form>
-        </div>
+{% extends 'base.html' %} {% load static %} {% load custom_filters %} {% block title %} ایجاد اعلان {% endblock %} {% block breadcrumb_title %} ایجاد اعلان {% endblock %} {% block extra_css %}
+<!-- استایل اختصاصی فرم ایجاد اعلان -->
+<link
+  rel="stylesheet"
+  href="{% static 'css/notification_create.css' %}"
+/>
+{% endblock %} {% block content %}
+<div class="container notification-form-page">
+  <div class="card shadow border-0">
+    <div class="card-header bg-primary text-white rounded-top-4">
+      <h4 class="mb-0 fw-bold">
+        <i class="bi bi-megaphone-fill me-2"></i>
+        ارسال اعلان جدید
+      </h4>
     </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-4">
+          <label class="form-label">عنوان اعلان <span class="text-danger">*</span></label>
+          <input
+            type="text"
+            name="title"
+            class="form-control"
+            value="{{ title|default:'' }}"
+            required
+          />
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">توضیحات اعلان <span class="text-danger">*</span></label>
+          <textarea
+            name="description"
+            class="form-control"
+            rows="6"
+            required
+          >
+{{ description|default:'' }}</textarea
+          >
+        </div>
+
+        <!-- تاریخ انقضا شمسی -->
+        <div class="mb-4">
+          <label class="form-label">تاریخ انقضا (شمسی - اختیاری)</label>
+          <input
+            type="text"
+            name="expires_at"
+            id="expires_at_jalali"
+            data-jdp
+            class="form-control"
+            placeholder="مثال: ۱۴۰۴/۰۹/۲۵"
+            value="{{ expires_at_jalali|default:'' }}"
+          />
+          <small class="text-muted">اگر خالی باشد، اعلان تا همیشه فعال می‌ماند.</small>
+        </div>
+
+        {% if can_choose_employee %} {% if can_choose_subdepartments %} {% if can_choose_departments %} {% if can_choose_factories %} {% if can_choose_holdings %}
+        <div class="mb-4">
+          <label class="form-label fw-bold">هلدینگ‌های هدف</label>
+          <div class="input-group">
+            <select
+              name="target_holdings"
+              id="target_holdings_select"
+              multiple
+              placeholder="هلدینگ‌ها را انتخاب کنید..."
+              class="tom-select-target"
+            >
+              {% for holding in holdings %}
+              <option value="{{ holding.id }}">{{ holding.name }}</option>
+              {% endfor %}
+            </select>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-select-all"
+              data-target="target_holdings_select"
+            >
+              انتخاب همه
+            </button>
+          </div>
+        </div>
+        {% else %} {% if holdings %}
+        <input
+          type="hidden"
+          name="target_holdings"
+          id="fixed_holding_id"
+          value="{{ holdings.id }}"
+        />
+        <div class="alert alert-info small mb-3">هلدینگ هدف: <strong>{{ holdings.name }}</strong></div>
+        {% endif %} {% endif %}
+
+        <div class="mb-4">
+          <label class="form-label fw-bold">کارخانه‌های هدف</label>
+          <div class="input-group">
+            <select
+              name="target_factories"
+              id="target_factories_select"
+              multiple
+              placeholder="کارخانه‌ها را انتخاب کنید..."
+              class="tom-select-target"
+            >
+              {% for factory in factories %}
+              <option
+                value="{{ factory.id }}"
+                data-parent-id="{{ factory.holding_id }}"
+              >
+                {{ factory.name }}
+              </option>
+              {% endfor %}
+            </select>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-select-all"
+              data-target="target_factories_select"
+            >
+              انتخاب همه
+            </button>
+          </div>
+        </div>
+        {% else %} {% if holdings %}
+        <input
+          type="hidden"
+          name="target_holdings"
+          id="fixed_holding_id"
+          value="{{ holdings.id }}"
+        />
+        {% endif %} {% if factories %}
+        <input
+          type="hidden"
+          name="target_factories"
+          id="fixed_factory_id"
+          value="{{ factories.id }}"
+        />
+        <div class="alert alert-info small mb-3">کارخانه هدف: <strong>{{ factories.name }}</strong> ({{ factories.holding.name }})</div>
+        {% endif %} {% endif %}
+
+        <div class="mb-4">
+          <label class="form-label fw-bold">بخش‌های هدف</label>
+          <div class="input-group">
+            <select
+              name="target_departments"
+              id="target_departments_select"
+              multiple
+              placeholder="بخش‌ها را انتخاب کنید..."
+              class="tom-select-target"
+            >
+              {% for department in departments %}
+              <option
+                value="{{ department.id }}"
+                data-parent-id="{{ department.factory_id }}"
+              >
+                {{ department.name }}
+              </option>
+              {% endfor %}
+            </select>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-select-all"
+              data-target="target_departments_select"
+            >
+              انتخاب همه
+            </button>
+          </div>
+        </div>
+        {% else %} {% if holdings %}<input
+          type="hidden"
+          name="target_holdings"
+          id="fixed_holding_id"
+          value="{{ holdings.id }}"
+        />{% endif %} {% if factories %}<input
+          type="hidden"
+          name="target_factories"
+          id="fixed_factory_id"
+          value="{{ factories.id }}"
+        />{% endif %} {% if departments %}
+        <input
+          type="hidden"
+          name="target_departments"
+          id="fixed_department_id"
+          value="{{ departments.id }}"
+        />
+        <div class="alert alert-info small mb-3">بخش هدف: <strong>{{ departments.name }}</strong> ({{ departments.factory.name }})</div>
+        {% endif %} {% endif %}
+        <div class="mb-4">
+          <label class="form-label fw-bold">زیربخش‌های هدف</label>
+          <div class="input-group">
+            <select
+              name="target_subdepartments"
+              id="target_subdepartments_select"
+              multiple
+              placeholder="زیربخش‌ها را انتخاب کنید..."
+              class="tom-select-target"
+            >
+              {% for subdepartment in subdepartments %}
+              <option
+                value="{{ subdepartment.id }}"
+                data-parent-id="{{ subdepartment.department_id }}"
+              >
+                {{ subdepartment.name }}
+              </option>
+              {% endfor %}
+            </select>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-select-all"
+              data-target="target_subdepartments_select"
+            >
+              انتخاب همه
+            </button>
+          </div>
+        </div>
+        {% else %} {% if holdings %}<input
+          type="hidden"
+          name="target_holdings"
+          value="{{ holdings.id }}"
+        />{% endif %} {% if factories %}<input
+          type="hidden"
+          name="target_factories"
+          value="{{ factories.id }}"
+        />{% endif %} {% if departments %}<input
+          type="hidden"
+          name="target_departments"
+          value="{{ departments.id }}"
+        />{% endif %} {% if subdepartments %}
+        <input
+          type="hidden"
+          name="target_subdepartments"
+          value="{{ subdepartments.id }}"
+        />
+        <div class="alert alert-info small mb-3">شما در حال ارسال اعلان برای واحد خود (<strong>{{ subdepartments.name }}</strong>) هستید.</div>
+        {% endif %} {% endif %}
+
+        <div
+          class="mb-4"
+          id="employee-subdepartments-block"
+        >
+          <label class="form-label fw-bold">۵. پرسنل زیربخش های هدف</label>
+          <div class="input-group">
+            <select
+              name="employee_subdepartments"
+              id="employee_subdepartments_select"
+              multiple
+              placeholder="پرسنل عادی زیربخش‌های انتخابی را هدف بگیرید..."
+              class="tom-select-target"
+            >
+              {% if can_choose_subdepartments %} {% for s in subdepartments %}
+              <option value="{{ s.id }}">{{ s.name }}</option>
+              {% endfor %} {% else %}
+              <option value="{{ subdepartments.id }}">{{ s.name }}</option>
+              {% endif %}
+            </select>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-select-all"
+              data-target="employee_subdepartments_select"
+            >
+              انتخاب همه
+            </button>
+          </div>
+          <small class="text-muted">پرسنل عادی در زیربخش‌هایی که در این لیست انتخاب می‌شوند، اعلان را دریافت می‌کنند. این لیست زیرمجموعه‌ای از زیربخش‌های هدف اصلی است.</small>
+        </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-end gap-3 mt-4 flex-wrap">
+          <button
+            type="submit"
+            class="btn btn-success btn-lg"
+          >
+            <i class="bi bi-send-fill me-2"></i>
+            ارسال اعلان
+          </button>
+          <a
+            href="{% url 'users:dashboard' %}"
+            class="btn btn-secondary btn-lg"
+            >انصراف</a
+          >
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<!-- Jalali Datepicker CSS & JS -->
-<!-- <link rel="stylesheet" href="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css"> -->
-<!-- <script type="text/javascript" src="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js"></script> -->
-
+{% endblock %} {% block extra_js %}
+<!-- Jalali Datepicker CSS & JS (مسیرهای لوکال شما) -->
 <script>
-$(document).ready(function() {
-    jalaliDatepicker.startWatch({
-        time: false,              // بدون ساعت
-        persianDigits: true,      // اعداد فارسی
-        showTodayBtn: true,       // دکمه امروز
-        showEmptyBtn: true        // دکمه پاک کردن
-    });
+  $(document).ready(function() {
+      jalaliDatepicker.startWatch({
+          time: false,
+          persianDigits: true,
+          showTodayBtn: true,
+          showEmptyBtn: true
+      });
 
-    // اگر در حالت ویرایش بودیم و تاریخ قبلاً ذخیره شده بود، نمایش بده
-    {% if expires_at_jalali %}
-        $('#expires_at_jalali').val('{{ expires_at_jalali }}');
-    {% endif %}
-});
+      {% if expires_at_jalali %}
+          $('#expires_at_jalali').val('{{ expires_at_jalali }}');
+      {% endif %}
+  });
 </script>
 
-
-
-<!-- <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet"> -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script> -->
-
+<!-- TomSelect و اسکریپت زنجیره‌ای (بدون تغییر) -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function() {
 
-    // ==========================================
-    // 1. پایگاه داده سمت کلاینت (Data Store)
-    // ==========================================
-    const rawData = {
-        factories: [
-            {% if can_choose_factories %}
-                {% for f in factories %}
-                {id: String('{{f.id}}'), text: '{{f.name|escapejs}}', parent_id: String('{{f.holding_id}}')},
-                {% endfor %}
-            {% endif %}
-        ],
-        departments: [
-            {% if can_choose_departments %}
-                {% for d in departments %}
-                {id: String('{{d.id}}'), text: '{{d.name|escapejs}}', parent_id: String('{{d.factory_id}}')},
-                {% endfor %}
-            {% endif %}
-        ],
-        subdepartments: [
-            // زیربخش‌ها را همیشه لود می‌کنیم چون در فیلتر Employee استفاده می‌شوند
+      const rawData = {
+          factories: [
+              {% if can_choose_factories %}
+                  {% for f in factories %}
+                  {id: String('{{f.id}}'), text: '{{f.name|escapejs}}', parent_id: String('{{f.holding_id}}')},
+                  {% endfor %}
+              {% endif %}
+          ],
+          departments: [
+              {% if can_choose_departments %}
+                  {% for d in departments %}
+                  {id: String('{{d.id}}'), text: '{{d.name|escapejs}}', parent_id: String('{{d.factory_id}}')},
+                  {% endfor %}
+              {% endif %}
+          ],
+          subdepartments: [
+              {% if can_choose_subdepartments %}
+                  {% for s in subdepartments %}
+                      {id: String('{{s.id}}'), text: '{{s.name|escapejs}}', parent_id: String('{{s.department_id}}')},
+                  {% endfor %}
+              {% else %}
+                  {id: String('{{subdepartments.id}}'), text: '{{subdepartments.name|escapejs}}', parent_id: String('{{subdepartments.department_id}}')},
+              {% endif %}
+          ]
+      };
 
+      const selects = {};
 
-            {% if can_choose_subdepartments %}
-                {% for s in subdepartments %}
-                    {id: String('{{s.id}}'), text: '{{s.name|escapejs}}', parent_id: String('{{s.department_id}}')},
-                {% endfor %}
-            {% else %}
-                {id: String('{{subdepartments.id}}'), text: '{{subdepartments.name|escapejs}}', parent_id: String('{{subdepartments.department_id}}')},
-            {% endif %}
+      document.querySelectorAll('.tom-select-target').forEach(el => {
+          if (el.tomselect) return;
 
-        ]
-    };
+          selects[el.id] = new TomSelect(el, {
+              plugins: ['remove_button', 'clear_button'],
+              maxItems: null,
+              placeholder: el.getAttribute('placeholder'),
+              searchField: ['text'],
+              render: {
+                  item: function(data, escape) { return '<div class="item">' + escape(data.text) + '</div>'; },
+                  option: function(data, escape) { return '<div class="option">' + escape(data.text) + '</div>'; }
+              }
+          });
 
-    // ==========================================
-    // 2. ساخت نمونه‌های TomSelect
-    // ==========================================
-    const selects = {};
+          if (el.id === 'employee_subdepartments_select') {
+              selects[el.id].clearOptions();
+          }
+      });
 
-    document.querySelectorAll('.tom-select-target').forEach(el => {
-        if (el.tomselect) return;
+      function filterChild(childSelectId, parentIds, dataKey, isSubsetFilter = false) {
+          const childSelect = selects[childSelectId];
+          if (!childSelect) return;
 
-        selects[el.id] = new TomSelect(el, {
-            plugins: ['remove_button', 'clear_button'],
-            maxItems: null,
-            placeholder: el.getAttribute('placeholder'),
-            searchField: ['text'],
-            render: {
-                item: function(data, escape) { return '<div class="item">' + escape(data.text) + '</div>'; },
-                option: function(data, escape) { return '<div class="option">' + escape(data.text) + '</div>'; }
-            }
-        });
+          const selectedValues = childSelect.getValue();
+          childSelect.clear();
+          childSelect.clearOptions();
 
-        // **اصلاح مهم برای Employee Select:** محتوای اولیه را پاک می‌کنیم
-        if (el.id === 'employee_subdepartments_select') {
-            selects[el.id].clearOptions();
-        }
-    });
+          if (!parentIds || parentIds.length === 0) {
+              childSelect.disable();
+              return;
+          }
 
+          childSelect.enable();
+          const validParentIds = parentIds.map(id => String(id));
+          let filteredItems = [];
 
-    // ==========================================
-    // 3. منطق هسته فیلترینگ (Core Logic)
-    // ==========================================
-    function filterChild(childSelectId, parentIds, dataKey, isSubsetFilter = false) {
-        const childSelect = selects[childSelectId];
-        if (!childSelect) return;
+          if (isSubsetFilter) {
+              filteredItems = rawData.subdepartments.filter(item => validParentIds.includes(item.id));
+          } else {
+              filteredItems = rawData[dataKey].filter(item => validParentIds.includes(item.parent_id));
+          }
 
-        const selectedValues = childSelect.getValue();
+          filteredItems.forEach(item => {
+              childSelect.addOption({ value: item.id, text: item.text });
+          });
 
-        childSelect.clear();
-        childSelect.clearOptions();
+          const newValidSelections = selectedValues.filter(val => filteredItems.some(item => item.id === val));
+          if (newValidSelections.length > 0) {
+              childSelect.setValue(newValidSelections);
+          }
+          childSelect.refreshOptions(false);
+      }
 
-        if (!parentIds || parentIds.length === 0) {
-            childSelect.disable();
-            return;
-        }
+      const fixedHolding = document.getElementById('fixed_holding_id');
+      const fixedFactory = document.getElementById('fixed_factory_id');
+      const fixedDept = document.getElementById('fixed_department_id');
 
-        childSelect.enable();
+      function updateFactories() {
+          let parentIds = [];
+          const holdingSelect = selects['target_holdings_select'];
+          if (holdingSelect) parentIds = holdingSelect.getValue();
+          else if (fixedHolding) parentIds = [fixedHolding.value];
+          filterChild('target_factories_select', parentIds, 'factories');
+          updateDepartments();
+      }
 
-        const validParentIds = parentIds.map(id => String(id));
-        let filteredItems = [];
+      function updateDepartments() {
+          let parentIds = [];
+          const factorySelect = selects['target_factories_select'];
+          if (factorySelect) parentIds = factorySelect.getValue();
+          else if (fixedFactory) parentIds = [fixedFactory.value];
+          filterChild('target_departments_select', parentIds, 'departments');
+          updateSubdepartments();
+      }
 
-        if (isSubsetFilter) {
-             // فیلتر بر اساس خود ID آیتم (برای employee_subdepartments)
-            filteredItems = rawData.subdepartments.filter(item => {
-                return validParentIds.includes(item.id);
-            });
-        } else {
-            // فیلتر بر اساس parent_id (برای تمام سطوح دیگر)
-            filteredItems = rawData[dataKey].filter(item => {
-                return validParentIds.includes(item.parent_id);
-            });
-        }
+      function updateSubdepartments() {
+          let parentIds = [];
+          const deptSelect = selects['target_departments_select'];
+          if (deptSelect) parentIds = deptSelect.getValue();
+          else if (fixedDept) parentIds = [fixedDept.value];
 
+          const targetSubSelect = selects['target_subdepartments_select'];
+          if (targetSubSelect) {
+              filterChild('target_subdepartments_select', parentIds, 'subdepartments');
+          }
+          updateEmployeeSubdepartments();
+      }
 
-        filteredItems.forEach(item => {
-            childSelect.addOption({
-                value: item.id,
-                text: item.text
-            });
-        });
+      function updateEmployeeSubdepartments() {
+          let targetSubIds = [];
+          const targetSubSelect = selects['target_subdepartments_select'];
 
-        // بازگرداندن انتخاب‌های معتبر قبلی
-        const newValidSelections = selectedValues.filter(val => filteredItems.some(item => item.id === val));
-        if (newValidSelections.length > 0) {
-            childSelect.setValue(newValidSelections);
-        }
+          if (targetSubSelect) {
+              targetSubIds = targetSubSelect.getValue();
+          } else {
+              const fixedSubDept = document.getElementById('fixed_subdepartment_id');
+              if (fixedSubDept) {
+                  targetSubIds = fixedSubDept.value ? fixedSubDept.value.split(',').map(s => s.trim()) : [];
+              } else {
+                  targetSubIds = rawData.subdepartments.map(s => s.id);
+              }
+          }
 
-        childSelect.refreshOptions(false);
-    }
+          filterChild('employee_subdepartments_select', targetSubIds, 'subdepartments', true);
+      }
 
+      if (selects['target_holdings_select']) selects['target_holdings_select'].on('change', updateFactories);
+      if (selects['target_factories_select']) selects['target_factories_select'].on('change', updateDepartments);
+      if (selects['target_departments_select']) selects['target_departments_select'].on('change', updateSubdepartments);
+      if (selects['target_subdepartments_select']) selects['target_subdepartments_select'].on('change', updateEmployeeSubdepartments);
 
-    // ==========================================
-    // 4. تعریف توابع آپدیت (Update Handlers)
-    // ==========================================
+      updateFactories();
 
-    const fixedHolding = document.getElementById('fixed_holding_id');
-    const fixedFactory = document.getElementById('fixed_factory_id');
-    const fixedDept = document.getElementById('fixed_department_id');
-    const fixedSubDept = document.getElementById('fixed_subdepartment_id'); // فیلد ثابت زیربخش
+      document.querySelectorAll('.btn-select-all').forEach(btn => {
+          btn.addEventListener('click', function() {
+              const targetId = this.getAttribute('data-target');
+              const tom = selects[targetId];
+              if (tom && !tom.isDisabled) {
+                  const availableOptions = Object.keys(tom.options);
+                  tom.setValue(availableOptions);
 
-    // --- سطح 1: هلدینگ -> کارخانه ---
-    function updateFactories() {
-        let parentIds = [];
-        const holdingSelect = selects['target_holdings_select'];
-        if (holdingSelect) { parentIds = holdingSelect.getValue(); }
-        else if (fixedHolding) { parentIds = [fixedHolding.value]; }
-        filterChild('target_factories_select', parentIds, 'factories');
-        updateDepartments();
-    }
-
-    // --- سطح 2: کارخانه -> بخش ---
-    function updateDepartments() {
-        let parentIds = [];
-        const factorySelect = selects['target_factories_select'];
-        if (factorySelect) { parentIds = factorySelect.getValue(); }
-        else if (fixedFactory) { parentIds = [fixedFactory.value]; }
-        filterChild('target_departments_select', parentIds, 'departments');
-        updateSubdepartments();
-    }
-
-    // --- سطح 3: بخش -> زیربخش هدف ---
-    function updateSubdepartments() {
-        let parentIds = [];
-        const deptSelect = selects['target_departments_select'];
-
-        if (deptSelect) { parentIds = deptSelect.getValue(); }
-        else if (fixedDept) { parentIds = [fixedDept.value]; }
-
-        const targetSubSelect = selects['target_subdepartments_select'];
-        // اگر کاربر حق انتخاب زیربخش هدف را دارد
-        if (targetSubSelect) {
-            filterChild('target_subdepartments_select', parentIds, 'subdepartments');
-        }
-
-        updateEmployeeSubdepartments();
-    }
-
-    // --- سطح 4: زیربخش هدف -> زیربخش پرسنل (Employee Subdepartments) ---
-    function updateEmployeeSubdepartments() {
-        let targetSubIds = [];
-        const targetSubSelect = selects['target_subdepartments_select'];
-
-        // 1. دریافت IDهای زیربخش هدف
-        if (targetSubSelect) {
-            // حالت ۱: کاربر Select دارد و ما مقادیر انتخاب شده را می‌گیریم
-            targetSubIds = targetSubSelect.getValue();
-        }
-        else if (fixedSubDept) {
-            // حالت ۲: کاربر Select ندارد، اما زیربخش‌های مجاز به صورت ثابت لود شده‌اند
-            targetSubIds = fixedSubDept.value ? fixedSubDept.value.split(',').map(s => s.trim()) : [];
-        } else {
-             // اگر هیچ فیلد انتخابی یا ثابتی وجود نداشت، تمام زیربخش‌های لود شده مجاز هستند
-             // (این حالت معمولا نباید رخ دهد اگر subdepartments در rawData لود شده باشد)
-             targetSubIds = rawData.subdepartments.map(s => s.id);
-        }
-
-        // 2. فیلتر کردن زیربخش پرسنل بر اساس targetSubIds (فیلتر زیرمجموعه)
-        filterChild('employee_subdepartments_select', targetSubIds, 'subdepartments', true);
-    }
-
-
-    // ==========================================
-    // 5. اتصال رویدادها (Event Listeners)
-    // ==========================================
-
-    if (selects['target_holdings_select']) selects['target_holdings_select'].on('change', updateFactories);
-    if (selects['target_factories_select']) selects['target_factories_select'].on('change', updateDepartments);
-    if (selects['target_departments_select']) selects['target_departments_select'].on('change', updateSubdepartments);
-
-    // اتصال جدید
-    if (selects['target_subdepartments_select']) selects['target_subdepartments_select'].on('change', updateEmployeeSubdepartments);
-
-    // ==========================================
-    // 6. راه‌اندازی اولیه (Initial Trigger)
-    // ==========================================
-    updateFactories();
-
-
-    // ==========================================
-    // 7. فعال‌سازی دکمه‌های انتخاب همه تکی (اصلاح شده)
-    // ==========================================
-    document.querySelectorAll('.btn-select-all').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
-            const tom = selects[targetId];
-            if (tom && !tom.isDisabled) {
-                // فقط گزینه‌هایی که الان در لیست هستند (فیلتر شده‌ها) را انتخاب کن
-                const availableOptions = Object.keys(tom.options);
-                tom.setValue(availableOptions);
-
-                // اگر یک سلکت در زنجیره را انتخاب کردیم، باید آپدیت فرزندان را تریگر کنیم
-                if (targetId === 'target_holdings_select') updateFactories();
-                if (targetId === 'target_factories_select') updateDepartments();
-                if (targetId === 'target_departments_select') updateSubdepartments();
-                if (targetId === 'target_subdepartments_select') updateEmployeeSubdepartments();
-            }
-        });
-    });
-
-});
+                  if (targetId === 'target_holdings_select') updateFactories();
+                  if (targetId === 'target_factories_select') updateDepartments();
+                  if (targetId === 'target_departments_select') updateSubdepartments();
+                  if (targetId === 'target_subdepartments_select') updateEmployeeSubdepartments();
+              }
+          });
+      });
+  });
 </script>
 {% endblock %}

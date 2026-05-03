@@ -1,460 +1,394 @@
-{% extends 'base.html' %} {% load static %} {% load humanize %}
-<!--}% load custom_filters %{-->
+{% extends 'base.html' %} {% load static %} {% load humanize %} {% block title %}مدیریت منوی سلف{% endblock %} {% block extra_css %}
+<link
+  rel="stylesheet"
+  href="{% static 'css/menu-management.css' %}"
+/>
+{% endblock %} {% block content %}
+<div class="dashboard-container">
+  <!-- سکشن افزودن غذای جدید -->
+  <section class="card glass-card">
+    <div class="card-header accent-orange">
+      <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>افزودن غذای جدید به بانک غذاها</h4>
+    </div>
+    <div class="card-body">
+      <form
+        method="post"
+        class="row g-3"
+      >
+        {% csrf_token %}
+        <input
+          type="hidden"
+          name="add_food"
+          value="1"
+        />
 
-{% block title %}مدیریت منوی سلف{% endblock %} {% block content %}
-<div class="container-fluid py-4">
-	<div class="card shadow mb-4">
-		<div class="card-header bg-success text-white text-center">
-			<h4 class="mb-0">افزودن غذای جدید به بانک غذاها</h4>
-		</div>
-		<div class="card-body">
-			<form
-				method="post"
-				class="row g-3"
-			>
-				{% csrf_token %}
-				<input
-					type="hidden"
-					name="add_food"
-					value="1"
-				/>
+        <div class="col-12 col-sm-6 col-lg-5">
+          <label class="form-label fw-bold">نام غذا</label>
+          <input
+            type="text"
+            name="food_name"
+            class="form-control"
+            placeholder="مثلاً: کباب کوبیده"
+            required
+          />
+        </div>
+        <div class="col-6 col-sm-3 col-lg-2">
+          <label class="form-label fw-bold">قیمت کارخانه (ریال)</label>
+          <input
+            type="number"
+            name="food_price"
+            class="form-control"
+            placeholder="180000"
+            min="0"
+            required
+          />
+        </div>
+        <div class="col-6 col-sm-3 col-lg-2">
+          <label class="form-label fw-bold">قیمت آزاد (ریال)</label>
+          <input
+            type="number"
+            name="food_free_price"
+            class="form-control"
+            placeholder="180000"
+            min="0"
+            required
+          />
+        </div>
+        <div class="col-6 col-sm-4 col-lg-2 d-flex align-items-end">
+          <div class="form-check form-switch mb-2">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="is_management_food"
+              id="is_management_food"
+              value="1"
+            />
+            <label
+              class="form-check-label fw-bold"
+              for="is_management_food"
+              >غذای مدیریتی</label
+            >
+          </div>
+          <small class="text-muted d-block">اگر فعال شود، یعنی غذای مدیریتی است.</small>
+        </div>
+        <div class="col-6 col-sm-2 col-lg-1 d-flex align-items-end">
+          <button
+            type="submit"
+            class="btn btn-accent w-100"
+          >
+            <i class="fas fa-save me-1"></i> ثبت
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
 
-				<div class="col-md-5">
-					<label class="form-label fw-bold">نام غذا</label>
-					<input
-						type="text"
-						name="food_name"
-						class="form-control"
-						placeholder="مثلاً: کباب کوبیده"
-						required
-					/>
-				</div>
-				<div class="col-md-2">
-					<label class="form-label fw-bold">قیمت کارخانه (ریال)</label>
-					<input
-						type="number"
-						name="food_price"
-						class="form-control"
-						placeholder="180000"
-						min="0"
-						required
-					/>
-				</div>
-				<div class="col-md-2">
-					<label class="form-label fw-bold">قیمت آزاد (ریال)</label>
-					<input
-						type="number"
-						name="food_free_price"
-						class="form-control"
-						placeholder="180000"
-						min="0"
-						required
-					/>
-				</div>
-				<div class="col-md-2">
-					<div class="form-check form-switch mt-4">
-						<input
-							class="form-check-input"
-							type="checkbox"
-							name="is_management_food"
-							id="is_management_food"
-							value="1"
-						/>
-						<label
-							class="form-check-label fw-bold"
-							for="is_management_food"
-							>غذای مدیریتی</label
-						>
-					</div>
-					<small class="text-muted">اگر فعال شود، یعنی غذای مدیریتی است.</small>
-				</div>
-				<div class="col-md-1 d-flex align-items-end">
-					<button
-						type="submit"
-						class="btn btn-success w-100"
-					>
-						ثبت غذا
-					</button>
-				</div>
-			</form>
-		</div>
-	</div>
+  <!-- لیست غذاهای فعلی -->
+  <section class="card glass-card">
+    <div class="card-header glass-header-secondary">
+      <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i>غذاهای موجود در بانک ({{ all_foods.count }} مورد)</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-2">
+        {% for food in all_foods %}
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="food-badge">
+            <span class="fw-bold">{{ food.name }}</span>
+            <small class="text-muted ms-2">{{ food.factory_price|intcomma }} ریال</small>
+          </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+          <p class="text-muted mb-0">هنوز غذایی ثبت نشده است.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
 
-	<!-- لیست غذاهای فعلی -->
-	<div class="card shadow mb-4">
-		<div class="card-header bg-info text-white">
-			<h5 class="mb-0">غذاهای موجود در بانک ({{ all_foods.count }} مورد)</h5>
-		</div>
-		<div class="card-body">
-			<div class="row">
-				{% for food in all_foods %}
-				<div class="col-md-4 mb-2">
-					<span class="badge bg-light text-dark border p-2"> {{ food.name }} — {{ food.factory_price|intcomma }} ریال </span>
-				</div>
-				{% empty %}
-				<p class="text-muted">هنوز غذایی ثبت نشده است.</p>
-				{% endfor %}
-			</div>
-		</div>
-	</div>
+  <!-- بخش گزارش‌گیری بدهی سلف -->
+  <section class="card glass-card report-section">
+    <div class="card-header custom-gradient">
+      <h4 class="mb-0 fw-bold">
+        <i class="fas fa-file-excel me-2"></i>
+        گزارش‌گیری بدهی سلف
+      </h4>
+    </div>
+    <div class="card-body p-4">
+      <!-- دکمه‌های دانلود کل -->
+      <div class="text-center mb-4">
+        <div class="d-grid gap-3 d-sm-flex justify-content-center">
+          <a
+            href="?export=full"
+            id="export-full-btn"
+            class="btn btn-outline-accent btn-lg"
+          >
+            <i class="fas fa-users me-2"></i>دانلود اکسل همه پرسنل
+          </a>
+          <a
+            href="?export=full-restaurant"
+            id="export-full-restaurant-btn"
+            class="btn btn-outline-accent btn-lg"
+          >
+            <i class="fas fa-utensils me-2"></i>دانلود اکسل رستوران‌ها
+          </a>
+        </div>
+        <p class="text-muted small mt-2 mb-0">شامل تمام کارمندان فعال با مجموع بدهی</p>
+      </div>
 
+      <!-- انتخاب بازه تاریخ -->
+      <div class="row justify-content-center mb-4">
+        <div class="col-12 col-sm-5 mb-2 mb-sm-0">
+          <label class="form-label fw-bold">از تاریخ (شمسی)</label>
+          <input
+            type="text"
+            id="from_date"
+            data-jdp
+            class="form-control"
+            placeholder="مثال: ۱۴۰۴/۰۹/۲۱"
+          />
+        </div>
+        <div class="col-12 col-sm-5">
+          <label class="form-label fw-bold">تا تاریخ (شمسی)</label>
+          <input
+            type="text"
+            id="to_date"
+            data-jdp
+            class="form-control"
+            placeholder="مثال: ۱۴۰۴/۱۰/۰۱"
+          />
+        </div>
+      </div>
 
+      <hr class="my-4 border-secondary opacity-25" />
 
+      <!-- جستجوی کارمند و گزارش اختصاصی -->
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <h5 class="text-primary fw-bold text-center mb-4"><i class="fas fa-user-search me-2"></i>گزارش اختصاصی کارمند</h5>
+          <div class="row g-3 align-items-end">
+            <div class="col-md-8">
+              <label class="form-label fw-bold">نام، کد ملی یا کد پرسنلی</label>
+              <select
+                id="employee-search"
+                class="form-select form-select-lg shadow-sm"
+                style="width: 100%"
+              >
+                <option value="">-- شروع به تایپ کنید... --</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <button
+                id="export-single-btn"
+                class="btn btn-accent btn-lg w-100 shadow"
+                disabled
+              >
+                <i class="fas fa-download me-2"></i>دانلود گزارش
+              </button>
+            </div>
+          </div>
+          <div class="mt-3 text-center">
+            <small class="text-muted"><i class="fas fa-info-circle me-1"></i>پس از انتخاب کارمند دکمه فعال می‌شود</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer glass-footer text-center small">گزارش‌ها شامل تمام رزروهای تحویل‌شده و لغو نشده می‌باشد.</div>
+  </section>
 
+  <!-- منوی هفتگی -->
+  <section class="card glass-card weekly-menu-section">
+    <div class="card-header bg-warning text-dark text-center py-3">
+      <h4 class="mb-0">
+        <strong>در حال مشاهده:</strong> منوی هفته {{ week_start_persian }}<br />
+        <small class="fw-normal"><strong>ذخیره خواهد شد برای:</strong> هفته آینده (از شنبه {{ save_week_start_persian }})</small>
+      </h4>
+    </div>
+    <div class="card-body">
+      {% if no_restaurant %}
+      <div class="alert alert-info">رستورانی تعریف نشده است.</div>
+      {% else %}
+      <form method="post">
+        {% csrf_token %}
+        <input
+          type="hidden"
+          name="action"
+          value="save_menu"
+        />
 
+        {% for data in restaurant_data %}
+        <div class="restaurant-block mb-5">
+          <h4 class="text-primary border-bottom pb-2 d-flex align-items-center gap-2">
+            <i class="fas fa-store-alt"></i> {{ data.restaurant.name }}
+            <small class="text-muted ms-auto">({{ data.restaurant.department.factory.name }})</small>
+          </h4>
 
+          <div class="table-responsive-lg">
+            <table class="table table-menu">
+              <thead>
+                <tr>
+                  <th class="sticky-col bg-glass">غذا</th>
+                  {% for day_code, day_name in days %}
+                  <th class="text-center day-header">{{ day_name }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for food in all_foods %}
+                <tr>
+                  <td class="sticky-col bg-light fw-bold">
+                    {{ food.name }}
+                    <br /><small class="text-muted">کارخانه: {{ food.factory_price|intcomma }} ریال</small> <br /><small class="text-muted">آزاد: {{ food.free_price|intcomma }} ریال</small>
+                  </td>
+                  {% for day_code, day_name in days %} {% with food.id|stringformat:"s"|add:":"|add:day_code as key %}
+                  <td class="text-center align-middle checkbox-cell">
+                    <div class="form-check d-flex justify-content-center">
+                      <input
+                        class="form-check-input custom-checkbox"
+                        type="checkbox"
+                        name="food_{{ data.restaurant.id }}_{{ food.id }}_{{ day_code }}"
+                        {%
+                        if
+                        key
+                        in
+                        data.selected_items
+                        %}checked{%
+                        endif
+                        %}
+                      />
+                    </div>
+                  </td>
+                  {% endwith %} {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endfor %}
 
-
-
-
-
-
-
-
-
-
-
-
-	<!-- بخش یکپارچه: خروجی اکسل کامل + جستجوی کارمند -->
-	<div class="card shadow-lg border-0 mb-5">
-		<div
-			class="card-header bg-gradient text-white text-center py-4"
-			style="background: linear-gradient(135deg, #1e3c72, #2a5298); border-radius: 12px 12px 0 0"
-		>
-			<h4 class="mb-0 fw-bold">
-				<i class="fas fa-file-excel me-2"></i>
-				گزارش‌گیری بدهی سلف
-			</h4>
-		</div>
-
-		<div class="card-body p-4">
-			<!-- دکمه دانلود اکسل همه کاربران -->
-			<div class="text-center mb-4">
-				<a
-					href="?export=full"
-					id="export-full-btn"
-					class="btn btn-success btn-lg px-5 shadow-sm"
-				>
-					<i class="fas fa-users me-2"></i>
-					دانلود اکسل بدهی همه پرسنل
-				</a>
-				<a
-					href="?export=full-restaurant"
-					id="export-full-restaurant-btn"
-					class="btn btn-success btn-lg px-5 shadow-sm"
-				>
-					<i class="fas fa-users me-2"></i>
-					دانلود اکسل بدهی به رستوران ها
-				</a>
-				<p class="text-muted small mt-2 mb-0">شامل تمام کارمندان فعال با مجموع بدهی</p>
-			</div>
-
-			<div class="row justify-content-center mb-4">
-				<div class="col-md-5">
-					<label class="form-label fw-bold">از تاریخ (شمسی)</label>
-					<input
-						type="text"
-						id="from_date"
-						data-jdp
-						class="form-control"
-						placeholder="مثال: ۱۴۰۴/۰۹/۲۱"
-					/>
-				</div>
-				<div class="col-md-5">
-					<label class="form-label fw-bold">تا تاریخ (شمسی)</label>
-					<input
-						type="text"
-						id="to_date"
-						data-jdp
-						class="form-control"
-						placeholder="مثال: ۱۴۰۴/۱۰/۰۱"
-					/>
-				</div>
-			</div>
-
-			<hr class="my-4 border-secondary" />
-
-			<!-- جستجو و دانلود برای یک کارمند -->
-			<div class="row justify-content-center">
-				<div class="col-lg-10">
-					<!-- <input type="text" data-jdp placeholder="انتخاب تاریخ"> -->
-
-					<h5 class="text-primary fw-bold text-center mb-4">
-						<i class="fas fa-user-search me-2"></i>
-						جستجوی کارمند و دریافت گزارش اختصاصی
-					</h5>
-
-					<div class="row g-3 align-items-end">
-						<div class="col-md-8">
-							<label class="form-label fw-bold text-dark"> <i class="fas fa-search me-1"></i> نام، کد ملی یا کد پرسنلی کارمند </label>
-							<select
-								id="employee-search"
-								class="form-select form-select-lg shadow-sm"
-								style="width: 100%"
-							>
-								<option value="">-- شروع به تایپ کنید... --</option>
-							</select>
-						</div>
-						<div class="col-md-4">
-							<button
-								id="export-single-btn"
-								class="btn btn-success btn-lg w-100 shadow"
-								disabled
-							>
-								<i class="fas fa-download me-2"></i>
-								دانلود گزارش این کارمند
-							</button>
-						</div>
-					</div>
-
-					<div class="mt-3 text-center">
-						<small class="text-muted">
-							<i class="fas fa-info-circle me-1"></i>
-							پس از انتخاب کارمند، دکمه فعال می‌شود
-						</small>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- گوشه‌های گرد و سایه ملایم -->
-		<div class="card-footer bg-light text-center small text-muted border-0">گزارش‌ها شامل تمام رزروهای تحویل‌شده و لغو نشده می‌باشد.</div>
-	</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-	<!-- فرم اصلی منوی هفتگی -->
-	<div class="card shadow">
-		<div class="card-header bg-warning text-dark text-center">
-			<h4 class="mb-0">
-				<strong>در حال مشاهده:</strong> منوی هفته {{ week_start_persian }}<br />
-				<strong>ذخیره خواهد شد برای:</strong> هفته آینده (از شنبه {{ save_week_start_persian }})
-			</h4>
-		</div>
-		<div class="card-body">
-			{% if no_restaurant %}
-			<div class="alert alert-info">رستورانی تعریف نشده است.</div>
-			{% else %}
-
-			<form method="post">
-				{% csrf_token %}
-				<input
-					type="hidden"
-					name="action"
-					value="save_menu"
-				/>
-				<!-- این خط مهم است -->
-
-				{% for data in restaurant_data %}
-				<div class="mb-5">
-					<h4 class="text-primary border-bottom pb-2">{{ data.restaurant.name }} ({{ data.restaurant.department.factory.name }})</h4>
-
-					<div class="table-responsive">
-						<table class="table table-bordered table-hover">
-							<thead class="table-dark">
-								<tr>
-									<th class="position-sticky start-0 bg-dark text-white">غذا</th>
-									{% for day_code, day_name in days %}
-									<th class="text-center">{{ day_name }}</th>
-									{% endfor %}
-								</tr>
-							</thead>
-							<tbody>
-								{% for food in all_foods %}
-								<tr>
-									<td class="position-sticky start-0 bg-light fw-bold">
-										{{ food.name }}
-										<br /><small class="text-muted">قیمت کارخانه : {{ food.factory_price|intcomma }} ریال</small> <br /><small class="text-muted">قیمت آزاد : {{ food.free_price|intcomma }} ریال</small>
-									</td>
-									{{data.selected_foods}} {%for a in data.selected_foods%} {%endfor%} {% for day_code, day_name in days %} {% with food.id|stringformat:"s"|add:":"|add:day_code as key %}
-
-									<td class="text-center">
-										<input
-											type="checkbox"
-											name="food_{{ data.restaurant.id }}_{{ food.id }}_{{ day_code }}"
-											{%
-											if
-											key
-											in
-											data.selected_items
-											%}checked{%
-											endif
-											%}
-										/>
-
-										{{data.selected_foods.day_code}}
-									</td>
-									{% endwith %} {% endfor %}
-								</tr>
-								{% endfor %}
-							</tbody>
-						</table>
-					</div>
-				</div>
-				{% endfor %}
-
-				<div class="text-center mt-4">
-					<button
-						type="submit"
-						class="btn btn-success btn-lg px-5"
-					>
-						ذخیره همه منوها
-					</button>
-				</div>
-			</form>
-
-			{% endif %}
-		</div>
-	</div>
+        <div class="text-center mt-4">
+          <button
+            type="submit"
+            class="btn btn-accent btn-lg px-5 shadow-sm"
+          >
+            <i class="fas fa-cloud-upload-alt me-2"></i>ذخیره همه منوها
+          </button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </section>
 </div>
 {% endblock %} {% block extra_js %}
-
-<!-- <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script> -->
-
-<!--jalali-->
-<!-- <link rel="stylesheet" href="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.css"> -->
-<!-- <script type="text/javascript" src="https://unpkg.com/@majidh1/jalalidatepicker/dist/jalalidatepicker.min.js"></script> -->
-
+<!-- Select2 و jalali datepicker مثل قبل -->
 <script>
-	$(document).ready(function () {
-		jalaliDatepicker.startWatch({
-			time: false, // غیرفعال کردن انتخاب زمان
-			persianDigits: true, // استفاده از اعداد فارسی
-			// minDate: 'today',  // حداقل تاریخ امروز
-			showTodayBtn: true, // نمایش دکمه "امروز"
-			showEmptyBtn: true, // نمایش دکمه "پاک کردن"
-		});
+  $(document).ready(function () {
+    jalaliDatepicker.startWatch({
+      time: false,
+      persianDigits: true,
+      showTodayBtn: true,
+      showEmptyBtn: true,
+    });
 
-		// ----------------------------------------------------------------
-		// فعال‌سازی Select2
-		// ----------------------------------------------------------------
-		$("#employee-search").on("select2:select", function (e) {
-			const employeeId = e.params.data.id;
-			$("#export-single-btn").prop("disabled", false).data("employee-id", employeeId);
-		});
+    // فعال‌سازی Select2
+    $("#employee-search").on("select2:select", function (e) {
+      const employeeId = e.params.data.id;
+      $("#export-single-btn").prop("disabled", false).data("employee-id", employeeId);
+    });
 
-		$("#employee-search").on("select2:clear", function () {
-			$("#export-single-btn").prop("disabled", true).removeData("employee-id");
-		});
+    $("#employee-search").on("select2:clear", function () {
+      $("#export-single-btn").prop("disabled", true).removeData("employee-id");
+    });
 
-		$("#employee-search").select2({
-			placeholder: "جستجوی کارمند (نام، کد ملی یا کد پرسنلی)...",
-			allowClear: true,
-			ajax: {
-				url: "{% url 'users:search_employees' %}",
-				dataType: "json",
-				delay: 300,
-				data: function (params) {
-					return { q: params.term || "" };
-				},
-				processResults: function (data) {
-					return { results: data };
-				},
-				cache: true,
-			},
-			minimumInputLength: 2,
-			escapeMarkup: function (markup) {
-				return markup;
-			},
-			templateResult: function (item) {
-				if (item.loading) return item.text;
-				return `<div>
+    $("#employee-search").select2({
+      placeholder: "جستجوی کارمند (نام، کد ملی یا کد پرسنلی)...",
+      allowClear: true,
+      ajax: {
+        url: "{% url 'users:search_employees' %}",
+        dataType: "json",
+        delay: 300,
+        data: function (params) {
+          return { q: params.term || "" };
+        },
+        processResults: function (data) {
+          return { results: data };
+        },
+        cache: true,
+      },
+      minimumInputLength: 2,
+      escapeMarkup: function (markup) {
+        return markup;
+      },
+      templateResult: function (item) {
+        if (item.loading) return item.text;
+        return `<div>
                         <strong>${item.text}</strong><br>
                         <small class="text-muted">
                             کد ملی: ${item.national_id} | کد پرسنلی: ${item.personnel_code || "ندارد"}
                         </small>
                     </div>`;
-			},
-			templateSelection: function (item) {
-				return item.text || item.national_id || item.text;
-			},
-		});
+      },
+      templateSelection: function (item) {
+        return item.text || item.national_id || item.text;
+      },
+    });
 
-		function validateDateRange() {
-			const from = $("#from_date").val();
-			const to = $("#to_date").val();
+    // اعتبارسنجی تاریخ
+    function validateDateRange() {
+      const from = $("#from_date").val();
+      const to = $("#to_date").val();
+      if (!from || !to) return true;
+      const fromNum = parseInt(from.replace(/\//g, ""), 10);
+      const toNum = parseInt(to.replace(/\//g, ""), 10);
+      if (fromNum > toNum) {
+        alert("تاریخ «از» نمی‌تواند بعد از تاریخ «تا» باشد!");
+        return false;
+      }
+      return true;
+    }
 
-			if (!from || !to) return true; // اگر یکی خالی باشه، هنوز خطا نده
+    $("#from_date, #to_date").on("change", validateDateRange);
 
-			// تبدیل به عدد برای مقایسه (مثلاً 14040920)
-			const fromNum = parseInt(from.replace(/\//g, ""), 10);
-			const toNum = parseInt(to.replace(/\//g, ""), 10);
+    $("#export-single-btn").on("click", function () {
+      const employeeId = $(this).data("employee-id");
+      const startDate = $("#from_date").val();
+      const endDate = $("#to_date").val();
+      if (employeeId) {
+        if (!startDate || !endDate) {
+          alert('لطفاً تاریخ‌های "از" و "تا" را انتخاب کنید.');
+          return;
+        }
+        let url = `?export=single&employee_id=${employeeId}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+        window.location.href = url;
+      } else {
+        alert("لطفاً ابتدا یک کارمند انتخاب کنید.");
+      }
+    });
 
-			if (fromNum > toNum) {
-				alert("تاریخ «از» نمی‌تواند بعد از تاریخ «تا» باشد!");
-				return false;
-			}
-			return true;
-		}
+    $("#export-full-btn").on("click", function (e) {
+      e.preventDefault();
+      const startDate = $("#from_date").val();
+      const endDate = $("#to_date").val();
+      if (!startDate || !endDate) {
+        alert('لطفاً تاریخ‌های "از" و "تا" را انتخاب کنید.');
+        return;
+      }
+      let url = `?export=full&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+      window.location.href = url;
+    });
 
-		// هر وقت تاریخ عوض شد، اعتبارسنجی کن
-		$("#from_date, #to_date").on("change", function () {
-			validateDateRange();
-		});
-
-		$("#export-single-btn").on("click", function () {
-			const employeeId = $(this).data("employee-id");
-			const startDate = $("#from_date").val();
-			const endDate = $("#to_date").val();
-
-			if (employeeId) {
-				if (!startDate || !endDate) {
-					alert('لطفاً تاریخ‌های "از" و "تا" را انتخاب کنید.');
-					return;
-				}
-
-				// ساخت URL با پارامترها
-				let url = `?export=single&employee_id=${employeeId}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
-				window.location.href = url;
-			} else {
-				alert("لطفاً ابتدا یک کارمند انتخاب کنید.");
-			}
-		});
-
-		$("#export-full-btn").on("click", function (e) {
-			e.preventDefault(); // جلوگیری از رفتار پیش‌فرض لینک
-			const startDate = $("#from_date").val();
-			const endDate = $("#to_date").val();
-
-			if (!startDate || !endDate) {
-				alert('لطفاً تاریخ‌های "از" و "تا" را انتخاب کنید.');
-				return;
-			}
-
-			// ساخت URL با پارامترها
-			let url = `?export=full&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
-			window.location.href = url;
-		});
-
-		$("#export-full-restaurant-btn").on("click", function (e) {
-			e.preventDefault();
-			const startDate = $("#from_date").val();
-			const endDate = $("#to_date").val();
-
-			if (!startDate || !endDate) {
-				alert("لطفاً تاریخ‌ها را انتخاب کنید");
-				return;
-			}
-
-			let url = `?export=full-restaurant&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
-			window.location.href = url;
-		});
-	});
+    $("#export-full-restaurant-btn").on("click", function (e) {
+      e.preventDefault();
+      const startDate = $("#from_date").val();
+      const endDate = $("#to_date").val();
+      if (!startDate || !endDate) {
+        alert("لطفاً تاریخ‌ها را انتخاب کنید");
+        return;
+      }
+      let url = `?export=full-restaurant&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+      window.location.href = url;
+    });
+  });
 </script>
-
 {% endblock extra_js %}
