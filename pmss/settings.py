@@ -23,6 +23,8 @@ ALLOWED_HOSTS = [
     "37.255.237.86",
     "www.karimax.ir",
     "karimax.ir",
+    "www.dev.karimax2.ir",
+    "dev.karimax2.ir",
 ]
 
 # Application definition
@@ -218,6 +220,9 @@ if DEBUG:
         "https://karimax.ir",
         "https://www.karimax.ir",
         "http://0.0.0.0:8000",
+        "http://0.0.0.0:8002",
+        "https://www.dev.karimax2.ir",
+        "https://dev.karimax2.ir",
         # "*"
     ]
     CORS_ALLOW_CREDENTIALS = True

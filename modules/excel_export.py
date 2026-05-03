@@ -13,6 +13,7 @@ def export_to_excel(
     report_title="گزارش سیستم",
     restaurant_stats=None,
     summary_row=None,
+    summary_start_col=10,
 ):
     print(columns)
 
@@ -101,13 +102,13 @@ def export_to_excel(
 
         # اگر ستون‌های رستوران داریم، عنوان خلاصه را Merge می‌کنیم
         if len(columns) > 10:  # اگر ستون‌های رستوران وجود دارند
-            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=9)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=(summary_start_col-1))
 
         row += 1
 
         # داده‌های خلاصه هر رستوران
         # شروع از ستون 9 (ستون I) زیرا 8 ستون اول داریم
-        for i, restaurant in enumerate(restaurant_stats.values(), start=10):
+        for i, restaurant in enumerate(restaurant_stats.values(), start=summary_start_col):
             if i <= len(columns):  # مطمئن شویم ستون وجود دارد
                 col_letter = get_column_letter(i)
                 cell = ws[f"{col_letter}{row}"]
