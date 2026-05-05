@@ -2743,7 +2743,7 @@ def reports_dashboard(request):
 
 
 
-    print(f"fffffffffffffff{factory_ids}")
+    # print(f"fffffffffffffff{factory_ids}")
 
 
     if request.GET.get("export") == "full":
@@ -3013,6 +3013,7 @@ def reports_dashboard(request):
                 employee=employee,
                 reservation_date__gte=strt_gregorian_date,
                 reservation_date__lte=end_gregorian_date,
+                is_canceled=0,
             )
             .select_related("menu_item__food", "menu_item__weekly_menu__restaurant")
             .order_by("-reservation_date")
