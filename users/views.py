@@ -1164,6 +1164,8 @@ def dashboard(request):
 
     can_reserve_for_others = user.can_reserve_for_others > 0
 
+    personnel_management_access = user.manage_sub_employees
+
     # if request.method == "GET" and request.GET.get("action") == "update_food_prices":
     #     result = update_food_reservation_prices()
     #     print(f"result = {result}")
@@ -1197,6 +1199,7 @@ def dashboard(request):
             "factory_bimeh": factory_bimeh,
             "holding_bimeh": holding_bimeh,
             "can_reserve_for_others": can_reserve_for_others,
+            "personnel_management_access": personnel_management_access,
         },
     )
 
@@ -2826,6 +2829,11 @@ def reports_dashboard(request):
                 is_canceled=0,
             )
 
+            if emp.id == 1311:
+                for res in reservations:
+                    if res.reserved_by != 0:
+                        print(f"ffffffffffff : {res.reserved_by}")
+
             total_debt = reservations.aggregate(total=Sum("total_price"))["total"] or 0
             factory_quantity = (
                 reservations.aggregate(total=Sum("factory_quantity"))["total"] or 0
@@ -2977,7 +2985,7 @@ def reports_dashboard(request):
 
 
 
-        
+
     elif request.GET.get("export") == "single" and request.GET.get("employee_id"):
         start_date = request.GET.get("start_date")
         end_date = request.GET.get("end_date")
@@ -5622,15 +5630,32 @@ def user_management(request):
         .order_by("id")
     )
 
+
+    holdings = user.hr_accessible_holdings.all()
+    factories = (user.hr_accessible_factories.all() | Factory.objects.filter(holding__in=holdings)).distinct()
+    departments = (user.hr_accessible_departments.all() | Department.objects.filter(factory__in=factories)).distinct()
+    subdepartments = (user.hr_accessible_subdepartments.all() | Subdepartment.objects.filter(department__in=departments)).distinct()
+
+
+
+
+
+    
+    # departments = user.hr_accessible_departments.all()
+    # subdepartments = user.hr_accessible_subdepartments.all()
+
+
+
+
     # محاسبه is_super_admin
     context = {
         "form": form,
         "employees": employees,
         "user": user,
-        "holdings": user.hr_accessible_holdings.all(),
-        "factories": user.hr_accessible_factories.all(),
-        "departments": user.hr_accessible_departments.all(),
-        "subdepartments": user.hr_accessible_subdepartments.all(),
+        "holdings": holdings,
+        "factories": factories,
+        "departments": departments,
+        "subdepartments": subdepartments,
     }
 
     return render(request, "users/user_management.html", context)

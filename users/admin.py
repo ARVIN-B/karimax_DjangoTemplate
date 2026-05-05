@@ -580,6 +580,8 @@ class EmployeeAdmin(UserAdmin):
             "مدیریت پرسنل",
             {
                 "fields": (
+                    "manage_sub_employees",
+                    "hr_granting_role_limit",
                     "hr_accessible_holdings",
                     "hr_accessible_factories",
                     "hr_accessible_departments",
@@ -683,6 +685,8 @@ class EmployeeAdmin(UserAdmin):
                     "food_receiver_role",
                     "food_receiver_factory",
                     "food_receiver_holding",
+                    "manage_sub_employees",
+                    "hr_granting_role_limit",
                 ),
             },
         ),
@@ -717,6 +721,8 @@ class EmployeeAdmin(UserAdmin):
         "date_joined",
         "food_receiver_role_display",
         "food_receiver_location",
+        "manage_sub_employees",
+        "hr_granting_role_limit",
     ]
 
     # --- جستجو ---
@@ -758,6 +764,8 @@ class EmployeeAdmin(UserAdmin):
         "food_receiver_role",
         "food_receiver_factory",
         "food_receiver_holding",
+        "manage_sub_employees",
+        "hr_granting_role_limit",
         # 'personnel_code' رو نمی‌ذاریم چون فیلتر روی CharField معنی نداره (مگر با SimpleListFilter)
     ]
     # ویجت مناسب برای فیلدهای عددی (مثل ساعت رزرو کارخانه)

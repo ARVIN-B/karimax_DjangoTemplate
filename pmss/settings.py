@@ -70,7 +70,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",  # اضافه شده برای django-axes
     # 'users.error_handler.GlobalErrorHandlerMiddleware',  # ← این رو اضافه کن
-    'users.error_handler.GlobalErrorHandlerMiddleware',
+    "users.error_handler.GlobalErrorHandlerMiddleware",
 ]
 
 ROOT_URLCONF = "pmss.urls"
@@ -197,6 +197,30 @@ MESSAGE_TAGS = {
     messages.WARNING: "warning",
     messages.ERROR: "danger",  # مهم! برای رنگ قرمز Bootstrap
 }
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": "errors.log",
+        },
+    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "ERROR",
+    },
+    "loggers": {
+        "users.middleware": {
+            "handlers": ["console", "file"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
 
 
 if DEBUG:
@@ -228,7 +252,7 @@ if DEBUG:
         # "*"
     ]
     CORS_ALLOW_CREDENTIALS = True
-    ALLOWED_HOSTS = ['*']
+    ALLOWED_HOSTS = ["*"]
 
 else:
     # پروداکشن

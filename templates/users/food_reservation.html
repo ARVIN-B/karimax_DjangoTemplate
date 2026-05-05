@@ -48,12 +48,12 @@
       <!-- توضیحات هفته -->
       <div class="week-alert mb-4 p-3 rounded-3">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <i class="fas fa-calendar-alt fs-5 text-primary"></i>
-          <span>منوی هفته: <strong>{{ week_start_jdate_str|default:"—" }}</strong></span>
-          {% if user_factory_name %}
-          <span class="badge bg-warning text-dark ms-2">{{ user_factory_name }}</span>
-          {% endif %}
-          <span class="text-muted ms-auto small"><i class="fas fa-clock me-1"></i>تا ۱۰ صبح روز جاری</span>
+            <i class="fas fa-calendar-alt fs-5 text-primary"></i>
+            <span>منوی هفته: <strong>{{ week_start_jdate_str|default:"—" }}</strong></span>
+            {% if user_factory_name %}
+            <span class="badge bg-warning text-dark ms-2">{{ user_factory_name }}</span>
+            {% endif %}
+            <span class="text-muted ms-auto small"><i class="fas fa-clock me-1"></i>تا ۱۰ صبح روز جاری</span>
         </div>
       </div>
 
@@ -64,9 +64,9 @@
       >
         {% csrf_token %}
         <input
-          type="hidden"
-          name="form_token"
-          value="{{ form_token }}"
+            type="hidden"
+            name="form_token"
+            value="{{ form_token }}"
         />
 
         <div class="days-grid">
@@ -367,18 +367,19 @@
             </div>
           </div>
           {% endfor %}
-        </div>
-
-        <!-- دکمه ثبت نهایی -->
+          <!-- دکمه ثبت نهایی -->
         <div class="d-grid mt-5">
-          <button
+            <button
             type="submit"
             name="submit_reservations"
             class="btn btn-primary btn-lg submit-btn shadow-lg rounded-pill"
-          >
+            >
             <i class="fas fa-check-circle me-2"></i>ثبت نهایی رزروهای غذا
-          </button>
+            </button>
         </div>
+        </div>
+
+        
       </form>
     </div>
   </div>

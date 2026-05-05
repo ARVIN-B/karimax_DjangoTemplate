@@ -272,14 +272,14 @@
 							</a>
 						</li>
 						{% endif %} {% if is_super_admin %}
-						<li class="nav-item">
+						<!-- <li class="nav-item">
 							<a
 								class="nav-link"
 								href="{% url 'users:user_management' %}"
 							>
 								<i class="fas fa-user-cog me-1"></i>مدیریت کاربران
 							</a>
-						</li>
+						</li> -->
 						{% endif %} {% if is_super_admin %}
 						<li class="nav-item">
 							<a
@@ -378,6 +378,7 @@
 								data-bs-toggle="dropdown"
 								aria-expanded="false"
 								data-bs-auto-close="outside"
+								data-bs-boundary="viewport"
 							>
 								<img
 									src="{% static 'images/user-avatar.png' %}"

@@ -25,6 +25,15 @@
 			>
 				<i class="fas fa-utensils"></i> رزرو غذا برای دیگران
 			</a>
+			{% endif %} {% if personnel_management_access %}
+
+			<a
+				class="quick-action-item"
+				href="{% url 'users:user_management' %}"
+			>
+				<i class="fas fa-user-cog me-1"></i>مدیریت کاربران
+			</a>
+
 			{% endif %} {% if has_management_access %}
 			<a
 				href="{% url 'users:management_dashboard' %}"
@@ -44,6 +53,13 @@
 				/>
 				<button class="quick-action-item quick-action-btn"><i class="fas fa-sync-alt"></i> اپدیت رزرو ها</button>
 			</form>
+			{% endif %} {% if current_role_name == "super_admin" %}
+			<a
+				href="{% url 'users:reports_dashboard' %}"
+				class="quick-action-item"
+			>
+				<i class="fas fa-plus-circle"></i> پنل گزارش گیری
+			</a>
 			{% endif %}
 
 			<a

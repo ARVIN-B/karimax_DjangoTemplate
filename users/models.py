@@ -1259,6 +1259,23 @@ class FoodReservation(models.Model):
             )
 
             if is_self:
+                factory = (
+                    self.related_factory
+                    or self.menu_item.weekly_menu.restaurant.department.factory
+                )
+
+                close_hour = factory.close_food_res_time_H
+                close_minute = factory.close_food_res_time_M
+                now = timezone.localtime(timezone.now()).time()
+                close_time = time(close_hour, close_minute)
+
+                # اگر تاریخ رزرو امروز است و ساعت فعلی از مهلت گذشته باشد
+                if self.reservation_date == timezone.now().date() and now > close_time:
+                    raise ValidationError(
+                        f"مهلت رزرو غذا برای امروز تا ساعت {close_hour:02d}:{close_minute:02d} است. "
+                        "امکان ثبت رزرو جدید وجود ندارد."
+                    )
+
                 # محدودیت‌های شخص رزروکننده (که همان گیرنده است)
                 limits = {
                     "factory": reserver.factory_limit_reservation,

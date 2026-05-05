@@ -1,10 +1,14 @@
 # users/middleware.py
 import json
+from django.conf import settings
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.contrib import messages
 from django.shortcuts import redirect
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GlobalErrorHandlerMiddleware:
@@ -19,6 +23,11 @@ class GlobalErrorHandlerMiddleware:
 
     def process_exception(self, request, exception):
         """این متد همه ارورهای هندل‌نشده رو می‌گیره"""
+
+        if settings.DEBUG:
+            return None
+        
+        logger.error("خطای هندل‌نشده در درخواست", exc_info=exception)
 
         # اگر درخواست AJAX هست
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":

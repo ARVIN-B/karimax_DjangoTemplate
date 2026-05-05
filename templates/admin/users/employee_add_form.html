@@ -6,7 +6,6 @@
   <form method="post" action="">
     {% csrf_token %}
     {{ adminform.form.as_p }}  <!-- تغییر از adminform.as_p به adminform.form.as_p -->
-    wwwwwwwwwww
     <div class="submit-row">
       <input type="submit" value="{% trans 'ذخیره' %}" class="default" name="_save">
     </div>
