@@ -620,6 +620,15 @@ class EmployeeAdmin(UserAdmin):
             },
         ),
         (
+            "پنل گزارش گیری",
+            {
+                "fields": (
+                    "reporting_permision",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
             "تحویل‌گیرنده غذا",
             {
                 "fields": (
@@ -718,6 +727,7 @@ class EmployeeAdmin(UserAdmin):
         "guest_limit_res_for_others_display",
         "free_limit_res_for_others_display",
         "factory_limit_res_for_others_display",
+        "reporting_permision",
         "date_joined",
         "food_receiver_role_display",
         "food_receiver_location",
@@ -760,6 +770,7 @@ class EmployeeAdmin(UserAdmin):
         "guest_limit_reservation_for_others",
         "free_limit_reservation_for_others",
         "factory_limit_reservation_for_others",
+        "reporting_permision",
         "date_joined",
         "food_receiver_role",
         "food_receiver_factory",

@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load custom_filters %}
+{% load jalali_filters %}
 {% block title %} داشبورد مدیریت {% endblock %}
 {% block breadcrumb_title %} داشبورد مدیریت {% endblock %}
 
@@ -122,7 +123,7 @@
                     {% csrf_token %}
                     <input type="hidden" name="action" value="export_excel">
                     <button type="submit" class="btn btn-success">
-                        <i class="fas fa-download me-2"></i> دانلود اکسل
+                        <i class="fas fa-download me-2"></i> گزارش اکسل مشارکت های پرسنل زیردست
                     </button>
                 </form>
             </div>
@@ -145,7 +146,7 @@
             <!-- گزارش مشارکت‌ها و نمودارها -->
             <div class="report-cards">
                 <div class="stat-card">
-                    <h4>گزارش مشارکت‌ها</h4>
+                    <h4>گزارش مشارکت‌های دریافتی</h4>
                     <ul class="list-group list-group-flush">
                         {% for item in participation_display %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -157,11 +158,11 @@
                         </li>
                         {% endfor %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            فایل‌های صوتی کل
+                            تعداد کل فایل‌های صوتی
                             <span class="badge bg-success rounded-pill">{{ audio_count }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            سایر فایل‌ها
+                            تعداد کل فایل‌های غیر صوتی
                             <span class="badge bg-warning rounded-pill">{{ other_count }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center bg-light">
@@ -212,6 +213,8 @@
                             <tr>
                                 <th>کارمند</th>
                                 <th>عنوان</th>
+                                <th>سمت</th>
+                                <th>محل فعالیت</th>
                                 <th>نوع</th>
                                 <th>تاریخ</th>
                                 <th>عملیات</th>
@@ -223,8 +226,52 @@
                             <tr class="{% if participation.is_committee %}table-danger{% endif %}">
                                 <td>{{ participation.user.full_name }}</td>
                                 <td>{{ participation.title }}</td>
+
+
+
+
+                                <td>
+                                    {%if participation.role_name == "super_admin"%}
+                                    مدیر سیستم
+                                    
+                                    {%elif participation.role_name == "factory_manager"%}
+                                    مدیر کارخانه
+
+                                    {%elif participation.role_name == "department_manager"%}
+                                    مدیر بخش
+                                    
+                                    {%elif participation.role_name == "supervisor"%}
+                                    سرپرست
+
+                                    {%elif participation.role_name == "employee"%}
+                                    کارمند
+                                    
+                                    {%endif%}
+
+                                </td>
+
+                                <td>
+
+                                    {%if participation.holding%}
+                                        - {{ participation.holding.name }}
+                                    {%endif%}
+                                    {%if participation.factory%}
+                                        - {{ participation.factory.name }}
+                                    {%endif%}
+                                    {%if participation.department%}
+                                        - {{ participation.department.name }}
+                                    {%endif%}
+                                    {%if participation.subdepartment%}
+                                        - {{ participation.subdepartment.name }}
+                                    {%endif%}
+                                
+                                
+                                
+                                </td>
+
+
                                 <td>{{ participation.get_item_type_display }}</td>
-                                <td>{{ participation.created_at|date:"Y-m-d" }}</td>
+                                <td>{{ participation.created_at|jalali_date:"%Y/%m/%d" }}</td>
                                 <td>
                                     {% if role_name == 'supervisor' and participation.status == 'supervisor_review' or role_name == 'department_manager' and participation.status == 'manager_review' %}
                                         <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-info">بررسی</a>
@@ -236,7 +283,7 @@
                                         <a href="{% url 'users:review_participation' participation.id %}" class="btn btn-sm btn-info">مشاهده</a>
                                     {% endif %}
                                 </td>
-                                <td>{{ participation.get_status_display }}</td>
+                                <td>{{ participation.get_status_display }} - {{ participation.get_approvers|join:"یا " }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

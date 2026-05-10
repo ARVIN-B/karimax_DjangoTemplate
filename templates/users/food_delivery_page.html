@@ -350,7 +350,9 @@
 	function printFactory(factoryId) {
 		document.querySelectorAll(".print-factory").forEach((el) => el.classList.remove("print-factory"));
 
-		const factoryEl = document.getElementById("factory-" + factoryId);
+		// const factoryEl = document.getElementById("factory-" + factoryId);
+		// const factoryEl = document.querySelector('.delivery-page [id="factory-' + factoryId + '"]');
+		const factoryEl = document.querySelector('.delivery-page .factory-card[id="factory-' + factoryId + '"]');
 		if (!factoryEl) {
 			alert("کارخانه یافت نشد!");
 			return;

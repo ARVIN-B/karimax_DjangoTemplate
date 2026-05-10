@@ -1,191 +1,238 @@
-{% extends 'base.html' %}
-{% block content %}
-    <div class="container">
-        <h2>جزئیات مشارکت: {{ participation.title }}</h2>
-        <p>کارمند: {{ participation.user.full_name }}</p>
-        <p>وضعیت: {{ participation.get_status_display }}</p>
+{% extends 'base.html' %} {% block content %}
+<div class="container">
+	<h2>جزئیات مشارکت: {{ participation.title }}</h2>
+	<p>کارمند: {{ participation.user.full_name }}</p>
+	<p>وضعیت: {{ participation.get_status_display }}</p>
 
-        {% if participation.is_committee %}
+	{% if participation.is_committee %} {% if participation.supervisor_status %} {% if participation.supervisor_status == 'approved' %}
+	<p>
+		نظر سرپرست کمیته:
+		<span class="text-success">{{ participation.supervisor_status }}</span>
+	</p>
+	{% else %}
+	<p>
+		نظر سرپرست کمیته:
+		<span class="text-danger">{{ participation.supervisor_status }}</span>
+	</p>
+	{% endif %} {% endif %} {% if participation.supervisor_feedback %}
+	<p class="text-secondary">فیدبک سرپرست کمیته: {{ participation.supervisor_feedback }}</p>
+	{% endif %} {% if participation.manager_status %} {% if participation.manager_status == 'approved' %}
+	<p>
+		نظر سرپرست کمیته:
+		<span class="text-success">{{ participation.manager_status }}</span>
+	</p>
+	{% else %}
+	<p>
+		نظر سرپرست کمیته:
+		<span class="text-danger">{{ participation.manager_status }}</span>
+	</p>
+	{% endif %} {% endif %} {% if participation.manager_feedback %}
+	<p class="text-secondary">فیدبک مدیر اول کمیته: {{ participation.manager_feedback }}</p>
+	{% endif %} {% if participation.manager_2_status %} {% if participation.manager_2_status == 'approved' %}
+	<p>
+		نظر سرپرست کمیته:
+		<span class="text-success">{{ participation.manager_2_status }}</span>
+	</p>
+	{% else %}
+	<p>
+		نظر سرپرست کمیته:
+		<span class="text-danger">{{ participation.manager_2_status }}</span>
+	</p>
+	{% endif %} {% endif %} {% if participation.manager_2_feedback %}
+	<p class="text-secondary">فیدبک مدیر دوم کمیته: {{ participation.manager_2_feedback }}</p>
+	{% endif %} {% if participation.manager_3_status %} {% if participation.manager_3_status == 'approved' %}
+	<p>
+		نظر سرپرست کمیته:
+		<span class="text-success">{{ participation.manager_3_status }}</span>
+	</p>
+	{% else %}
+	<p>
+		نظر سرپرست کمیته:
+		<span class="text-danger">{{ participation.manager_3_status }}</span>
+	</p>
+	{% endif %} {% endif %} {% if participation.manager_3_feedback %}
+	<p class="text-secondary">فیدبک مدیر سوم کمیته: {{ participation.manager_3_feedback }}</p>
+	{% endif %} {% else %} {% if participation.feedback and participation.feedback != "بدون فیدبک" %}
+	<p class="text-secondary">فیدبک: {{ participation.feedback }}</p>
+	{% endif %} {% endif %} {% if can_convert %}
+	<form method="POST">
+		{% csrf_token %}
+		<button
+			type="submit"
+			name="action"
+			value="convert_to_text"
+			class="btn btn-primary"
+		>
+			تبدیل به متن
+		</button>
 
-            {% if participation.supervisor_status %}
-                {% if participation.supervisor_status == 'approved' %}
-                    <p>
-                        نظر سرپرست کمیته:
-                        <span class="text-success">{{ participation.supervisor_status }}</span>
-                    </p>
-                {% else %}
-                    <p>
-                        نظر سرپرست کمیته:
-                        <span class="text-danger">{{ participation.supervisor_status }}</span>
-                    </p>
-                {% endif %}
-            {% endif %}
-            {% if participation.supervisor_feedback %}
-                <p class="text-secondary">فیدبک سرپرست کمیته: {{ participation.supervisor_feedback }}</p>
-            {% endif %}
+		{% if can_delete %} {% csrf_token %}
+		<button
+			type="submit"
+			name="action"
+			value="delete"
+			class="btn btn-danger"
+		>
+			حذف مشارکت
+		</button>
+		{% endif %}
+	</form>
 
-            {% if participation.manager_status %}
-                {% if participation.manager_status == 'approved' %}
-                    <p>
-                        نظر سرپرست کمیته:
-                        <span class="text-success">{{ participation.manager_status }}</span>
-                    </p>
-                {% else %}
-                    <p>
-                        نظر سرپرست کمیته:
-                        <span class="text-danger">{{ participation.manager_status }}</span>
-                    </p>
-                {% endif %}
+	{% elif can_edit or can_finalize or can_summarize or can_delete %}
 
-            {% endif %}
-            {% if participation.manager_feedback %}
-                <p class="text-secondary">فیدبک مدیر اول کمیته: {{ participation.manager_feedback }}</p>
-            {% endif %}
-            {% if participation.manager_2_status %}
-                {% if participation.manager_2_status == 'approved' %}
-                    <p>
-                        نظر سرپرست کمیته:
-                        <span class="text-success">{{ participation.manager_2_status }}</span>
-                    </p>
-                {% else %}
-                    <p>
-                        نظر سرپرست کمیته:
-                        <span class="text-danger">{{ participation.manager_2_status }}</span>
-                    </p>
-                {% endif %}
+	<form method="POST">
+		{% csrf_token %}
 
-            {% endif %}
-            {% if participation.manager_2_feedback %}
-                <p class="text-secondary">فیدبک مدیر دوم کمیته: {{ participation.manager_2_feedback }}</p>
-            {% endif %}
-            {% if participation.manager_3_status %}
-                {% if participation.manager_3_status == 'approved' %}
-                    <p>
-                        نظر سرپرست کمیته:
-                        <span class="text-success">{{ participation.manager_3_status }}</span>
-                    </p>
-                {% else %}
-                    <p>
-                        نظر سرپرست کمیته:
-                        <span class="text-danger">{{ participation.manager_3_status }}</span>
-                    </p>
-                {% endif %}
-            {% endif %}
-            {% if participation.manager_3_feedback %}
-                <p class="text-secondary">فیدبک مدیر سوم کمیته: {{ participation.manager_3_feedback }}</p>
-            {% endif %}
+		<textarea
+			name="text_content"
+			rows="10"
+			cols="50"
+			class="form-control mb-3"
+		>
+{{ participation.text_content|default:"" }}</textarea
+		>
 
-        {% else %}
+		{% if participation.attachment %}
+		<div class="card mt-3">
+			<div class="card-body">
+				<h5 class="card-title">توضیحات:</h5>
+				<p class="card-text">{{ participation.description }}</p>
+			</div>
+		</div>
+		{% endif %} {% if can_edit %}
+		<button
+			type="submit"
+			name="action"
+			value="edit_text"
+			class="btn btn-warning"
+		>
+			ویرایش متن
+		</button>
+		{% endif %} {% if can_finalize %}
+		<button
+			type="submit"
+			name="action"
+			value="finalize_text"
+			class="btn btn-success"
+		>
+			تأیید نهایی
+		</button>
+		{% endif %} {% if can_summarize %}
+		<button
+			type="submit"
+			name="action"
+			value="summarized_text"
+			class="btn btn-info"
+		>
+			خلاصه سازی متن
+		</button>
+		{% endif %}
 
-            {% if participation.feedback and participation.feedback != "بدون فیدبک" %}
-                <p class="text-secondary">فیدبک: {{ participation.feedback }}</p>
-            {% endif %}
-        {% endif %}
+		<!-- <button type="submit" name="action" value="normal_text" class="btn btn-secondary">متن اصلی</button> -->
 
+		{% if can_delete %} {% csrf_token %}
+		<button
+			type="submit"
+			name="action"
+			value="delete"
+			class="btn btn-danger"
+		>
+			حذف مشارکت
+		</button>
+		{% endif %}
+	</form>
+	{% elif participation.text_content %}
+	<div class="card mt-3">
+		<div class="card-body">
+			<div class="card mt-3">
+				<div class="card-body">
+					<h5 class="card-title">متن استخراج‌شده:</h5>
+					<p class="card-text">{{ participation.text_content }}</p>
+				</div>
+			</div>
 
-        {% if can_convert %}
-            <form method="POST">
-                {% csrf_token %}
-                <button type="submit" name="action" value="convert_to_text" class="btn btn-primary">تبدیل به متن</button>
+			{% if participation.attachment %}
+			<div class="card mt-3">
+				<div class="card-body">
+					<h5 class="card-title">توضیحات:</h5>
+					<p class="card-text">{{ participation.description }}</p>
+				</div>
+			</div>
+			{% endif %} {% if can_download %}
+			<a
+				href="{% url 'users:process_participation' participation.id %}?action=download_text"
+				class="btn btn-success"
+				>دانلود متن</a
+			>
+			<a
+				href="{% url 'users:process_participation' participation.id %}?action=download_pdf"
+				class="btn btn-warning"
+				>دانلود pdf</a
+			>
+			<a
+				href="{% url 'users:process_participation' participation.id %}?action=download_word"
+				class="btn btn-secondary"
+				>دانلود word</a
+			>
+			{%if participation.attachment%}
+			<a
+				href="{% url 'users:process_participation' participation.id %}?action=download_mp3"
+				class="btn btn-info"
+				>دانلود فایل اپلود شده</a
+			>
+			{% endif %} {% endif %}
+		</div>
+	</div>
+	{% else %}
+	<p>متن در دسترس نیست.</p>
+	{% endif %} {% if can_referral %}
+	<div>
+		<a
+			href="{% url 'users:referral_create' participation.id %}"
+			class="btn btn-warning btn-lg shadow-sm"
+		>
+			<i class="bi bi-arrow-right-circle"></i>
+			ارجاع این مشارکت
+		</a>
+	</div>
+	{% endif %}
+</div>
+{% endblock %} {% block extra_js %}
 
+<!-- لود SweetAlert2 از CDN -->
+<script>
+	document.addEventListener("DOMContentLoaded", function () {
+		// انتخاب همۀ دکمه‌های حذف بدون نیاز به class اضافه
+		const deleteButtons = document.querySelectorAll('button[name="action"][value="delete"]');
+		deleteButtons.forEach((btn) => {
+			btn.addEventListener("click", function (e) {
+				e.preventDefault(); // جلوگیری از ارسال فوری فرم
+				const form = this.closest("form");
+				Swal.fire({
+					title: "آیا مطمئن هستید؟",
+					text: "",
+					icon: "warning",
+					showCancelButton: true,
+					confirmButtonColor: "#d33",
+					cancelButtonColor: "#3085d6",
+					confirmButtonText: "بله، حذف کن",
+					cancelButtonText: "لغو",
+				}).then((result) => {
+					if (result.isConfirmed) {
+						// ایجاد یک دکمۀ hidden با همان name و value و کلیک روی آن
+						const hiddenBtn = document.createElement("button");
+						hiddenBtn.type = "submit";
+						hiddenBtn.name = "action";
+						hiddenBtn.value = "delete";
+						hiddenBtn.style.display = "none";
+						form.appendChild(hiddenBtn);
+						hiddenBtn.click();
+						hiddenBtn.remove();
+					}
+				});
+			});
+		});
+	});
+</script>
 
-                {% if can_delete %}
-                        {% csrf_token %}
-                        <button type="submit"
-                                name="action"
-                                value="delete"
-                                class="btn btn-danger"
-                                onclick="return confirm('آیا مطمئن هستید که می‌خواهید این مشارکت را حذف کنید؟ این عمل غیرقابل بازگشت است.');">
-
-                            حذف مشارکت
-                        </button>
-                {% endif %}
-
-
-            </form>
-
-        {% elif can_edit or can_finalize or can_summarize or can_delete %}
-
-            <form method="POST">
-                {% csrf_token %}
-
-                <textarea name="text_content" rows="10" cols="50" class="form-control mb-3">{{ participation.text_content|default:"" }}</textarea>
-
-                {% if participation.attachment %}
-                    <div class="card mt-3">
-                        <div class="card-body">
-                            <h5 class="card-title">توضیحات:</h5>
-                            <p class="card-text">{{ participation.description }}</p>
-                        </div>
-                    </div>
-                {% endif %}
-
-
-                {% if can_edit %}
-                    <button type="submit" name="action" value="edit_text" class="btn btn-warning">ویرایش متن</button>
-                {% endif %}
-                {% if can_finalize %}
-                    <button type="submit" name="action" value="finalize_text" class="btn btn-success">تأیید نهایی</button>
-                {% endif %}
-                {% if can_summarize %}
-                    <button type="submit" name="action" value="summarized_text" class="btn btn-info">خلاصه سازی متن</button>
-                {% endif %}
-
-                <!-- <button type="submit" name="action" value="normal_text" class="btn btn-secondary">متن اصلی</button> -->
-
-                {% if can_delete %}
-                    {% csrf_token %}
-                    <button type="submit"
-                            name="action"
-                            value="delete"
-                            class="btn btn-danger"
-                            onclick="return confirm('آیا مطمئن هستید که می‌خواهید این مشارکت را حذف کنید؟ این عمل غیرقابل بازگشت است.');">
-
-                        حذف مشارکت
-                    </button>
-                {% endif %}
-
-            </form>
-        {% elif participation.text_content %}
-            <div class="card mt-3">
-                <div class="card-body">
-                    <div class="card mt-3">
-                        <div class="card-body">
-                            <h5 class="card-title">متن استخراج‌شده:</h5>
-                            <p class="card-text">{{ participation.text_content }}</p>
-                        </div>
-                    </div>
-
-                    {% if participation.attachment %}
-                        <div class="card mt-3">
-                            <div class="card-body">
-                                <h5 class="card-title">توضیحات:</h5>
-                                <p class="card-text">{{ participation.description }}</p>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if can_download %}
-                        <a href="{% url 'users:process_participation' participation.id %}?action=download_text" class="btn btn-success">دانلود متن</a>
-                        <a href="{% url 'users:process_participation' participation.id %}?action=download_pdf" class="btn btn-warning">دانلود pdf</a>
-                        <a href="{% url 'users:process_participation' participation.id %}?action=download_word" class="btn btn-secondary">دانلود word</a>
-                        {%if participation.attachment%}
-                            <a href="{% url 'users:process_participation' participation.id %}?action=download_mp3" class="btn btn-info">دانلود فایل اپلود شده</a>
-                        {% endif %}
-                    {% endif %}
-                </div>
-            </div>
-        {% else %}
-            <p>متن در دسترس نیست.</p>
-        {% endif %}
-
-        {% if can_referral %}
-            <div>
-                <a href="{% url 'users:referral_create' participation.id %}"
-                   class="btn btn-warning btn-lg shadow-sm">
-                    <i class="bi bi-arrow-right-circle"></i>
-                    ارجاع این مشارکت
-                </a>
-            </div>
-        {% endif %}
-    </div>
 {% endblock %}

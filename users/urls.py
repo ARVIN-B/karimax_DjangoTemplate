@@ -96,18 +96,13 @@ urlpatterns = [
         views.get_employee_reservation_info,
         name="get_employee_reservation_info",
     ),
-    # path(
-    #     "reporting-panel/",
-    #     views.reporting_panel,
-    #     name="reporting_panel",
-    # ),
 
     
     path("reports/", views.reports_dashboard, name="reports_dashboard"),
     # path("reports/export/full/", views.export_full_debt_report, name="export_full_debt"),
-    path("reports/export/restaurant/", views.export_restaurant_report, name="export_restaurant"),
-    path("reports/export/employee/detailed/", views.export_detailed_employee_report, name="export_employee_detailed"),
-    path("reports/export/employee/summary/", views.export_employee_summary_report, name="export_employee_summary"),
+    # path("reports/export/restaurant/", views.export_restaurant_report, name="export_restaurant"),
+    # path("reports/export/employee/detailed/", views.export_detailed_employee_report, name="export_employee_detailed"),
+    # path("reports/export/employee/summary/", views.export_employee_summary_report, name="export_employee_summary"),
 
     
 ]

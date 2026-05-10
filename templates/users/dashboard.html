@@ -1,4 +1,4 @@
-{% extends 'base.html' %} {% load static %} {% load custom_filters %} {% block title %} داشبورد {% endblock %} {% block breadcrumb_title %} داشبورد {% endblock %} {% block extra_css %}
+{% extends 'base.html' %} {% load static %} {% load custom_filters %} {% load jalali_filters %} {% block title %} داشبورد {% endblock %} {% block breadcrumb_title %} داشبورد {% endblock %} {% block extra_css %}
 <link
 	rel="stylesheet"
 	href="{% static 'css/dashboard.css' %}"
@@ -53,12 +53,12 @@
 				/>
 				<button class="quick-action-item quick-action-btn"><i class="fas fa-sync-alt"></i> اپدیت رزرو ها</button>
 			</form>
-			{% endif %} {% if current_role_name == "super_admin" %}
+			{% endif %} {% if can_report %}
 			<a
 				href="{% url 'users:reports_dashboard' %}"
 				class="quick-action-item"
 			>
-				<i class="fas fa-plus-circle"></i> پنل گزارش گیری
+				<i class="fas fa-chart-bar"></i> پنل گزارش گیری
 			</a>
 			{% endif %}
 
@@ -85,6 +85,51 @@
 				<i class="fas fa-robot"></i> چت‌بات
 			</a>
 
+			<!-- <a
+				href="{% url 'users:referrals_inbox' %}"
+				class="quick-action-item"
+				><i class="fas fa-cloud"></i> انتقال مدیران</a
+			> -->
+
+			<!-- {% if current_role_name == "super_admin" %}
+			<form
+				method="get"
+				class="quick-action-item"
+			>
+				<input
+					type="hidden"
+					name="action"
+					value="change"
+				/>
+				<button class="btn btn-warning mb-3 w-100 w-md-auto"><i class="fas fa-cloud"></i> انتقال مدیران</button>
+			</form>
+			{% endif %} -->
+
+			<!-- {% if can_manage_bimeh %}
+			<a
+				href="{% url 'users:manage_bimeh' %}"
+				class="quick-action-item"
+				><i class="fas fa-cloud"></i> مدیریت اطلاعات بیمه‌ای کارمندان</a
+			>
+			{% endif %} -->
+
+			<a
+				href="{% url 'users:referrals_inbox' %}"
+				class="quick-action-item"
+				><i class="fas fa-inbox"></i> ارجاعات دریافتی</a
+			>
+
+			<!-- <a
+				href="{% url 'users:insurance_info' %}"
+				class="quick-action-item"
+				><i class="fas fa-cloud"></i> مدیریت اطلاعات بیمه‌ای</a
+			>
+			<a
+				href="{% url 'users:family_management' %}"
+				class="quick-action-item"
+				><i class="fas fa-cloud"></i> مدیریت اطلاعات بیمه‌ای افراد خانواده</a
+			> -->
+
 			<form
 				method="post"
 				class="quick-action-form"
@@ -99,7 +144,7 @@
 					type="submit"
 					class="quick-action-item quick-action-btn"
 				>
-					<i class="fas fa-download"></i> دانلود گزارش اکسل
+					<i class="fas fa-download"></i>گزارش اکسل مشارکت های فردی
 				</button>
 			</form>
 		</div>
@@ -107,7 +152,7 @@
 			<!-- گزارش و نمودار -->
 			<div class="row mt-4">
 				<div class="col-12 col-md-6 mb-4 mb-md-0">
-					<h4 class="mb-3">گزارش مشارکت‌ها</h4>
+					<h4 class="mb-3">گزارش مشارکت‌های شما</h4>
 					<ul class="list-group participation-report">
 						{% for item in participation_display %}
 						<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
@@ -119,11 +164,11 @@
 						</li>
 						{% endfor %}
 						<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
-							<span>تعداد فایل‌های صوتی کل</span>
+							<span>تعداد کل فایل‌های صوتی</span>
 							<span class="badge-custom badge-success">{{ audio_count }}</span>
 						</li>
 						<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
-							<span>تعداد سایر فایل‌ها</span>
+							<span>تعداد کل فایل‌های غیر صوتی</span>
 							<span class="badge-custom badge-warning">{{ other_count }}</span>
 						</li>
 						<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap bg-light">
@@ -289,7 +334,7 @@
 						<tr class="{% if participation.is_committee %}committee-row{% endif %}">
 							<td>{{ participation.title }}</td>
 							<td>{{ participation.get_item_type_display }}</td>
-							<td>{{ participation.created_at|date:"Y-m-d" }}</td>
+							<td>{{ participation.created_at|jalali_date:"%Y/%m/%d" }}</td>
 							<td>
 								{% if participation.status == 'pending' and participation.attachment %}
 								<a

@@ -360,6 +360,10 @@ class Employee(AbstractUser):
         (0, "فقط همان روز"),
         (1, "مجاز به رزرو برای اینده و گذشته"),
     )
+    reporting_permision_choices = (
+        (0, "بدون مجزو"),
+        (1, "گزارش گیری سلف"),
+    )
 
     national_id = models.CharField(max_length=10, unique=True, verbose_name="کد ملی")
     phone_number = models.CharField(
@@ -390,6 +394,12 @@ class Employee(AbstractUser):
     # can_reserve_for_others = models.BooleanField(
     #     default=False, verbose_name="مجوز رزرو برای دیگران"
     # )
+
+    reporting_permision = models.PositiveSmallIntegerField(
+        default=0,
+        choices=reporting_permision_choices,
+        verbose_name="مجوز گزارش گیری",
+    )
 
     guest_limit_reservation = models.IntegerField(
         default=0, verbose_name="محدودیت رزرو مهمان"
@@ -613,6 +623,10 @@ class Employee(AbstractUser):
             self.username = self.national_id
         if not self.username:
             raise ValueError("کد ملی (national_id) باید پر باشد برای ست username.")
+        if self.national_id:
+            self.username = self.national_id
+
+            
         super().save(*args, **kwargs)
 
     def clean(self):
@@ -840,6 +854,52 @@ class Participation(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.user.full_name} ({self.role_name if self.role_name else 'نامشخص'})"
+    
+    def get_approvers(self):
+        approvers = []
+        if self.is_committee:
+            # بررسی مدیران بخش کمیته (در صورت وجود)
+            if self.department_committee:
+                dept = self.department_committee
+                # مدیر اول
+                if self.manager_status not in ['approved', 'rejected'] and dept.manager:
+                    approvers.append(dept.manager.full_name)
+                # مدیر دوم
+                if self.manager_2_status not in ['approved', 'rejected'] and dept.manager_2:
+                    approvers.append(dept.manager_2.full_name)
+                # مدیر سوم
+                if self.manager_3_status not in ['approved', 'rejected'] and dept.manager_3:
+                    approvers.append(dept.manager_3.full_name)
+            # بررسی سرپرست زیربخش کمیته (در صورت وجود)
+            if self.subdepartment_committee:
+                sub = self.subdepartment_committee
+                if self.supervisor_status not in ['approved', 'rejected'] and sub.supervisor:
+                    approvers.append(sub.supervisor.full_name)
+            if not approvers:
+                approvers = ["همه تأیید کرده‌اند"]
+        else:
+            # منطق قبلی برای غیر کمیته (بدون تغییر)
+            if self.status == 'supervisor_review':
+                if self.subdepartment:
+                    if self.subdepartment.supervisors.exists():
+                        approvers = [emp.full_name for emp in self.subdepartment.supervisors.all()]
+                    elif self.subdepartment.supervisor:
+                        approvers = [self.subdepartment.supervisor.full_name]
+            elif self.status == 'manager_review':
+                if self.department:
+                    if self.department.managers.exists():
+                        approvers = [emp.full_name for emp in self.department.managers.all()]
+                    elif self.department.manager:
+                        approvers = [self.department.manager.full_name]
+            elif self.status == 'factory_manager_review':
+                if self.factory:
+                    if self.factory.managers.exists():
+                        approvers = [emp.full_name for emp in self.factory.managers.all()]
+                    elif self.factory.manager:
+                        approvers = [self.factory.manager.full_name]
+            if not approvers:
+                approvers = ["نامشخص"]
+        return approvers
 
 
 class Evaluation(models.Model):
@@ -1179,9 +1239,15 @@ class FoodReservation(models.Model):
 
     def save(self, *args, **kwargs):
         # اگر فقط rating و feedback آپدیت میشه، اعتبارسنجی کامل نزن
-        if kwargs.get("update_fields") and {"rating", "feedback"}.issubset(
-            set(kwargs["update_fields"])
-        ):
+        # if kwargs.get("update_fields") and {"is_delivered", "rating", "feedback"}.issubset(
+        #     set(kwargs["update_fields"])
+        # ):
+        #     super().save(*args, **kwargs)
+        #     return
+
+        non_validated_fields = {"is_delivered", "rating", "feedback"}
+        update_fields = kwargs.get("update_fields")
+        if update_fields and set(update_fields).issubset(non_validated_fields):
             super().save(*args, **kwargs)
             return
 
