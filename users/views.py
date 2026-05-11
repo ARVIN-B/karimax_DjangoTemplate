@@ -1148,7 +1148,13 @@ def dashboard(request):
 
     # اینجا خطاهای قبلی رفع شده‌اند:
     audio_count = all_participations.filter(is_audio=True).count()
-    other_count = all_participations.filter(is_audio=False).count()
+    # other_count = all_participations.filter(is_audio=False).count()
+
+    other_count = all_participations.filter(
+        Q(is_audio=False) &
+        ~Q(attachment__isnull=True) &
+        ~Q(attachment='')
+    ).count()
 
     participation_display = [
         {
@@ -1748,7 +1754,7 @@ def management_dashboard(request):
     elif role_name == "holding_manager":
         all_participations = Participation.objects.filter(
             Q (holding_id=holding_id) |
-            Q (factory_committee__linked_factory_id=factory_id)
+            Q (factory_committee__linked_factory__holding_id=holding_id)
         ).order_by("-created_at")
         all_employees = Employee.objects.filter(
             assigned_subdepartments__department__factory__holding_id=holding_id
@@ -1922,8 +1928,6 @@ def management_dashboard(request):
 
     total_count = participations.count()  # شمارش کل QuerySet اصلی
 
-    print(f"par           {participations}")
-
     # فقط 50 تای اول را برای بارگذاری اولیه انتخاب می کنیم
 
     remaining_count = total_count - len(participations)
@@ -1938,7 +1942,13 @@ def management_dashboard(request):
     # ]
 
     audio_count = all_participations.filter(is_audio=True).count()
-    other_count = all_participations.filter(is_audio=False).count()
+    # other_count = all_participations.filter(is_audio=False).count()
+
+    other_count = all_participations.filter(
+        Q(is_audio=False) &
+        ~Q(attachment__isnull=True) &
+        ~Q(attachment='')
+    ).count()
 
     participation_display = [
         {

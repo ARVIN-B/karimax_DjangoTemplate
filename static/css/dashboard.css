@@ -335,10 +335,10 @@ body {
 .btn-sm-glass {
   border-radius: 2rem;
   padding: 0.35rem 1rem;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--secondary);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border-glass);
-  color: var(--text-primary);
+  color: white;
   font-weight: 500;
   transition: all var(--transition);
   text-decoration: none;
@@ -348,7 +348,8 @@ body {
 }
 
 .btn-sm-glass:hover {
-  background: white;
+  background: var(--secondary-dark);
+  color: white;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
