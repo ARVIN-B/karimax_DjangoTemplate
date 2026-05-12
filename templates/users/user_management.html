@@ -117,6 +117,31 @@
 								data-employee-departments-ids="{% for d in employee.managed_departments_m2m.all %}{{ d.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
 								data-employee-supervised-ids="{% for s in employee.supervised_subdepartments_m2m.all %}{{ s.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
 								data-employee-assigned-ids="{% for a in employee.assigned_subdepartments.all %}{{ a.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+								data-employee-unlimit-reservation="{{ employee.unlimit_reservation|yesno:'true,false' }}"
+								data-employee-is-contractor="{{ employee.is_contractor|yesno:'true,false' }}"
+								data-employee-guest-limit="{{ employee.guest_limit_reservation }}"
+								data-employee-free-limit="{{ employee.free_limit_reservation }}"
+								data-employee-factory-limit="{{ employee.factory_limit_reservation }}"
+								data-employee-can-reserve-for-others="{{ employee.can_reserve_for_others }}"
+								data-employee-can-reserve-for-which-day="{{ employee.can_reserve_for_which_day }}"
+								data-employee-guest-limit-others="{{ employee.guest_limit_reservation_for_others }}"
+								data-employee-free-limit-others="{{ employee.free_limit_reservation_for_others }}"
+								data-employee-factory-limit-others="{{ employee.factory_limit_reservation_for_others }}"
+								data-employee-food-receiver-role="{{ employee.food_receiver_role }}"
+								data-employee-food-receiver-factory="{{ employee.food_receiver_factory_id|default:'' }}"
+								data-employee-food-receiver-holding="{{ employee.food_receiver_holding_id|default:'' }}"
+								data-employee-can-serve-foods="{{ employee.can_serve_foods|yesno:'true,false' }}"
+								data-employee-can-access-dashboard="{{ employee.can_access_dashboard|yesno:'true,false' }}"
+								data-employee-can-access-all-departments="{{ employee.can_access_all_departments|yesno:'true,false' }}"
+								data-employee-factory-bimeh="{{ employee.factory_bimeh|yesno:'true,false' }}"
+								data-employee-holding-bimeh="{{ employee.holding_bimeh|yesno:'true,false' }}"
+								data-employee-can-reserve-management-food="{{ employee.can_reserve_management_food|yesno:'true,false' }}"
+								data-employee-manage-sub-employees="{{ employee.manage_sub_employees|yesno:'true,false' }}"
+								data-employee-address="{{ employee.address|default:'' }}"
+								data-employee-center-of-charge="{{ employee.center_of_charge|default:'' }}"
+								data-employee-birth-certificate-number="{{ employee.birth_certificate_number|default:'' }}"
+								data-employee-birth-date="{{ employee.birth_date|date:'Y-m-d' }}"
+								data-employee-father-name="{{ employee.father_name|default:'' }}"
 								data-bs-toggle="modal"
 								data-bs-target="#addUserModal"
 							>
@@ -158,6 +183,31 @@
 						data-employee-departments-ids="{% for d in employee.managed_departments_m2m.all %}{{ d.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
 						data-employee-supervised-ids="{% for s in employee.supervised_subdepartments_m2m.all %}{{ s.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
 						data-employee-assigned-ids="{% for a in employee.assigned_subdepartments.all %}{{ a.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+						data-employee-unlimit-reservation="{{ employee.unlimit_reservation|yesno:'true,false' }}"
+						data-employee-is-contractor="{{ employee.is_contractor|yesno:'true,false' }}"
+						data-employee-guest-limit="{{ employee.guest_limit_reservation }}"
+						data-employee-free-limit="{{ employee.free_limit_reservation }}"
+						data-employee-factory-limit="{{ employee.factory_limit_reservation }}"
+						data-employee-can-reserve-for-others="{{ employee.can_reserve_for_others }}"
+						data-employee-can-reserve-for-which-day="{{ employee.can_reserve_for_which_day }}"
+						data-employee-guest-limit-others="{{ employee.guest_limit_reservation_for_others }}"
+						data-employee-free-limit-others="{{ employee.free_limit_reservation_for_others }}"
+						data-employee-factory-limit-others="{{ employee.factory_limit_reservation_for_others }}"
+						data-employee-food-receiver-role="{{ employee.food_receiver_role }}"
+						data-employee-food-receiver-factory="{{ employee.food_receiver_factory_id|default:'' }}"
+						data-employee-food-receiver-holding="{{ employee.food_receiver_holding_id|default:'' }}"
+						data-employee-can-serve-foods="{{ employee.can_serve_foods|yesno:'true,false' }}"
+						data-employee-can-access-dashboard="{{ employee.can_access_dashboard|yesno:'true,false' }}"
+						data-employee-can-access-all-departments="{{ employee.can_access_all_departments|yesno:'true,false' }}"
+						data-employee-factory-bimeh="{{ employee.factory_bimeh|yesno:'true,false' }}"
+						data-employee-holding-bimeh="{{ employee.holding_bimeh|yesno:'true,false' }}"
+						data-employee-can-reserve-management-food="{{ employee.can_reserve_management_food|yesno:'true,false' }}"
+						data-employee-manage-sub-employees="{{ employee.manage_sub_employees|yesno:'true,false' }}"
+						data-employee-address="{{ employee.address|default:'' }}"
+						data-employee-center-of-charge="{{ employee.center_of_charge|default:'' }}"
+						data-employee-birth-certificate-number="{{ employee.birth_certificate_number|default:'' }}"
+						data-employee-birth-date="{{ employee.birth_date|date:'Y-m-d' }}"
+						data-employee-father-name="{{ employee.father_name|default:'' }}"
 						data-bs-toggle="modal"
 						data-bs-target="#addUserModal"
 					>
@@ -555,7 +605,7 @@
 														type="checkbox"
 														name="unlimit_reservation"
 														id="unlimit_reservation"
-														value="true"
+														value="True"
 													/>
 													<label
 														class="form-check-label"
@@ -572,7 +622,7 @@
 														type="checkbox"
 														name="is_contractor"
 														id="is_contractor"
-														value="true"
+														value="True"
 													/>
 													<label
 														class="form-check-label"
@@ -737,7 +787,7 @@
 														class="form-check-input"
 														type="checkbox"
 														name="can_serve_foods"
-														value="true"
+														value="True"
 													/>
 													<label class="form-check-label">دارد</label>
 												</div>
@@ -775,7 +825,7 @@
 														class="form-check-input"
 														type="checkbox"
 														name="can_access_dashboard"
-														value="true"
+														value="True"
 														checked
 													/>
 													<label class="form-check-label">دسترسی به داشبورد</label>
@@ -787,7 +837,7 @@
 														class="form-check-input"
 														type="checkbox"
 														name="can_access_all_departments"
-														value="true"
+														value="True"
 													/>
 													<label class="form-check-label">دسترسی به تمام بخش‌ها</label>
 												</div>
@@ -798,7 +848,7 @@
 														class="form-check-input"
 														type="checkbox"
 														name="factory_bimeh"
-														value="true"
+														value="True"
 													/>
 													<label class="form-check-label">دانلود اطلاعات بیمه‌ای کارخانه</label>
 												</div>
@@ -809,7 +859,7 @@
 														class="form-check-input"
 														type="checkbox"
 														name="holding_bimeh"
-														value="true"
+														value="True"
 													/>
 													<label class="form-check-label">دانلود اطلاعات بیمه‌ای هلدینگ</label>
 												</div>
@@ -820,7 +870,7 @@
 														class="form-check-input"
 														type="checkbox"
 														name="can_reserve_management_food"
-														value="true"
+														value="True"
 													/>
 													<label class="form-check-label">اجازه سفارش غذای ویژه</label>
 												</div>
@@ -831,7 +881,7 @@
 														class="form-check-input"
 														type="checkbox"
 														name="manage_sub_employees"
-														value="true"
+														value="True"
 													/>
 													<label class="form-check-label">مدیریت پرسنل زیرمجموعه</label>
 												</div>
@@ -984,6 +1034,8 @@
 		document.getElementById("emailInput").value = btn.dataset.employeeEmail || "";
 		document.getElementById("positionInput").value = btn.dataset.employeePosition || "";
 
+		console.log(btn.dataset);
+
 		// خالی کردن رمزها
 		document.getElementById("passwordInput").value = "";
 		document.getElementById("confirmPasswordInput").value = "";
@@ -992,6 +1044,88 @@
 		document.querySelectorAll(".unified-select").forEach((select) => {
 			Array.from(select.options).forEach((opt) => (opt.selected = false));
 		});
+
+		// ========== 1. چک‌باکس‌ها (Boolean) ==========
+		const boolMapping = {
+			unlimit_reservation: "employeeUnlimitReservation",
+			is_contractor: "employeeIsContractor",
+			can_serve_foods: "employeeCanServeFoods",
+			can_access_dashboard: "employeeCanAccessDashboard",
+			can_access_all_departments: "employeeCanAccessAllDepartments",
+			factory_bimeh: "employeeFactoryBimeh",
+			holding_bimeh: "employeeHoldingBimeh",
+			can_reserve_management_food: "employeeCanReserveManagementFood",
+			manage_sub_employees: "employeeManageSubEmployees",
+		};
+		for (const [fieldName, dataKey] of Object.entries(boolMapping)) {
+			const checkbox = document.querySelector(`input[name="${fieldName}"]`);
+			if (checkbox && btn.dataset[dataKey] !== undefined) {
+				checkbox.checked = btn.dataset[dataKey] === "true";
+			}
+		}
+
+		// ========== 2. فیلدهای عددی ==========
+		const numberMapping = {
+			guest_limit_reservation: "employeeGuestLimit",
+			free_limit_reservation: "employeeFreeLimit",
+			factory_limit_reservation: "employeeFactoryLimit",
+			guest_limit_reservation_for_others: "employeeGuestLimitOthers",
+			free_limit_reservation_for_others: "employeeFreeLimitOthers",
+			factory_limit_reservation_for_others: "employeeFactoryLimitOthers",
+		};
+		for (const [fieldName, dataKey] of Object.entries(numberMapping)) {
+			const input = document.querySelector(`input[name="${fieldName}"]`);
+			if (input && btn.dataset[dataKey] !== undefined) {
+				input.value = btn.dataset[dataKey];
+			}
+		}
+
+		// ========== 3. سلکت‌های تکی ==========
+		const selectMapping = {
+			can_reserve_for_others: "employeeCanReserveForOthers",
+			can_reserve_for_which_day: "employeeCanReserveForWhichDay",
+			food_receiver_role: "employeeFoodReceiverRole",
+		};
+		for (const [fieldName, dataKey] of Object.entries(selectMapping)) {
+			const select = document.querySelector(`select[name="${fieldName}"]`);
+			if (select && btn.dataset[dataKey] !== undefined) {
+				select.value = btn.dataset[dataKey];
+			}
+		}
+
+		// ========== 4. سلکت‌های وابسته به نقش تحویل‌گیرنده ==========
+		const factorySelect = document.querySelector('select[name="food_receiver_factory"]');
+		const holdingSelect = document.querySelector('select[name="food_receiver_holding"]');
+		if (factorySelect && btn.dataset.employeeFoodReceiverFactory) {
+			factorySelect.value = btn.dataset.employeeFoodReceiverFactory;
+		}
+		if (holdingSelect && btn.dataset.employeeFoodReceiverHolding) {
+			holdingSelect.value = btn.dataset.employeeFoodReceiverHolding;
+		}
+
+		// نمایش/مخفی کردن divهای مربوطه بر اساس نقش فعلی
+		const currentRole = document.querySelector('select[name="food_receiver_role"]').value;
+		toggleFoodReceiverDivs(currentRole);
+
+		// ========== 5. فیلدهای متنی ==========
+		const textMapping = {
+			address: "employeeAddress",
+			center_of_charge: "employeeCenterOfCharge",
+			birth_certificate_number: "employeeBirthCertificateNumber",
+			father_name: "employeeFatherName",
+		};
+		for (const [fieldName, dataKey] of Object.entries(textMapping)) {
+			const input = document.querySelector(`input[name="${fieldName}"], textarea[name="${fieldName}"]`);
+			if (input && btn.dataset[dataKey] !== undefined) {
+				input.value = btn.dataset[dataKey];
+			}
+		}
+
+		// تاریخ تولد
+		const birthDateInput = document.querySelector('input[name="birth_date"]');
+		if (birthDateInput && btn.dataset.employeeBirthDate) {
+			birthDateInput.value = btn.dataset.employeeBirthDate;
+		}
 
 		// استفاده از data-*-ids برای انتخاب‌ها
 		setTimeout(() => {
@@ -1020,6 +1154,20 @@
 				}
 			}
 		}, 150);
+	}
+	function toggleFoodReceiverDivs(role) {
+		const factoryDiv = document.getElementById("food_receiver_factory_div");
+		const holdingDiv = document.getElementById("food_receiver_holding_div");
+		if (role == 1) {
+			factoryDiv.style.display = "block";
+			holdingDiv.style.display = "none";
+		} else if (role == 2) {
+			factoryDiv.style.display = "none";
+			holdingDiv.style.display = "block";
+		} else {
+			factoryDiv.style.display = "none";
+			holdingDiv.style.display = "none";
+		}
 	}
 
 	// بازگشت به حالت افزودن
@@ -1138,7 +1286,7 @@
 		document.querySelectorAll(".edit-user-btn").forEach((btn) => {
 			btn.addEventListener("click", function () {
 				resetFormToAddMode();
-                choicesInitialized = false;
+				choicesInitialized = false;
 				populateFormForEdit(this);
 				// بازگشت به استپ ۱
 				currentStep = 1;
@@ -1181,7 +1329,15 @@
 			formData.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
 
 			fetch(form.action, { method: "POST", body: formData })
-				.then((res) => res.json())
+				.then(async (res) => {
+					if (!res.ok) {
+						// تلاش برای خواندن بدنهٔ خطا (احتمالاً JSON)
+						const errorData = await res.json().catch(() => null);
+						// اگر پیام مشخصی داشت پرتاب کن، وگرنه یک پیام پیش‌فرض با کد وضعیت
+						throw new Error(errorData?.message || `خطای سرور (${res.status})`);
+					}
+					return res.json(); // یک بار پارس کن و آبجکت را برگردان
+				})
 				.then((data) => {
 					submitBtn.disabled = false;
 					submitBtn.innerHTML = '<i class="fas fa-check me-1"></i>ثبت نهایی';
@@ -1190,16 +1346,33 @@
 					}
 					if (data.status === "created" || data.status === "updated") {
 						bootstrap.Modal.getInstance(document.getElementById("addUserModal")).hide();
-						Swal.fire({ title: "موفق", text: data.message, icon: "success", timer: 2000, showConfirmButton: false }).then(() => location.reload());
+						Swal.fire({
+							title: "موفق",
+							text: data.message,
+							icon: "success",
+							timer: 2000,
+							showConfirmButton: false,
+						}).then(() => location.reload());
 					} else if (data.status === "message") {
-						Swal.fire({ title: data.title, text: data.message, icon: data.icon });
+						Swal.fire({
+							title: data.title || "پیام",
+							text: data.message,
+							icon: data.icon || "info",
+						});
 					}
 				})
 				.catch((err) => {
 					console.error(err);
 					submitBtn.disabled = false;
 					submitBtn.innerHTML = '<i class="fas fa-check me-1"></i>ثبت نهایی';
-					Swal.fire({ title: "خطا", text: "خطا در ارتباط با سرور", icon: "error" });
+					// اگر خطا از سمت سرور نبود (مثلاً مشکل شبکه)، پیام پیش‌فرض نشان بده
+					const defaultMessage = "خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.";
+					const message = err.message && err.message !== "Failed to fetch" ? err.message : defaultMessage;
+					Swal.fire({
+						title: "خطا",
+						text: message,
+						icon: "error",
+					});
 				});
 		}
 
@@ -1220,6 +1393,16 @@
 			});
 		}
 
+		const roleSelect = document.querySelector('select[name="food_receiver_role"]');
+		if (roleSelect) {
+			// فراخوانی اولیه برای تنظیم وضعیت اولیه (در حالت افزودن جدید)
+			toggleFoodReceiverDivs(roleSelect.value);
+			// گوش دادن به تغییرات
+			roleSelect.addEventListener("change", function () {
+				toggleFoodReceiverDivs(this.value);
+			});
+		}
+
 		updateStepIndicator();
 	});
 
@@ -1235,7 +1418,7 @@
 		document.getElementById("submitBtn").classList.add("d-none");
 		document.getElementById("prevBtn").style.display = "none";
 		updateStepIndicator();
-        choicesInitialized = false;
+		choicesInitialized = false;
 		choicesInstances.forEach((i) => i.destroy());
 		choicesInstances = [];
 	});

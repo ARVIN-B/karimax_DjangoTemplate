@@ -109,6 +109,12 @@
 						>
 							فراموشی رمز عبور؟
 						</button>
+						<input
+							type="text"
+							id="otp-hidden"
+							autocomplete="one-time-code"
+							style="display: none"
+						/>
 					</div>
 				</form>
 			</div>
@@ -130,6 +136,18 @@
 			return;
 		}
 
+		Swal.fire({
+			title: "در حال ارسال کد...",
+			html: '<i class="fas fa-spinner fa-pulse fa-3x" style="color: #f97316;"></i>',
+			allowOutsideClick: false,
+			showConfirmButton: false,
+			didOpen: () => {
+				Swal.showLoading(); // فعال‌سازی حالت loading استاندارد (اختیاری)
+			},
+		});
+
+		// showOtpModal(nationalId);
+
 		fetch("{% url 'users:forgot_password_stub' %}", {
 			method: "POST",
 			headers: {
@@ -140,6 +158,7 @@
 		})
 			.then((res) => res.json())
 			.then((data) => {
+				Swal.close();
 				if (!data.ok) {
 					Swal.fire({
 						icon: "error",
@@ -149,7 +168,19 @@
 					});
 					return;
 				}
+				// showOtpModal(nationalId);
 				showOtpModal(nationalId);
+
+				// 4. فعال‌سازی WebOTP برای پر کردن خودکار
+				if ("OTPCredential" in window) {
+					navigator.credentials
+						.get({ otp: { transport: ["sms"] } })
+						.then((otp) => {
+							const input = Swal.getInput();
+							if (input) input.value = otp.code;
+						})
+						.catch(() => {}); // کاربر دستی وارد می‌کند
+				}
 			})
 			.catch(() => {
 				Swal.fire({
@@ -159,6 +190,25 @@
 					customClass: { popup: "swal-popup-modern", confirmButton: "btn-swal-error" },
 				});
 			});
+
+		if ("OTPCredential" in window) {
+			navigator.credentials
+				.get({
+					otp: { transport: ["sms"] },
+				})
+				.then((otp) => {
+					// وقتی کد رسید، آن را در فیلد پاپ‌آپ تزریق کن
+					const input = Swal.getInput();
+					if (input) {
+						input.value = otp.code;
+						// می‌توان دکمه تأیید را خودکار کلیک کرد یا به کاربر نشان داد
+					}
+				})
+				.catch((err) => {
+					// کاربر اجازه نداد یا خطایی رخ داد، می‌تواند دستی وارد کند
+					console.log("WebOTP failed or denied", err);
+				});
+		}
 	});
 
 	function showOtpModal(nationalId) {
@@ -175,7 +225,7 @@
 			showCancelButton: false,
 			confirmButtonText: "تأیید",
 			showLoaderOnConfirm: true,
-			allowOutsideClick: false,
+			allowOutsideClick: true,
 			customClass: {
 				popup: "otp-popup",
 				title: "swal2-title-custom",

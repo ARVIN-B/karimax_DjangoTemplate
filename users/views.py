@@ -329,12 +329,12 @@ def _build_password_reset_sms_body(otp_code, origin_host):
     host = (origin_host).strip()
     host = host.split(":")[0].lower()
     if not host:
-        host = "karimax.ir"
+        host = "www.karimax.ir"
 
     return "\n".join(
         [
-            "karimax.ir",
             f"Code: {otp_code}",
+            f"رمز یک بار مصرف سامانه karimax.ir",
             f"@{host} #{otp_code}",
         ]
     )
@@ -1151,9 +1151,7 @@ def dashboard(request):
     # other_count = all_participations.filter(is_audio=False).count()
 
     other_count = all_participations.filter(
-        Q(is_audio=False) &
-        ~Q(attachment__isnull=True) &
-        ~Q(attachment='')
+        Q(is_audio=False) & ~Q(attachment__isnull=True) & ~Q(attachment="")
     ).count()
 
     participation_display = [
@@ -1231,7 +1229,7 @@ def dashboard(request):
     #     result = update_food_reservation_prices()
     #     print(f"result = {result}")
 
-    can_report = user.reporting_permision >= 0
+    can_report = user.reporting_permision != 0
 
     return render(
         request,
@@ -1753,21 +1751,12 @@ def management_dashboard(request):
         all_employees = Employee.objects.all()
     elif role_name == "holding_manager":
         all_participations = Participation.objects.filter(
-            Q (holding_id=holding_id) |
-            Q (factory_committee__linked_factory__holding_id=holding_id)
+            Q(holding_id=holding_id)
+            | Q(factory_committee__linked_factory__holding_id=holding_id)
         ).order_by("-created_at")
         all_employees = Employee.objects.filter(
             assigned_subdepartments__department__factory__holding_id=holding_id
         ).distinct()
-
-
-
-
-
-
-
-
-
 
     elif role_name == "factory_manager":
         if is_committee:
@@ -1785,17 +1774,6 @@ def management_dashboard(request):
     elif role_name == "department_manager":
         if is_committee:
             # print(f"dep id {department_id}")
-
-
-
-
-
-
-
-            
-
-
-
 
             all_participations = Participation.objects.filter(
                 department_committee_id=department_id, is_committee=is_committee
@@ -1884,20 +1862,22 @@ def management_dashboard(request):
         print("h")
         participations = participations.filter(
             # holding_id=selected_holding_id
-
-            Q (holding_id=selected_holding_id) |
-            Q (factory_committee__linked_factory_id=selected_holding_id)
-
+            Q(holding_id=selected_holding_id)
+            | Q(factory_committee__linked_factory_id=selected_holding_id)
         )
 
     if selected_factory_id:
         if is_committee:
-            participations = participations.filter(factory_committee_id=selected_factory_id)
+            participations = participations.filter(
+                factory_committee_id=selected_factory_id
+            )
         else:
             participations = participations.filter(factory_id=selected_factory_id)
     if selected_department_id:
         if is_committee:
-            participations = participations.filter(department_committee_id=selected_department_id)
+            participations = participations.filter(
+                department_committee_id=selected_department_id
+            )
         else:
             participations = participations.filter(department_id=selected_department_id)
     if selected_subdepartment_id:
@@ -1945,9 +1925,7 @@ def management_dashboard(request):
     # other_count = all_participations.filter(is_audio=False).count()
 
     other_count = all_participations.filter(
-        Q(is_audio=False) &
-        ~Q(attachment__isnull=True) &
-        ~Q(attachment='')
+        Q(is_audio=False) & ~Q(attachment__isnull=True) & ~Q(attachment="")
     ).count()
 
     participation_display = [
@@ -2786,13 +2764,21 @@ def manage_self_menu(request):
 #     return render(request, "users/reporting_panel.html", context)
 @login_required
 def reports_dashboard(request):
+    user = request.user
     factory_id = 2
 
     """داشبورد گزارش‌گیری - نمایش صفحه اصلی با کارت‌های آماری"""
     # بررسی دسترسی مدیر سلف
-    if not Department.objects.filter(managers=request.user, is_self=True).exists():
+    # if not Department.objects.filter(managers=request.user, reporting_permision=0).exists():
+    #     pass
+
+
+    # print(f"print : {user.reporting_permision}")
+
+
+    if user.reporting_permision == 0:
         messages.error(request, "شما دسترسی به صفحه گزارش‌گیری ندارید.")
-        return redirect("users:management_dashboard")
+        return redirect("users:dashboard")
 
     # آمار برای کارت‌ها
     total_employees = Employee.objects.filter(is_active=True).count()
@@ -5295,6 +5281,34 @@ def load_more_participations(request):
     )
 
 
+def convert_value(key, value, ftype):
+    """مقدار خام را به فرم مناسب مدل تبدیل می‌کند"""
+    if ftype == 'str':
+        return value.strip() if value else ''
+    elif ftype == 'int':
+        try:
+            return int(value) if value not in [None, ''] else 0
+        except (ValueError, TypeError):
+            return 0
+    elif ftype == 'int_null':
+        if value in [None, '']:
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+    elif ftype == 'bool':
+        return value == 'True'
+    elif ftype == 'date':
+        if value:
+            try:
+                return datetime.strptime(value, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                return None
+        return None
+    else:
+        return value
+
 @login_required
 def user_management(request):
     try:
@@ -5307,7 +5321,6 @@ def user_management(request):
         management_tree = request.session.get("management_tree", [])
         is_committee = request.session["current_is_committee"]
         real_role_name = request.GET.get("current_real_role")
-        user = request.user
     except Exception as e:
         messages.error(
             request,
@@ -5394,11 +5407,106 @@ def user_management(request):
     if request.method == "POST":
         if request.POST.get("create_user") == "create":
 
-            national_id = request.POST.get("national_id")
+            FIELD_DEFINITIONS = {
+                # فیلدهای ساده (string)
+                "national_id": "str",
+                "personnel_code": "str",
+                "first_name": "str",
+                "last_name": "str",
+                "phone_number": "str",
+                "email": "str",
+                # "address": "str",
+                # "center_of_charge": "str",
+                # "birth_certificate_number": "str",
+                # "father_name": "str",
 
-            # print(f"CCCCCCCCCCCC {request.POST}")
 
-            if national_id in [None, ""]:
+
+
+                "password": "str",
+                "confirm_password": "str",
+
+
+                # bool fields
+                "unlimit_reservation": "bool",
+                "is_contractor": "bool",
+                # "can_serve_foods": "bool",
+                # "can_access_dashboard": "bool",
+                # "can_access_all_departments": "bool",
+                # "factory_bimeh": "bool",
+                # "holding_bimeh": "bool",
+                # "can_reserve_management_food": "bool",
+                # "manage_sub_employees": "bool",
+                # "is_first_login": "bool",
+                # "is_active": "bool",
+
+                # # فیلدهای عددی (int)
+                # "guest_limit_reservation": "int",
+                # "free_limit_reservation": "int",
+                # "factory_limit_reservation": "int",
+                # "guest_limit_reservation_for_others": "int",
+                # "free_limit_reservation_for_others": "int",
+                # "factory_limit_reservation_for_others": "int",
+                # "food_receiver_role": "int",
+                # "can_reserve_for_others": "int",
+                # "can_reserve_for_which_day": "int",
+                # "reporting_permision": "int",
+
+                # # فیلدهای خارجی (ForeignKey) - به صورت int ولی می‌تواند None باشد
+                # "food_receiver_factory": "int_null",
+                # "food_receiver_holding": "int_null",
+                # "hr_granting_role_limit": "int_null",
+                # "gender": "int_null",
+                # "dependency_status": "int_null",
+                # "marital_status": "int_null",
+                # "birth_date": "date", 
+
+                # فیلدهای ManyToMany - به صورت list (از request.POST.getlist)
+                "managing_holdings": "list",
+                "managing_factories": "list",
+                "managing_departments": "list",
+                "supervising_subdepartments": "list",
+                "assigned_subdepartments": "list",
+                # "roles": "list",
+                # "hr_accessible_holdings": "list",
+                # "hr_accessible_factories": "list",
+                # "hr_accessible_departments": "list",
+                # "hr_accessible_subdepartments": "list",
+                # "hr_accessible_employees": "list",
+                
+            }
+
+
+
+
+            fields = [
+
+                "password",
+                "confirm_password",
+
+                
+                # هر فیلد تکی دیگر
+            ]
+
+
+
+            simple_fields = [f for f, t in FIELD_DEFINITIONS.items() if t != "list"]
+            list_fields = [f for f, t in FIELD_DEFINITIONS.items() if t == "list"]
+
+            data = {}
+            for field in simple_fields:
+                data[field] = request.POST.get(field)
+            for field in list_fields:
+                data[field] = request.POST.getlist(field)
+
+
+
+
+
+
+
+
+            if data["national_id"] in [None, ""]:
                 return JsonResponse(
                     {
                         "status": "message",
@@ -5410,209 +5518,182 @@ def user_management(request):
                     }
                 )
             try:
-                existing_emp = Employee.objects.get(national_id=national_id)
+                existing_emp = Employee.objects.get(national_id=data["national_id"])
                 is_exist = True
             except Employee.DoesNotExist:
                 existing_emp = None
                 is_exist = False
 
-            password = request.POST.get("password")
-            confirm_password = request.POST.get("confirm_password")
-
-            if (
-                password in [None, ""] or password != confirm_password
-            ) and not is_exist:
-                return JsonResponse(
-                    {
+            if not is_exist:
+                if not data.get("password") or data["password"] != data.get("confirm_password"):
+                    return JsonResponse({
                         "status": "message",
                         "title": "خطا",
-                        "message": "رمز عبور و تکرار رمز عبور را دومرتبه وارد کنید لطفا",
+                        "message": "رمز عبور و تکرار آن را صحیح وارد کنید",
                         "icon": "error",
                         "timer": 2500,
                         "showConfirmButton": True,
-                    }
-                )
-
-            personnel_code = request.POST.get("personnel_code")
-            first_name = request.POST.get("first_name")
-            last_name = request.POST.get("last_name")
-            phone_number = request.POST.get("phone_number")
-            email = request.POST.get("email")
-            managing_holdings = request.POST.get("managing_holdings")
-            managing_factories = request.POST.get("managing_factories")
-            managing_departments = request.POST.get("managing_departments")
-            supervising_subdepartments = request.POST.get("supervising_subdepartments")
-            assigned_subdepartments = request.POST.get("assigned_subdepartments")
-
-            is_filled = all(
-                [
-                    # personnel_code.strip() if personnel_code else None,
-                    first_name.strip() if first_name else None,
-                    last_name.strip() if last_name else None,
-                    phone_number.strip() if phone_number else None,
-                    # email.strip() if email else None,
-                ]
-            )
-
-            if not is_filled and not is_exist:
-                return JsonResponse(
-                    {
-                        "status": "message",
-                        "title": "خطا",
-                        "message": "لطفا فیلد های ضروری را پرکنید",
-                        "icon": "error",
-                        "timer": 2500,
-                        "showConfirmButton": True,
-                    }
-                )
-
-            fields = [
-                "personnel_code",
-                "first_name",
-                "last_name",
-                "phone_number",
-                "email",
-                "password",
-            ]
-
-            hashed_password = make_password(password)
-
-            email = request.POST.get("email")
-            managing_holdings = request.POST.getlist("managing_holdings")
-            managing_factories = request.POST.getlist("managing_factories")
-            managing_departments = request.POST.getlist("managing_departments")
-            supervising_subdepartments = request.POST.getlist(
-                "supervising_subdepartments"
-            )
-            assigned_subdepartments = request.POST.getlist("assigned_subdepartments")
-
-            # تبدیل به لیست اعداد صحیح (مقادیر خالی حذف شوند)
-            new_holdings = [int(id) for id in managing_holdings if id]
-            new_factories = [int(id) for id in managing_factories if id]
-            new_departments = [int(id) for id in managing_departments if id]
-            new_supervising = [int(id) for id in supervising_subdepartments if id]
-            new_assigned = [int(id) for id in assigned_subdepartments if id]
-
-            # اگر کاربر از قبل وجود دارد، ترکیب رول‌ها را انجام بده
-            if is_exist:
-                # دریافت رول‌های فعلی کاربر
-                current_holdings = list(
-                    existing_emp.managed_holdings_m2m.all().values_list("id", flat=True)
-                )
-                current_factories = list(
-                    existing_emp.managed_factories_m2m.all().values_list(
-                        "id", flat=True
-                    )
-                )
-                current_departments = list(
-                    existing_emp.managed_departments_m2m.all().values_list(
-                        "id", flat=True
-                    )
-                )
-                current_supervising = list(
-                    existing_emp.supervised_subdepartments_m2m.all().values_list(
-                        "id", flat=True
-                    )
-                )
-                current_assigned = list(
-                    existing_emp.assigned_subdepartments.all().values_list(
-                        "id", flat=True
-                    )
-                )
-
-                # مجموعه دسترسی‌های HR
-                accessible_holdings = set(
-                    user.hr_accessible_holdings.all().values_list("id", flat=True)
-                )
-                accessible_factories = set(
-                    user.hr_accessible_factories.all().values_list("id", flat=True)
-                )
-                accessible_departments = set(
-                    user.hr_accessible_departments.all().values_list("id", flat=True)
-                )
-                accessible_subdepartments = set(
-                    user.hr_accessible_subdepartments.all().values_list("id", flat=True)
-                )
-
-                # ترکیب رول‌ها:
-                # رول‌هایی که HR دسترسی دارد -> جایگزین با مقادیر جدید
-                # رول‌هایی که HR دسترسی ندارد -> همان مقادیر قبلی حفظ شوند
-                final_holdings = [
-                    h for h in new_holdings if h in accessible_holdings
-                ] + [h for h in current_holdings if h not in accessible_holdings]
-
-                final_factories = [
-                    f for f in new_factories if f in accessible_factories
-                ] + [f for f in current_factories if f not in accessible_factories]
-
-                final_departments = [
-                    d for d in new_departments if d in accessible_departments
-                ] + [d for d in current_departments if d not in accessible_departments]
-
-                final_supervising = [
-                    s for s in new_supervising if s in accessible_subdepartments
-                ] + [
-                    s for s in current_supervising if s not in accessible_subdepartments
-                ]
-
-                final_assigned = [
-                    a for a in new_assigned if a in accessible_subdepartments
-                ] + [a for a in current_assigned if a not in accessible_subdepartments]
-
+                    })
+                hashed_password = make_password(data["password"])
             else:
-                # برای ایجاد کاربر جدید، فقط مقادیری که HR به آن‌ها دسترسی دارد قبول شود
-                accessible_holdings = set(
-                    user.hr_accessible_holdings.all().values_list("id", flat=True)
-                )
-                accessible_factories = set(
-                    user.hr_accessible_factories.all().values_list("id", flat=True)
-                )
-                accessible_departments = set(
-                    user.hr_accessible_departments.all().values_list("id", flat=True)
-                )
-                accessible_subdepartments = set(
-                    user.hr_accessible_subdepartments.all().values_list("id", flat=True)
+                # در حالت ویرایش: اگر رمز جدید وارد شده باشد همان را هش کن، در غیر این صورت رمز قبلی حفظ شود
+                if data.get("password") and data["password"] == data.get("confirm_password"):
+                    hashed_password = make_password(data["password"])
+                else:
+                    hashed_password = existing_emp.password
+
+
+            REQUIRED_FIELDS = ["national_id", "first_name", "last_name", "phone_number"]
+
+            if any(data.get(f) in [None, ""] for f in REQUIRED_FIELDS if not (is_exist and f == "national_id")):
+                return JsonResponse(
+                    {"status": "message",
+                     "title": "خطا",
+                    "message": "لطفا فیلدهای اجباری را پر کنید",
+                    "icon": "error",
+                    "timer": 2500,
+                    "showConfirmButton": True,
+                    }
                 )
 
-                final_holdings = [h for h in new_holdings if h in accessible_holdings]
-                final_factories = [
-                    f for f in new_factories if f in accessible_factories
-                ]
-                final_departments = [
-                    d for d in new_departments if d in accessible_departments
-                ]
-                final_supervising = [
-                    s for s in new_supervising if s in accessible_subdepartments
-                ]
-                final_assigned = [
-                    a for a in new_assigned if a in accessible_subdepartments
-                ]
+            
 
-            emp = {
-                "national_id": national_id,
-                "personnel_code": personnel_code,
-                "first_name": first_name,
-                "last_name": last_name,
-                "phone_number": phone_number,
-                "email": email,
-                "password": hashed_password,
-                # "managing_holdings": [int(id) for id in managing_holdings if id],
-                # "managing_factories": [int(id) for id in managing_factories if id],
-                # "managing_departments": [int(id) for id in managing_departments if id],
-                # "supervising_subdepartments": [
-                #     int(id) for id in supervising_subdepartments if id
-                # ],
-                # "assigned_subdepartments": [
-                #     int(id) for id in assigned_subdepartments if id
-                # ],
-                "managing_holdings": final_holdings,
-                "managing_factories": final_factories,
-                "managing_departments": final_departments,
-                "supervising_subdepartments": final_supervising,
-                "assigned_subdepartments": final_assigned,
-            }
+            # # تبدیل به لیست اعداد صحیح (مقادیر خالی حذف شوند)
+            # new_holdings = [int(id) for id in data["managing_holdings"] if id]
+            # new_factories = [int(id) for id in data["managing_factories"] if id]
+            # new_departments = [int(id) for id in data["managing_departments"] if id]
+            # new_supervising = [int(id) for id in data["supervising_subdepartments"] if id]
+            # new_assigned = [int(id) for id in data["assigned_subdepartments"] if id]
 
-            print(emp)
+            # # اگر کاربر از قبل وجود دارد، ترکیب رول‌ها را انجام بده
+            # if is_exist:
+            #     # دریافت رول‌های فعلی کاربر
+            #     current_holdings = list(
+            #         existing_emp.managed_holdings_m2m.all().values_list("id", flat=True)
+            #     )
+            #     current_factories = list(
+            #         existing_emp.managed_factories_m2m.all().values_list(
+            #             "id", flat=True
+            #         )
+            #     )
+            #     current_departments = list(
+            #         existing_emp.managed_departments_m2m.all().values_list(
+            #             "id", flat=True
+            #         )
+            #     )
+            #     current_supervising = list(
+            #         existing_emp.supervised_subdepartments_m2m.all().values_list(
+            #             "id", flat=True
+            #         )
+            #     )
+            #     current_assigned = list(
+            #         existing_emp.assigned_subdepartments.all().values_list(
+            #             "id", flat=True
+            #         )
+            #     )
+
+            #     # مجموعه دسترسی‌های HR
+            #     accessible_holdings = set(
+            #         user.hr_accessible_holdings.all().values_list("id", flat=True)
+            #     )
+            #     accessible_factories = set(
+            #         user.hr_accessible_factories.all().values_list("id", flat=True)
+            #     )
+            #     accessible_departments = set(
+            #         user.hr_accessible_departments.all().values_list("id", flat=True)
+            #     )
+            #     accessible_subdepartments = set(
+            #         user.hr_accessible_subdepartments.all().values_list("id", flat=True)
+            #     )
+
+            #     # ترکیب رول‌ها:
+            #     # رول‌هایی که HR دسترسی دارد -> جایگزین با مقادیر جدید
+            #     # رول‌هایی که HR دسترسی ندارد -> همان مقادیر قبلی حفظ شوند
+            #     final_holdings = [
+            #         h for h in new_holdings if h in accessible_holdings
+            #     ] + [h for h in current_holdings if h not in accessible_holdings]
+
+            #     final_factories = [
+            #         f for f in new_factories if f in accessible_factories
+            #     ] + [f for f in current_factories if f not in accessible_factories]
+
+            #     final_departments = [
+            #         d for d in new_departments if d in accessible_departments
+            #     ] + [d for d in current_departments if d not in accessible_departments]
+
+            #     final_supervising = [
+            #         s for s in new_supervising if s in accessible_subdepartments
+            #     ] + [
+            #         s for s in current_supervising if s not in accessible_subdepartments
+            #     ]
+
+            #     final_assigned = [
+            #         a for a in new_assigned if a in accessible_subdepartments
+            #     ] + [a for a in current_assigned if a not in accessible_subdepartments]
+            # else:
+            #     # برای ایجاد کاربر جدید، فقط مقادیری که HR به آن‌ها دسترسی دارد قبول شود
+            #     accessible_holdings = set(
+            #         user.hr_accessible_holdings.all().values_list("id", flat=True)
+            #     )
+            #     accessible_factories = set(
+            #         user.hr_accessible_factories.all().values_list("id", flat=True)
+            #     )
+            #     accessible_departments = set(
+            #         user.hr_accessible_departments.all().values_list("id", flat=True)
+            #     )
+            #     accessible_subdepartments = set(
+            #         user.hr_accessible_subdepartments.all().values_list("id", flat=True)
+            #     )
+
+            #     final_holdings = [h for h in new_holdings if h in accessible_holdings]
+            #     final_factories = [
+            #         f for f in new_factories if f in accessible_factories
+            #     ]
+            #     final_departments = [
+            #         d for d in new_departments if d in accessible_departments
+            #     ]
+            #     final_supervising = [
+            #         s for s in new_supervising if s in accessible_subdepartments
+            #     ]
+            #     final_assigned = [
+            #         a for a in new_assigned if a in accessible_subdepartments
+            #     ]
+
+
+            
+
+            # emp = {
+            #     "national_id": data["national_id"],
+            #     "personnel_code": data["personnel_code"],
+            #     "first_name": data["first_name"],
+            #     "last_name": data["last_name"],
+            #     "phone_number": data["phone_number"],
+            #     "email": data["email"],
+            #     "password": hashed_password,
+            #     "unlimit_reservation": data["unlimit_reservation"] if data["unlimit_reservation"] and data["unlimit_reservation"] not in ["" , None] else False,
+
+
+
+
+            #     "managing_holdings": final_holdings,
+            #     "managing_factories": final_factories,
+            #     "managing_departments": final_departments,
+            #     "supervising_subdepartments": final_supervising,
+            #     "assigned_subdepartments": final_assigned,
+            # }
+
+
+            emp = {}
+            for field, ftype in FIELD_DEFINITIONS.items():
+                if ftype == 'list':
+                    continue
+                if field in ['password', 'confirm_password']:
+                    continue
+                emp[field] = convert_value(field, data.get(field), ftype)
+
+            emp['password'] = hashed_password
+
+            # print(emp)
 
             if is_exist:
                 update_permitted = request.POST.get("update_permitted") == "true"
@@ -5631,7 +5712,7 @@ def user_management(request):
             else:
                 create_user(emp_info=emp)
 
-            coresponding_user = Employee.objects.filter(national_id=national_id)
+            coresponding_user = Employee.objects.filter(national_id=data["national_id"])
 
             if is_exist:
                 return JsonResponse(
@@ -5645,16 +5726,8 @@ def user_management(request):
     employees = (
         Employee.objects.filter(
             # Q(id__in=user.hr_accessible_employees.values_list("id", flat=True)) |
+            # employees
             Q(assigned_subdepartments__in=user.hr_accessible_subdepartments.all())
-            | Q(
-                assigned_subdepartments__department__in=user.hr_accessible_departments.all()
-            )
-            | Q(
-                assigned_subdepartments__department__factory__in=user.hr_accessible_factories.all()
-            )
-            | Q(
-                assigned_subdepartments__department__factory__holding__in=user.hr_accessible_holdings.all()
-            )
             | Q(managed_holdings_m2m__in=user.hr_accessible_holdings.all())
             | Q(managed_factories_m2m__in=user.hr_accessible_factories.all())
             | Q(managed_departments_m2m__in=user.hr_accessible_departments.all())
@@ -5711,7 +5784,7 @@ def create_user(emp_info, update_partial=True):
         Employee: شیء کارمند ایجاد یا بروزرسانی شده
     """
 
-    print(f"vvvvvvvvvvvvvvv {emp_info}")
+    # print(f"vvvvvvvvvvvvvvv {emp_info}")
     with transaction.atomic():
         national_id = emp_info.get("national_id")
         if not national_id:

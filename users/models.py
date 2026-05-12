@@ -19,6 +19,8 @@ from django.utils.translation import gettext_lazy as _
 import jdatetime
 from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
 
 from jdatetime import date as jdate
 
@@ -626,8 +628,9 @@ class Employee(AbstractUser):
         if self.national_id:
             self.username = self.national_id
 
-            
         super().save(*args, **kwargs)
+
+        self._sync_hr_access_from_hierarchy()
 
     def clean(self):
         super().clean()
@@ -656,6 +659,60 @@ class Employee(AbstractUser):
                 )
             if self.food_receiver_factory:
                 raise ValidationError("تحویل‌گیرنده هلدینگ نمی‌تواند کارخانه داشته باشد.")
+
+    def _sync_hr_access_from_hierarchy(self):
+        if not self.pk:
+            return  # هنوز ذخیره نشده
+
+        # جلوگیری از حلقه بی‌نهایت
+        if getattr(self, "_syncing_hierarchy", False):
+            return
+        self._syncing_hierarchy = True
+        try:
+            # دریافت انتخاب‌های مستقیم فعلی
+            selected_holdings = set(self.hr_accessible_holdings.all())
+            selected_factories = set(self.hr_accessible_factories.all())
+            selected_departments = set(self.hr_accessible_departments.all())
+            selected_subdepts = set(self.hr_accessible_subdepartments.all())
+
+            # گسترش از هلدینگ به کارخانه‌ها
+            factories_from_holdings = set()
+            for holding in selected_holdings:
+                factories_from_holdings.update(holding.factories.all())
+            all_factories = factories_from_holdings.union(selected_factories)
+
+            # گسترش از کارخانه به بخش‌ها
+            depts_from_factories = set()
+            for factory in all_factories:
+                depts_from_factories.update(factory.departments.all())
+            all_departments = depts_from_factories.union(selected_departments)
+
+            # گسترش از بخش به زیربخش‌ها
+            subdepts_from_depts = set()
+            for dept in all_departments:
+                subdepts_from_depts.update(dept.subdepartments.all())
+            all_subdepartments = subdepts_from_depts.union(selected_subdepts)
+
+            # به‌روزرسانی فیلدها با اجتناب از سیگنال دوباره
+            # (با استفاده از remove/add به‌جای set برای جلوگیری از حلقه)
+            current_factories = set(self.hr_accessible_factories.all())
+            if current_factories != all_factories:
+                self.hr_accessible_factories.set(all_factories)
+
+            current_departments = set(self.hr_accessible_departments.all())
+            if current_departments != all_departments:
+                self.hr_accessible_departments.set(all_departments)
+
+            current_subdepts = set(self.hr_accessible_subdepartments.all())
+            if current_subdepts != all_subdepartments:
+                self.hr_accessible_subdepartments.set(all_subdepartments)
+
+            current_assigned = set(self.assigned_subdepartments.all())
+            if current_assigned != all_subdepartments:
+                self.assigned_subdepartments.set(all_subdepartments)
+
+        finally:
+            self._syncing_hierarchy = False
 
     @property
     def full_name(self):
@@ -854,7 +911,7 @@ class Participation(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.user.full_name} ({self.role_name if self.role_name else 'نامشخص'})"
-    
+
     def get_approvers(self):
         approvers = []
         if self.is_committee:
@@ -862,39 +919,55 @@ class Participation(models.Model):
             if self.department_committee:
                 dept = self.department_committee
                 # مدیر اول
-                if self.manager_status not in ['approved', 'rejected'] and dept.manager:
+                if self.manager_status not in ["approved", "rejected"] and dept.manager:
                     approvers.append(dept.manager.full_name)
                 # مدیر دوم
-                if self.manager_2_status not in ['approved', 'rejected'] and dept.manager_2:
+                if (
+                    self.manager_2_status not in ["approved", "rejected"]
+                    and dept.manager_2
+                ):
                     approvers.append(dept.manager_2.full_name)
                 # مدیر سوم
-                if self.manager_3_status not in ['approved', 'rejected'] and dept.manager_3:
+                if (
+                    self.manager_3_status not in ["approved", "rejected"]
+                    and dept.manager_3
+                ):
                     approvers.append(dept.manager_3.full_name)
             # بررسی سرپرست زیربخش کمیته (در صورت وجود)
             if self.subdepartment_committee:
                 sub = self.subdepartment_committee
-                if self.supervisor_status not in ['approved', 'rejected'] and sub.supervisor:
+                if (
+                    self.supervisor_status not in ["approved", "rejected"]
+                    and sub.supervisor
+                ):
                     approvers.append(sub.supervisor.full_name)
             if not approvers:
                 approvers = ["همه تأیید کرده‌اند"]
         else:
             # منطق قبلی برای غیر کمیته (بدون تغییر)
-            if self.status == 'supervisor_review':
+            if self.status == "supervisor_review":
                 if self.subdepartment:
                     if self.subdepartment.supervisors.exists():
-                        approvers = [emp.full_name for emp in self.subdepartment.supervisors.all()]
+                        approvers = [
+                            emp.full_name
+                            for emp in self.subdepartment.supervisors.all()
+                        ]
                     elif self.subdepartment.supervisor:
                         approvers = [self.subdepartment.supervisor.full_name]
-            elif self.status == 'manager_review':
+            elif self.status == "manager_review":
                 if self.department:
                     if self.department.managers.exists():
-                        approvers = [emp.full_name for emp in self.department.managers.all()]
+                        approvers = [
+                            emp.full_name for emp in self.department.managers.all()
+                        ]
                     elif self.department.manager:
                         approvers = [self.department.manager.full_name]
-            elif self.status == 'factory_manager_review':
+            elif self.status == "factory_manager_review":
                 if self.factory:
                     if self.factory.managers.exists():
-                        approvers = [emp.full_name for emp in self.factory.managers.all()]
+                        approvers = [
+                            emp.full_name for emp in self.factory.managers.all()
+                        ]
                     elif self.factory.manager:
                         approvers = [self.factory.manager.full_name]
             if not approvers:
@@ -2189,3 +2262,19 @@ class Employee_Bimeh(models.Model):
     coverage_duration = models.PositiveIntegerField(
         blank=True, null=True, verbose_name="مدت پوشش (ماه)"
     )
+
+
+@receiver(m2m_changed, sender=Employee.hr_accessible_holdings.through)
+@receiver(m2m_changed, sender=Employee.hr_accessible_factories.through)
+@receiver(m2m_changed, sender=Employee.hr_accessible_departments.through)
+@receiver(m2m_changed, sender=Employee.hr_accessible_subdepartments.through)
+def sync_hr_access_on_m2m_change(
+    sender, instance, action, reverse, model, pk_set, **kwargs
+):
+    """
+    بعد از هر تغییری در فیلدهای دسترسی، سلسله‌مراتب را همگام می‌کند.
+    """
+    if action in ["post_add", "post_remove", "post_clear"]:
+        # فقط زمانی که شیء قبلاً ذخیره شده باشد
+        if instance.pk:
+            instance._sync_hr_access_from_hierarchy()
