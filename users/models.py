@@ -433,21 +433,6 @@ class Employee(AbstractUser):
         default=0, verbose_name="محدودیت رزرو سهمیه ای برای دیگران"
     )
 
-    # field1 = models.IntegerField(default=0, verbose_name="فیلد عددی ۱")
-    # field2 = models.IntegerField(default=100, verbose_name="فیلد عددی ۲")
-    # field3 = models.IntegerField(default=-1, verbose_name="فیلد عددی ۳")
-    # flag = models.BooleanField(default=False, verbose_name="فلگ وضعیت")
-
-    # factory_quantity_limit = models.PositiveIntegerField(
-    #     default=1, verbose_name="محدودیت روزانه ثبت غذای پرسنلی"
-    # )
-    # free_quantity_limit = models.PositiveIntegerField(
-    #     default=0, verbose_name="محدودیت روزانه ثبت غذای آزاد"
-    # )
-    # guest_quantity_limit = models.PositiveIntegerField(
-    #     default=0, verbose_name="محدودیت روزانه ثبت غذای مهمان"
-    # )
-
     food_receiver_role = models.PositiveSmallIntegerField(
         default=0, choices=FOOD_RECEIVER_CHOICES, verbose_name="نقش تحویل‌گیرنده غذا"
     )
@@ -613,6 +598,10 @@ class Employee(AbstractUser):
     USERNAME_FIELD = "national_id"
     REQUIRED_FIELDS = ["first_name", "last_name", "phone_number"]
 
+    login_required = models.BooleanField(
+        default=False, verbose_name="نیاز به لاگین مجدد"
+    )
+
     class Meta:
         verbose_name = "کارمند"
         verbose_name_plural = "کارمندان"
@@ -629,8 +618,6 @@ class Employee(AbstractUser):
             self.username = self.national_id
 
         super().save(*args, **kwargs)
-
-        self._sync_hr_access_from_hierarchy()
 
     def clean(self):
         super().clean()
@@ -707,16 +694,20 @@ class Employee(AbstractUser):
             if current_subdepts != all_subdepartments:
                 self.hr_accessible_subdepartments.set(all_subdepartments)
 
-            current_assigned = set(self.assigned_subdepartments.all())
-            if current_assigned != all_subdepartments:
-                self.assigned_subdepartments.set(all_subdepartments)
-
         finally:
             self._syncing_hierarchy = False
 
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+    
+    @property
+    def birth_date_shamsi(self):
+        """تاریخ تولد را به صورت شمسی (YYYY/MM/DD) برمی‌گرداند"""
+        if self.birth_date:
+            j_date = jdatetime.date.fromgregorian(date=self.birth_date)
+            return j_date.strftime('%Y/%m/%d')
+        return ''
 
 
 class Participation(models.Model):

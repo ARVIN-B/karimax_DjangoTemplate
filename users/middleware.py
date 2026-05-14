@@ -2,6 +2,7 @@
 
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.contrib.auth import logout
 
 
 class FirstLoginMiddleware:
@@ -39,5 +40,28 @@ class FirstLoginMiddleware:
                     return redirect('users:change_password')
 
         # اگر کاربر احراز هویت نشده، یا is_first_login = False باشد، درخواست ادامه می‌یابد
+        response = self.get_response(request)
+        return response
+    
+class ForceLogoutMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # درخواست‌های مربوط به لاگین و لاگاوت را نادیده می‌گیریم (برای جلوگیری از لوپ)
+        if request.path in [
+            reverse('users:login'),
+            reverse('users:logout'),
+        ]:
+            return self.get_response(request)
+
+        user = request.user
+        if user.is_authenticated and getattr(user, 'login_required', False):
+            # کاربر را خارج می‌کنیم
+            logout(request)
+            # می‌توانید یک پیام خطا در session ذخیره کنید تا در صفحه لاگین نمایش داده شود
+            request.session['force_logout_message'] = 'نشست شما به دلایل امنیتی پایان یافت. لطفاً دوباره وارد شوید.'
+            return redirect('users:login')
+
         response = self.get_response(request)
         return response

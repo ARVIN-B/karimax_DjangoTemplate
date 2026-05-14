@@ -104,5 +104,10 @@ urlpatterns = [
     # path("reports/export/employee/detailed/", views.export_detailed_employee_report, name="export_employee_detailed"),
     # path("reports/export/employee/summary/", views.export_employee_summary_report, name="export_employee_summary"),
 
+
+
+    
+    path('force-logout-all/', views.force_logout_all_users, name='force_logout_all'),
+
     
 ]

@@ -71,6 +71,7 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",  # اضافه شده برای django-axes
     # 'users.error_handler.GlobalErrorHandlerMiddleware',  # ← این رو اضافه کن
     "users.error_handler.GlobalErrorHandlerMiddleware",
+    'users.middleware.ForceLogoutMiddleware',
 ]
 
 ROOT_URLCONF = "pmss.urls"

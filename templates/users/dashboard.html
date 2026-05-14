@@ -53,12 +53,20 @@
 				/>
 				<button class="quick-action-item quick-action-btn"><i class="fas fa-sync-alt"></i> اپدیت رزرو ها</button>
 			</form>
-			{% endif %} {% if can_report %}
+			{% endif %} {% if current_role_name == "super_admin" %}
 			<a
 				href="{% url 'users:reports_dashboard' %}"
 				class="quick-action-item"
 			>
 				<i class="fas fa-chart-bar"></i> پنل گزارش گیری
+			</a>
+
+			{% endif %}{% if can_report %}
+			<a
+				href="{% url 'users:force_logout_all' %}"
+				class="quick-action-item"
+			>
+				<i class="fas fa-users-slash"></i> لاگ اوت کردن همه پرسنل
 			</a>
 			{% endif %}
 

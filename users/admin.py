@@ -891,6 +891,17 @@ class EmployeeAdmin(UserAdmin):
             form.cleaned_data.get("supervised_subdepartments_assignments", [])
         )
 
+        if change and any(
+            field_name in form.changed_data
+            for field_name in [
+                "hr_accessible_holdings",
+                "hr_accessible_factories",
+                "hr_accessible_departments",
+                "hr_accessible_subdepartments",
+            ]
+        ):
+            form.instance._sync_hr_access_from_hierarchy()
+
 
 
 

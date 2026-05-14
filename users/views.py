@@ -4,6 +4,8 @@ import sys
 import pandas as pd
 
 from django.db import transaction
+from django.contrib.sessions.models import Session
+from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -256,6 +258,10 @@ def login_view(request):
         password = request.POST.get("password")
         user = authenticate(request, username=national_id, password=password)
         if user is not None:
+            if user.login_required:
+                user.login_required = False
+                user.save(update_fields=['login_required'])
+
             _login_user_and_initialize_session(request, user)
 
             role_name = request.session["current_role"]
@@ -266,22 +272,28 @@ def login_view(request):
                 "factory_manager",
                 "department_manager",
             }:
-                messages.success(
-                    request,
-                    "جهت ارتقای سازمان دانش‌محور، تجربیات ارزش‌آفرین خود را هفتگی در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
+                msg = (
+                    """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+                    «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
+                    گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
                 )
+                messages.success(request, msg)
 
             elif role_name == "supervisor":
-                messages.success(
-                    request,
-                    "سرپرستان و کارشناسان محترم، آموزه‌ها و تجربیات شغلی مفید خود را هفتگی در کاریمکس ثبت نمایید (حداقل یک دانش در هفته). گزارش‌گیری ماهانه.",
+                msg = (
+                    """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+                    «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
+                    گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
                 )
+                messages.success(request, msg)
 
             elif role_name == "employee":
-                messages.success(
-                    request,
-                    "اپراتورها و کارگران عزیز، تجربیات کاری ارزشمند خود را ماهیانه در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
+                msg = (
+                    """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+                    «انتظار می‌رود حداقل یک مورد دانش جدید در هر ماه ثبت گردد»
+                    گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
                 )
+                messages.success(request, msg)
 
             return redirect("users:dashboard")
         messages.error(request, "کد ملی یا رمز عبور اشتباه است.")
@@ -294,13 +306,24 @@ def logout_view(request):
     if "chat_history" in request.session:
         del request.session["chat_history"]
 
-    # ✅ ۲. خروج کاربر از سیستم (حذف سشن اصلی)
     logout(request)
 
-    # نمایش پیام موفقیت
-    # messages.success(request, "شما با موفقیت از حساب کاربری خارج شدید.")
-
     return redirect("users:login")
+
+@staff_member_required  # فقط ادمین‌ها (is_staff) دسترسی داشته باشند
+def force_logout_all_users(request):
+    # تنظیم فلگ login_required برای همه کاربران فعال
+    updated_count = Employee.objects.filter(is_active=True).update(login_required=True)
+    
+    # پیام موفقیت
+    messages.success(request, f'{updated_count} کاربر برای خروج اجباری در درخواست بعدی علامت‌گذاری شدند.')
+
+    Session.objects.all().delete()
+    
+    return redirect('users:login')
+
+
+
 
 
 def _normalize_mobile_number(raw_phone):
@@ -482,8 +505,8 @@ def forgot_password_stub_view(request):
             status=400,
         )
 
-    # otp_code = get_random_string(5, allowed_chars="0123456789")
-    otp_code = "12345"
+    otp_code = get_random_string(5, allowed_chars="0123456789")
+    # otp_code = "12345"
     sent, provider_message, provider_data = _send_parsgreen_otp(
         mobile, otp_code, request.get_host()
     )
@@ -1034,22 +1057,40 @@ def switch_role(request):
         "factory_manager",
         "department_manager",
     }:
-        messages.success(
-            request,
-            "جهت ارتقای سازمان دانش‌محور، تجربیات ارزش‌آفرین خود را هفتگی در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
+        # messages.success(
+        #     request,
+        #     # "جهت ارتقای سازمان دانش‌محور، تجربیات ارزش‌آفرین خود را هفتگی در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
+        # )
+        msg = (
+            """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+            «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
+            گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
         )
+        messages.success(request, msg)
 
     elif role_name == "supervisor":
-        messages.success(
-            request,
-            "سرپرستان و کارشناسان محترم، آموزه‌ها و تجربیات شغلی مفید خود را هفتگی در کاریمکس ثبت نمایید (حداقل یک دانش در هفته). گزارش‌گیری ماهانه.",
+        # messages.success(
+        #     request,
+        #     # "سرپرستان و کارشناسان محترم، آموزه‌ها و تجربیات شغلی مفید خود را هفتگی در کاریمکس ثبت نمایید (حداقل یک دانش در هفته). گزارش‌گیری ماهانه.",
+        # )
+        msg = (
+            """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+            «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
+            گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
         )
+        messages.success(request, msg)
 
     elif role_name == "employee":
-        messages.success(
-            request,
-            "اپراتورها و کارگران عزیز، تجربیات کاری ارزشمند خود را ماهیانه در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
+        # messages.success(
+        #     request,
+        #     # "اپراتورها و کارگران عزیز، تجربیات کاری ارزشمند خود را ماهیانه در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
+        # )
+        msg = (
+            """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+            «انتظار می‌رود حداقل یک مورد دانش جدید در هر ماه ثبت گردد»
+            گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
         )
+        messages.success(request, msg)
 
     return redirect("users:dashboard")
 
@@ -5328,10 +5369,7 @@ def user_management(request):
         )
         return logout_view(request)
 
-    # print(role_name)
-
     employee_fields = [f.name for f in Employee._meta.get_fields()]
-    # print(f"xxxxxxxxxxxxxxxx {employee_fields}")
 
     management_access = role_name in [
         "super_admin",
@@ -5415,10 +5453,10 @@ def user_management(request):
                 "last_name": "str",
                 "phone_number": "str",
                 "email": "str",
-                # "address": "str",
-                # "center_of_charge": "str",
-                # "birth_certificate_number": "str",
-                # "father_name": "str",
+                "address": "str",
+                "center_of_charge": "str",
+                "birth_certificate_number": "str",
+                "father_name": "str",
 
 
 
