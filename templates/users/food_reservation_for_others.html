@@ -304,6 +304,7 @@
 	        const container = $(`#reservation-container-${employeeId}`);
 	        container.empty();
 	        container.off('change', '.factory-list');
+			container.data('can-reserve-guest', data.can_reserve_guest);
 
 	        const factories = data.available_menus || [];
 	        let options = '';
@@ -493,7 +494,7 @@
 	                <input type="hidden" name="${baseName}[price_type]" value="${priceType}">
 	                <input type="hidden" name="${baseName}[factory_id]" value="${container.data('selected-factory') || ''}">
 
-                    <button type="button" class="btn btn-danger btn-sm remove-extra-btn"><i class="fas fa-trash"></i></button>
+	                   <button type="button" class="btn btn-danger btn-sm remove-extra-btn"><i class="fas fa-trash"></i></button>
 	            </div>
 	        `;
 
@@ -759,12 +760,15 @@
 	        container.off('click', '.add-extra-btn');
 	        container.on('click', '.add-extra-btn', function() {
 	            const index = container.find('.input-group').length;
+				const canGuest = container.data('can-reserve-guest');
 	            createReservationSlot(
 	                employeeId, index,
 	                0, "", 0, 1, 0,
-	                true, false, {},
+	                canGuest, false, {},
 	                container.data('all-food-options') || ""
 	            );
+
+
 	            const newIndex = container.find('.input-group').length - 1;
 	            const newSlot = container.find(`[data-index="${newIndex}"]`);
 	            if (newSlot.find('.food-select').val() != "0") {

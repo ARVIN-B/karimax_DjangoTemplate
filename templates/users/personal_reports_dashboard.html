@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}گزارش‌گیری شخصی{% endblock %}
+
+{% block extra_head %}
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- فونت فارسی (در صورت نیاز) -->
+    <style>
+        canvas { max-width: 100% !important; height: auto !important; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h3 class="mb-4">📊 داشبورد گزارش‌گیری شخصی - {{ user.full_name }}</h3>
+
+    <!-- کارت‌های آماری -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-primary border-2 rounded-3 shadow-sm">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-primary">📅 تعداد کل سفارش‌ها</h5>
+                    <p class="display-6 fw-bold text-dark">{{ total_reservations }}</p>
+                    <small class="text-muted">میانگین روزانه: {{ avg_per_day }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-success border-2 rounded-3 shadow-sm">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-success">💰 مجموع بدهی (ریال)</h5>
+                    <p class="display-6 fw-bold text-dark">{{ total_debt|intcomma }} </p>
+                    <small class="text-muted">در بازه انتخاب‌شده</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-info border-2 rounded-3 shadow-sm">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-info">🍽 میانگین سفارش روزانه</h5>
+                    <p class="display-6 fw-bold text-dark">{{ avg_per_day }}</p>
+                    <small class="text-muted">بر اساس روزهای دارای سفارش</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نمودارها -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">📊 تعداد سفارش‌ها (روزانه)</div>
+                <div class="card-body">
+                    <canvas id="ordersChart" width="400" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">💰 مبلغ سفارش‌ها (روزانه)</div>
+                <div class="card-body">
+                    <canvas id="priceChart" width="400" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- فیلدهای تاریخ و دکمه دانلود -->
+    <div class="card shadow-sm">
+        <div class="card-header">🔍 انتخاب بازه زمانی و دانلود گزارش</div>
+        <div class="card-body">
+            <form id="reportForm" method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">از تاریخ</label>
+                    <input type="text" id="single_from_date" name="start_date"
+                           data-jdp
+                           class="form-control form-control-modern"
+                           value="{{ start_date }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">تا تاریخ</label>
+                    <input type="text" id="single_to_date" name="end_date"
+                           data-jdp
+                           class="form-control form-control-modern"
+                           value="{{ end_date }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel"></i> اعمال فیلتر
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'users:personal_reports_dashboard' %}?export=single&start_date={{ start_date }}&end_date={{ end_date }}"
+                       class="btn btn-success w-100">
+                        <i class="bi bi-download"></i> دانلود گزارش اکسل
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // راه‌اندازی Datepicker شمسی
+    jalaliDatepicker.startWatch({
+        time: false,
+        persianDigits: true,
+        showTodayBtn: true,
+        showEmptyBtn: true,
+    });
+
+    // داده‌های نمودارها از backend
+    const labels = {{ labels|safe }};
+    const ordersData = {{ orders_data|safe }};
+    const priceData = {{ price_data|safe }};
+
+    // اگر داده‌ای وجود نداشته باشد، یک پیام نمایش بده
+    if (labels.length === 0) {
+        document.querySelectorAll('canvas').forEach(c => {
+            c.insertAdjacentHTML('afterend', '<p class="text-muted text-center mt-3">داده‌ای برای نمودار موجود نیست.</p>');
+            c.style.display = 'none';
+        });
+    } else {
+        // رنگ‌های مشترک
+        const blueColor = 'rgba(54, 162, 235, 0.7)';
+        const redColor = 'rgba(255, 99, 132, 0.7)';
+
+        // نمودار تعداد سفارش‌ها
+        new Chart(document.getElementById('ordersChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'تعداد سفارش',
+                    data: ordersData,
+                    backgroundColor: blueColor,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+
+        // نمودار مبلغ
+        new Chart(document.getElementById('priceChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'مبلغ کل (ریال)',
+                    data: priceData,
+                    backgroundColor: redColor,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.raw.toLocaleString() + ' ریال'
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    // هنگام ارسال فرم (فیلتر)، query string را به‌روز کنیم تا export هم تاریخ صحیح داشته باشد
+    document.getElementById('reportForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const start = document.getElementById('single_from_date').value;
+        const end = document.getElementById('single_to_date').value;
+        window.location.href = `?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`;
+    });
+</script>
+{% endblock %}

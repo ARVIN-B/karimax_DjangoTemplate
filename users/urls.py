@@ -98,16 +98,18 @@ urlpatterns = [
     ),
 
     
-    path("reports/", views.reports_dashboard, name="reports_dashboard"),
-    # path("reports/export/full/", views.export_full_debt_report, name="export_full_debt"),
-    # path("reports/export/restaurant/", views.export_restaurant_report, name="export_restaurant"),
-    # path("reports/export/employee/detailed/", views.export_detailed_employee_report, name="export_employee_detailed"),
-    # path("reports/export/employee/summary/", views.export_employee_summary_report, name="export_employee_summary"),
+    path("managements_reports_dashboard/", views.managements_reports_dashboard, name="managements_reports_dashboard"),
+    # path("managements_reports_dashboard/export/full/", views.export_full_debt_report, name="export_full_debt"),
+    # path("managements_reports_dashboard/export/restaurant/", views.export_restaurant_report, name="export_restaurant"),
+    # path("managements_reports_dashboard/export/employee/detailed/", views.export_detailed_employee_report, name="export_employee_detailed"),
+    # path("managements_reports_dashboard/export/employee/summary/", views.export_employee_summary_report, name="export_employee_summary"),
 
 
 
     
     path('force-logout-all/', views.force_logout_all_users, name='force_logout_all'),
+
+    path("personal_reports_dashboard/", views.personal_reports_dashboard, name="personal_reports_dashboard"),
 
     
 ]

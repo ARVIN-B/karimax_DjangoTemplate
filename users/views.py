@@ -1689,6 +1689,9 @@ def food_delivery_page(request):
 
         item["reservations"].append(r)
 
+
+    # print(factories_map)
+
     # --- پردازش POST برای تأیید تحویل ---
     if request.method == "POST":
 
@@ -2782,7 +2785,7 @@ def manage_self_menu(request):
 #     return render(request, "users/reporting_panel.html", context)
 
 # @login_required
-# def reports_dashboard(request):
+# def managements_reports_dashboard(request):
 #     # بررسی دسترسی مشابه manage_self_menu
 #     if not Department.objects.filter(managers=request.user, is_self=True).exists():
 #         messages.error(request, "شما دسترسی به صفحه گزارش‌گیری ندارید.")
@@ -2803,10 +2806,16 @@ def manage_self_menu(request):
 #         "today_reservations": today_reservations,
 #     }
 #     return render(request, "users/reporting_panel.html", context)
+
+
+
+
 @login_required
-def reports_dashboard(request):
+def managements_reports_dashboard(request):
     user = request.user
-    factory_id = 2
+    # factory_id = 2
+
+    # print(f"user : {user.id} , in reporting panel")
 
     """داشبورد گزارش‌گیری - نمایش صفحه اصلی با کارت‌های آماری"""
     # بررسی دسترسی مدیر سلف
@@ -2931,7 +2940,8 @@ def reports_dashboard(request):
             if emp.id == 1311:
                 for res in reservations:
                     if res.reserved_by != 0:
-                        print(f"ffffffffffff : {res.reserved_by}")
+                        # print(f"ffffffffffff : {res.reserved_by}")
+                        pass
 
             total_debt = reservations.aggregate(total=Sum("total_price"))["total"] or 0
             factory_quantity = (
@@ -3079,7 +3089,7 @@ def reports_dashboard(request):
             )
         except Exception as e:
             messages.error(request, f"در این بازه زمانی اطلاعاتی در دسترس نیست!!! {e}")
-            return redirect("users:reports_dashboard")
+            return redirect("users:managements_reports_dashboard")
 
     elif request.GET.get("export") == "single" and request.GET.get("employee_id"):
         start_date = request.GET.get("start_date")
@@ -3197,152 +3207,168 @@ def reports_dashboard(request):
         "today_reservations": today_reservations,
         "factories": factories,
     }
-    return render(request, "users/reports_dashboard.html", context)
+    return render(request, "users/managements_reports_dashboard.html", context)
+
+
+
+
 
 
 # @login_required
-# def export_full_debt_report(request):
-
-#     print(f"bbbbbbbbbbbbbbbbbbbbbbbb{request}")
-#     """خروجی اکسل بدهی کامل کارمندان"""
-#     start_date = request.GET.get("start_date")
-#     end_date = request.GET.get("end_date")
-#     report_type = request.GET.get("type", "detailed")
-
-#     if not start_date or not end_date:
-#         return HttpResponseBadRequest("لطفاً بازه تاریخ را انتخاب کنید")
-
-#     try:
-#         # تبدیل تاریخ‌ها
-#         y, m, d = map(int, start_date.split("/"))
-#         strt_gregorian = jdatetime.date(y, m, d).togregorian()
-#         y, m, d = map(int, end_date.split("/"))
-#         end_gregorian = jdatetime.date(y, m, d).togregorian()
-#     except:
-#         return HttpResponseBadRequest("فرمت تاریخ نامعتبر است")
-
-#     factory_id = request.session.get("current_factory_id")
-
-#     # دریافت کارمندانی که در این بازه سفارش داشته‌اند
-#     employees = Employee.objects.filter(
-#         food_reservations__reservation_date__gte=strt_gregorian,
-#         food_reservations__reservation_date__lte=end_gregorian,
-#         food_reservations__is_canceled=0,
-#         # food_reservations__related_factory_id=factory_id
-#     ).distinct()
-
-#     # آماده‌سازی داده‌ها برای اکسل
-#     rows_full_name = []
-#     rows_national_id = []
-#     rows_personnel_code = []
-#     rows_phone = []
-#     rows_total_debt_formatted = []
-#     rows_total_debt_raw = []
-#     rows_center_of_charge = []
-#     rows_total_factory_qty = []
-#     rows_total_free_qty = []
-#     rows_total_guest_qty = []
+# def personal_reports_dashboard(request):
+#     user = request.user
+#     context = {
+#         "user": user,
+#     }
+#     return render(request, "users/personal_reports_dashboard.html", context)
 
 
-#     print(f"aaaaaaaaaaaaaaaaaaaaaaa{strt_gregorian}")
-#     print(f"aaaaaaaaaaaaaaaaaaaaaaa{end_gregorian}")
-
-#     for emp in employees:
-#         reservations = FoodReservation.objects.filter(
-#             employee=emp,
-#             reservation_date__gte=strt_gregorian,
-#             reservation_date__lte=end_gregorian,
-#             is_canceled=0,
-#             # related_factory_id=factory_id
-#         )
 
 
-#         print(f"aaaaaaaaaaaaaaaaaaaaaaa{reservations}")
 
 
-#         total_debt = reservations.aggregate(total=Sum("total_price"))["total"] or 0
+@login_required
+def personal_reports_dashboard(request):
+    user = request.user
 
-#         if total_debt == 0:
-#             continue
+    # # فقط کاربرانی که مجوز گزارش‌گیری دارند (reporting_permision=1) اجازه دسترسی دارند
+    # if user.reporting_permision == 0:
+    #     messages.error(request, "شما دسترسی به صفحه گزارش‌گیری شخصی ندارید.")
+    #     return redirect("users:dashboard")
 
-#         if report_type == "detailed":
-#             factory_qty = reservations.aggregate(total=Sum("factory_quantity"))["total"] or 0
-#             free_qty = reservations.aggregate(total=Sum("free_quantity"))["total"] or 0
-#             guest_qty = reservations.aggregate(total=Sum("guest_quantity"))["total"] or 0
-#             rows_total_factory_qty.append(factory_qty)
-#             rows_total_free_qty.append(free_qty)
-#             rows_total_guest_qty.append(guest_qty)
+    # بازه تاریخ را از GET دریافت کن، در غیر این‌صورت ۳۰ روز اخیر را پیش‌فرض بگذار
+    start_date_str = request.GET.get("start_date")
+    end_date_str = request.GET.get("end_date")
 
-#         rows_full_name.append(emp.full_name or "نامشخص")
-#         rows_national_id.append(emp.national_id)
-#         rows_personnel_code.append(emp.personnel_code or "-")
-#         rows_phone.append(emp.phone_number or "-")
-#         rows_total_debt_raw.append(total_debt)
-#         rows_total_debt_formatted.append(f"{total_debt:,} ریال")
-#         rows_center_of_charge.append(emp.center_of_charge or "نامشخص")
+    today_jalali = jdatetime.date.today()
+    if not start_date_str or not end_date_str:
+        end_date_jalali = today_jalali
+        start_date_jalali = today_jalali - timedelta(days=30)
+        start_date_str = start_date_jalali.strftime("%Y/%m/%d")
+        end_date_str = end_date_jalali.strftime("%Y/%m/%d")
+    else:
+        # تبدیل فرمت‌های احتمالی (- به /) برای جلوگیری از خطا
+        start_date_str = start_date_str.replace("-", "/")
+        end_date_str = end_date_str.replace("-", "/")
 
-#     if not rows_full_name:
-#         return HttpResponseBadRequest("در بازه انتخابی هیچ اطلاعاتی یافت نشد")
+    # تابع کمکی برای تبدیل تاریخ شمسی به میلادی
+    def jalali_to_gregorian(date_str):
+        date_str = date_str.strip()
+        y, m, d = map(int, date_str.split("/"))
+        return jdatetime.date(y, m, d).togregorian()
 
-#     # مرتب‌سازی بر اساس مبلغ بدهی (نزولی)
-#     combined = list(zip(
-#         rows_full_name, rows_national_id, rows_personnel_code, rows_phone,
-#         rows_total_debt_raw, rows_total_debt_formatted, rows_center_of_charge
-#     ))
-#     if report_type == "detailed":
-#         combined = list(zip(
-#             rows_full_name, rows_national_id, rows_personnel_code, rows_phone,
-#             rows_total_debt_raw, rows_total_debt_formatted, rows_center_of_charge,
-#             rows_total_factory_qty, rows_total_free_qty, rows_total_guest_qty
-#         ))
+    try:
+        start_greg = jalali_to_gregorian(start_date_str)
+        end_greg = jalali_to_gregorian(end_date_str)
+    except Exception:
+        messages.error(request, "فرمت تاریخ نامعتبر است.")
+        return redirect(request.path)
 
-#     combined.sort(key=lambda x: x[4] if report_type == "detailed" else x[4], reverse=True)
+    # ----------------- دانلود گزارش اکسل (export=single) -----------------
+    if request.GET.get("export") == "single":
+        reservations = (
+            FoodReservation.objects.filter(
+                employee=user,
+                reservation_date__gte=start_greg,
+                reservation_date__lte=end_greg,
+                is_canceled=0,
+            )
+            .select_related("menu_item__food", "menu_item__weekly_menu__restaurant")
+            .order_by("-reservation_date")
+        )
 
-#     # جدا کردن دوباره
-#     rows_full_name = [item[0] for item in combined]
-#     rows_national_id = [item[1] for item in combined]
-#     rows_personnel_code = [item[2] for item in combined]
-#     rows_phone = [item[3] for item in combined]
-#     rows_total_debt_formatted = [item[5] for item in combined]
-#     rows_center_of_charge = [item[6] for item in combined]
+        # ساخت ستون‌های اکسل (مشابه نمونه قبلی)
+        rows_date, rows_day, rows_restaurant, rows_food = [], [], [], []
+        rows_factory, rows_free, rows_guest, rows_price = [], [], [], []
+        total_debt = 0
 
-#     if report_type == "detailed":
-#         rows_total_factory_qty = [item[7] for item in combined]
-#         rows_total_free_qty = [item[8] for item in combined]
-#         rows_total_guest_qty = [item[9] for item in combined]
+        for res in reservations:
+            jdate_obj = jdatetime.date.fromgregorian(date=res.reservation_date)
+            rows_date.append(jdate_obj.strftime("%Y/%m/%d"))
+            rows_day.append(jdate_obj.strftime("%A"))   # روز هفته فارسی
+            rows_restaurant.append(res.menu_item.weekly_menu.restaurant.name)
+            rows_food.append(res.menu_item.food.name)
+            rows_factory.append(res.factory_quantity)
+            rows_free.append(res.free_quantity)
+            rows_guest.append(res.guest_quantity)
+            rows_price.append(res.total_price)
+            total_debt += res.total_price
 
-#     # ساخت ستون‌ها برای اکسل
-#     data_columns = [
-#         ("نام و نام خانوادگی", rows_full_name),
-#         ("کد ملی", rows_national_id),
-#         ("کد پرسنلی", rows_personnel_code),
-#         ("شماره تماس", rows_phone),
-#     ]
+        data_columns = [
+            ("تاریخ رزرو", rows_date),
+            ("روز هفته", rows_day),
+            ("رستوران", rows_restaurant),
+            ("غذا", rows_food),
+            ("تعداد سهمیه", rows_factory),
+            ("تعداد آزاد", rows_free),
+            ("تعداد مهمان", rows_guest),
+            ("هزینه کل سفارش (ریال)", rows_price),
+        ]
 
-#     if report_type == "detailed":
-#         data_columns.extend([
-#             ("تعداد سفارش سهمیه‌ای", rows_total_factory_qty),
-#             ("تعداد سفارش آزاد", rows_total_free_qty),
-#             ("تعداد سفارش مهمان", rows_total_guest_qty),
-#         ])
+        filename = f"Gozaresh_{user.full_name.replace(' ', '_')}_{today_jalali.strftime('%Y%m%d')}"
+        report_title = f"گزارش رزروهای {user.full_name} - مجموع بدهی: {total_debt:,} ریال"
 
-#     data_columns.extend([
-#         ("مبلغ بدهی (ریال)", rows_total_debt_formatted),
-#         ("مرکز هزینه", rows_center_of_charge),
-#     ])
+        return export_to_excel(columns=data_columns, filename=filename, report_title=report_title)
 
-#     # محاسبه جمع کل
-#     total_sum = sum(rows_total_debt_raw) if rows_total_debt_raw else 0
-#     today_jalali = jdatetime.date.today().strftime("%Y/%m/%d")
+    # ----------------- داده‌های نمودار و کارت‌ها -----------------
+    # جمع‌آوری رزروها در بازه برای کاربر جاری
+    daily_stats = (
+        FoodReservation.objects.filter(
+            employee=user,
+            reservation_date__gte=start_greg,
+            reservation_date__lte=end_greg,
+            is_canceled=0,
+        )
+        .values("reservation_date")
+        .annotate(
+            total_orders=Count("id"),
+            total_price=Sum("total_price"),
+            total_qty=Sum("factory_quantity") + Sum("free_quantity") + Sum("guest_quantity"),
+        )
+        .order_by("reservation_date")
+    )
 
-#     report_title = f"گزارش جامع بدهی کارمندان سلف - {today_jalali}\nجمع کل بدهی: {total_sum:,} ریال"
-#     filename = f"bedehi_kamel_{today_jalali.replace('/', '-')}"
+    # تبدیل به لیست‌های مورد نیاز Chart.js
+    labels = []
+    orders_data = []
+    price_data = []
+    qty_data = []
 
-#     return export_to_excel(
-#         columns=data_columns,
-#         filename=filename,
-#         report_title=report_title
-#     )
+    for day in daily_stats:
+        greg_date = day["reservation_date"]
+        j_date = jdatetime.date.fromgregorian(date=greg_date)
+        labels.append(j_date.strftime("%Y/%m/%d"))
+        orders_data.append(day["total_orders"])
+        price_data.append(int(day["total_price"] or 0))
+        qty_data.append(int(day["total_qty"] or 0))
+
+    # محاسبه آمار کلی برای کارت‌ها
+    total_reservations = sum(orders_data)
+    total_debt = sum(price_data)
+    num_days = len(labels) if labels else 1
+    avg_per_day = round(total_reservations / num_days)
+
+    context = {
+        "start_date": start_date_str,
+        "end_date": end_date_str,
+        "labels": labels,
+        "orders_data": orders_data,
+        "price_data": price_data,
+        "qty_data": qty_data,
+        "total_reservations": total_reservations,
+        "total_debt": total_debt,
+        "avg_per_day": avg_per_day,
+    }
+
+    print(f"context : {context}")
+
+    return render(request, "users/personal_reports_dashboard.html", context)
+
+
+
+
+
+
 
 
 @login_required
@@ -4772,9 +4798,32 @@ def get_employee_reservation_info(request):
                         }
                     )
 
-        max_factory_quantity = request.user.factory_limit_reservation_for_others
-        max_free_quantity = request.user.free_limit_reservation_for_others
-        max_guest_quantity = request.user.guest_limit_reservation_for_others
+
+        if user.can_reserve_for_others == 2:
+            # بدون محدودیت مقصد
+            max_factory = user.factory_limit_reservation_for_others
+            max_free    = user.free_limit_reservation_for_others
+            max_guest   = user.guest_limit_reservation_for_others
+            can_reserve_guest = (user.guest_limit_reservation_for_others > 0)
+        elif user.can_reserve_for_others == 1:
+            # با محدودیت مقصد
+            emp_factory_limit = employee.factory_limit_reservation if not employee.unlimit_reservation else 999999
+            emp_free_limit    = employee.free_limit_reservation    if not employee.unlimit_reservation else 999999
+            emp_guest_limit   = employee.guest_limit_reservation   if not employee.unlimit_reservation else 999999
+
+            max_factory = min(user.factory_limit_reservation_for_others, emp_factory_limit)
+            max_free    = min(user.free_limit_reservation_for_others, emp_free_limit)
+            max_guest   = min(user.guest_limit_reservation_for_others, emp_guest_limit)
+            can_reserve_guest = (user.guest_limit_reservation_for_others > 0 and
+                                (employee.unlimit_reservation or employee.guest_limit_reservation > 0))
+        else:
+            # مجاز نیست (اما نباید به اینجا برسد)
+            max_factory = max_free = max_guest = 0
+            can_reserve_guest = False
+
+        # max_factory_quantity = request.user.factory_limit_reservation_for_others
+        # max_free_quantity = request.user.free_limit_reservation_for_others
+        # max_guest_quantity = request.user.guest_limit_reservation_for_others
 
         context = {
             "found": True,
@@ -4782,12 +4831,16 @@ def get_employee_reservation_info(request):
             "full_name": employee.full_name,
             "national_id": employee.national_id,
             "personnel_code": employee.personnel_code,
-            "can_reserve_guest": can_guest,
+            # "can_reserve_guest": can_guest,
             "can_reserve_management_food": can_management,
             "existing_reservations": existing_reservations,
-            "max_factory_quantity": max_factory_quantity,
-            "max_free_quantity": max_free_quantity,
-            "max_guest_quantity": max_guest_quantity,
+            # "max_factory_quantity": max_factory_quantity,
+            # "max_free_quantity": max_free_quantity,
+            # "max_guest_quantity": max_guest_quantity,
+            "max_factory_quantity": max_factory,
+            "max_free_quantity": max_free,
+            "max_guest_quantity": max_guest,
+            "can_reserve_guest": can_reserve_guest,
             "total_factory_res": total_factory_res,
             "total_free_res": total_free_res,
             "total_guest_res": total_guest_res,
@@ -4866,7 +4919,6 @@ def food_reservation_for_others(request):
 
             # مرحله ۱: parse خام به شکل employee → لیست سفارش‌ها
             raw_orders = defaultdict(list)
-            # print(f"jjjjjjjjjjjjjjjjjjj{request.POST}")
 
             for key, value_list in request.POST.lists():
                 if not key.startswith("full_reservations["):
@@ -4976,7 +5028,7 @@ def food_reservation_for_others(request):
                         is_canceled=False,
                     ).select_related(
                         "menu_item__food", "menu_item__weekly_menu__restaurant"
-                    )
+                    ).exclude(reserved_by=user.id)
 
                     for res in all_existing_reservations_qs:
                         total_factory_res = total_factory_res + int(
@@ -5020,6 +5072,20 @@ def food_reservation_for_others(request):
                         else:
                             # print("منو آیتم پیدا نشد")
                             continue
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                         # چک وجود رزرو قبلی برای همین غذا + تاریخ + کارمند
                         existing = FoodReservation.objects.filter(
@@ -5163,7 +5229,7 @@ def food_reservation_for_others(request):
                     is_canceled=False,
                 ).first()
 
-                print(f"*************************{reservation}")
+                # print(f"*************************{reservation}")
                 # if price_type == 'factory':
                 #     reservation.factory_quantity = max(0, reservation.factory_quantity - quantity)
                 # elif price_type == 'free':

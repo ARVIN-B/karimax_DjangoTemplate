@@ -562,7 +562,7 @@ class EmployeeAdmin(UserAdmin):
         ("اطلاعات تماس", {"fields": ("phone_number",)}),
         (
             "اطلاعات سازمانی",
-            {"fields": ("assigned_subdepartments", "roles"), "classes": ("collapse",)},
+            {"fields": ("center_of_charge", "assigned_subdepartments", "roles"), "classes": ("collapse",)},
         ),
         (
             "انتساب‌های مدیریتی جدید",
@@ -671,6 +671,7 @@ class EmployeeAdmin(UserAdmin):
                     "first_name",
                     "last_name",
                     "phone_number",
+                    "center_of_charge",
                     "assigned_subdepartments",
                     "roles",
                     "is_contractor",

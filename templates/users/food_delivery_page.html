@@ -115,7 +115,13 @@
 									class="reservations-cell"
 								>
 									{% for r in info.reservations %}
-									<div class="reservation-row">
+									<!-- <div class="reservation-row"> -->
+									<div
+										class="reservation-row"
+										data-factory-quantity="{{ r.factory_quantity|default:0 }}"
+										data-free-quantity="{{ r.free_quantity|default:0 }}"
+										data-guest-quantity="{{ r.guest_quantity|default:0 }}"
+									>
 										<div class="reservation-content">
 											<div class="emp-name">
 												{{ r.employee.get_full_name|default:r.employee.username }} {% if r.is_delivered %}
@@ -363,11 +369,11 @@
 		const printInfoDiv = document.createElement("div");
 		printInfoDiv.className = "print-info";
 		printInfoDiv.innerHTML = `
-      <div style="text-align: left; direction: ltr; font-family: Arial; padding: 10px; border-bottom: 1px solid #ccc; margin-bottom: 15px;">
-        <strong>Print Date & Time (Tehran):</strong> ${getTehranJalaliDateTime()}<br>
-        <strong>URL:</strong> ${window.location.href}
-      </div>
-    `;
+			<div style="text-align: left; direction: ltr; font-family: Arial; padding: 10px; border-bottom: 1px solid #ccc; margin-bottom: 15px;">
+        		<strong>Print Date & Time (Tehran):</strong> ${getTehranJalaliDateTime()}<br>
+        		<strong>URL:</strong> ${window.location.href}
+			</div>
+		`;
 
 		const cardBody = factoryEl.querySelector(".factory-body");
 		if (cardBody) {
@@ -387,10 +393,63 @@
 	}
 
 	// ========== Search filter ==========
+	// function filterNames() {
+	// 	const filter = document.getElementById("employeeSearch").value.trim().toLowerCase();
+	// 	let hasAnyVisible = false;
+
+	// 	document.querySelectorAll("table.delivery-table tbody tr").forEach((tr) => {
+	// 		const reservationRows = tr.querySelectorAll(".reservation-row");
+	// 		let rowHasMatch = false;
+
+	// 		if (filter === "") {
+	// 			reservationRows.forEach((row) => (row.style.display = ""));
+	// 			tr.style.display = "";
+	// 			hasAnyVisible = true;
+	// 			return;
+	// 		}
+
+	// 		reservationRows.forEach((row) => {
+	// 			const nameElement = row.querySelector(".emp-name");
+	// 			if (nameElement) {
+	// 				const fullName = nameElement.textContent.trim().toLowerCase();
+	// 				if (fullName.includes(filter)) {
+	// 					row.style.display = "";
+	// 					rowHasMatch = true;
+	// 					hasAnyVisible = true;
+	// 				} else {
+	// 					row.style.display = "none";
+	// 				}
+	// 			} else {
+	// 				row.style.display = "none";
+	// 			}
+	// 		});
+
+	// 		tr.style.display = rowHasMatch ? "" : "none";
+	// 	});
+
+	// 	// مدیریت پیام "یافت نشد"
+	// 	let noResultMsg = document.getElementById("no-result-message");
+	// 	if (!noResultMsg) {
+	// 		noResultMsg = document.createElement("div");
+	// 		noResultMsg.id = "no-result-message";
+	// 		noResultMsg.className = "alert-notice text-center mt-4";
+	// 		noResultMsg.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i><strong>هیچ کارمندی با این نام یافت نشد.</strong>';
+
+	// 		// اصلاح: پیدا کردن محل مناسب برای درج پیام
+	// 		const deliveryPage = document.querySelector(".page-header");
+	// 		if (deliveryPage) {
+	// 			deliveryPage.appendChild(noResultMsg);
+	// 		}
+	// 	}
+
+	// 	noResultMsg.style.display = hasAnyVisible || filter === "" ? "none" : "block";
+	// }
+
 	function filterNames() {
 		const filter = document.getElementById("employeeSearch").value.trim().toLowerCase();
 		let hasAnyVisible = false;
 
+		// 1. پنهان/نمایش رزروها و ردیف‌های غذا
 		document.querySelectorAll("table.delivery-table tbody tr").forEach((tr) => {
 			const reservationRows = tr.querySelectorAll(".reservation-row");
 			let rowHasMatch = false;
@@ -421,6 +480,39 @@
 			tr.style.display = rowHasMatch ? "" : "none";
 		});
 
+		// 2. به‌روزرسانی شمارش‌ها (سهمیه، آزاد، مهمان، مجموع) بر اساس رزروهای قابل مشاهده
+		document.querySelectorAll("table.delivery-table tbody tr").forEach((tr) => {
+			if (tr.style.display === "none") return; // ردیف‌های مخفی نادیده گرفته شوند
+
+			let factorySum = 0,
+				freeSum = 0,
+				guestSum = 0;
+			const reservationRows = tr.querySelectorAll(".reservation-row");
+
+			reservationRows.forEach((row) => {
+				if (row.style.display !== "none") {
+					factorySum += parseInt(row.dataset.factoryQuantity) || 0;
+					freeSum += parseInt(row.dataset.freeQuantity) || 0;
+					guestSum += parseInt(row.dataset.guestQuantity) || 0;
+				}
+			});
+
+			const totalSum = factorySum + freeSum + guestSum;
+
+			// به‌روزرسانی سلول‌های تعداد با data-label مشخص
+			const factoryCell = tr.querySelector('td[data-label="سهمیه"]');
+			if (factoryCell) factoryCell.textContent = factorySum;
+
+			const freeCell = tr.querySelector('td[data-label="آزاد"]');
+			if (freeCell) freeCell.textContent = freeSum;
+
+			const guestCell = tr.querySelector('td[data-label="مهمان"]');
+			if (guestCell) guestCell.textContent = guestSum;
+
+			const totalCell = tr.querySelector('td[data-label="مجموع"]');
+			if (totalCell) totalCell.textContent = totalSum;
+		});
+
 		// مدیریت پیام "یافت نشد"
 		let noResultMsg = document.getElementById("no-result-message");
 		if (!noResultMsg) {
@@ -428,14 +520,11 @@
 			noResultMsg.id = "no-result-message";
 			noResultMsg.className = "alert-notice text-center mt-4";
 			noResultMsg.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i><strong>هیچ کارمندی با این نام یافت نشد.</strong>';
-
-			// اصلاح: پیدا کردن محل مناسب برای درج پیام
 			const deliveryPage = document.querySelector(".page-header");
 			if (deliveryPage) {
 				deliveryPage.appendChild(noResultMsg);
 			}
 		}
-
 		noResultMsg.style.display = hasAnyVisible || filter === "" ? "none" : "block";
 	}
 
