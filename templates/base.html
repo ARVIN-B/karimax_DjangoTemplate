@@ -35,7 +35,85 @@
 			i {
 				font-family: "Font Awesome 6 Free" !important;
 			}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			.notification-banner {
+				position: fixed;
+				top: 70px; /* زیر نوبار */
+				left: 0;
+				right: 0;
+				z-index: 1050;
+				margin: 0 15px;
+				border-radius: 10px;
+				box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+				opacity: 0;
+				transform: translateY(-20px);
+				animation: slideDownBanner 0.4s ease forwards;
+			}
+
+			@keyframes slideDownBanner {
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+
 		</style>
+		<style>
+			document.addEventListener("DOMContentLoaded", function () {
+				document.querySelectorAll(".notification-banner").forEach(function (banner) {
+					const timeout = parseInt(banner.dataset.bannerTimeout) || 6000;
+					setTimeout(function () {
+						banner.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+						banner.style.opacity = "0";
+						banner.style.transform = "translateY(-20px)";
+						setTimeout(function () { banner.remove(); }, 500);
+					}, timeout);
+
+					// دکمه بستن دستی (اختیاری)
+					const closeBtn = banner.querySelector(".btn-close");
+					if (closeBtn) {
+						closeBtn.addEventListener("click", function () {
+							banner.style.opacity = "0";
+							banner.style.transform = "translateY(-20px)";
+							setTimeout(function () { banner.remove(); }, 500);
+						});
+					}
+				});
+			});
+		</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		<meta charset="UTF-8" />
 		<meta
 			name="viewport"
@@ -201,6 +279,11 @@
 			href="{% static 'css/style.css' %}"
 		/>
 		{% block extra_css %}{% endblock %}
+
+		<link
+			rel="manifest"
+			href="{% static 'manifest.json' %}"
+		/>
 	</head>
 	<body>
 		<!-- Loading Spinner -->
@@ -664,6 +747,12 @@
 				</ol>
 			</nav>
 			{% endif %} {% if messages %} {% for message in messages %}
+			{% if 'banner' in message.tags %}
+			<div class="notification-banner alert alert-{{ message.tags }} text-center" 
+				data-banner-timeout="8000">  <!-- 8 ثانیه -->
+				<i class="fas fa-bullhorn me-2"></i>{{ message }}
+			</div>
+			{% else %}
 			<div
 				class="alert alert-{{ message.tags }} alert-dismissible fade show glass-alert"
 				role="alert"
@@ -677,6 +766,7 @@
 					aria-label="Close"
 				></button>
 			</div>
+			{% endif %}
 			{% endfor %} {% endif %} {% block content %}{% endblock %}
 		</div>
 

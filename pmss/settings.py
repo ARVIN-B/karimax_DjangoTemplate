@@ -44,6 +44,10 @@ INSTALLED_APPS = [
     "axes",
     "django.contrib.humanize",
     "widget_tweaks",
+
+
+
+    "simple_history",
 ]
 
 # CSRF_TRUSTED_ORIGINS = [

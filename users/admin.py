@@ -438,10 +438,6 @@ class PermissionLevelAdmin(admin.ModelAdmin):
 admin.site.register(PermissionLevel, PermissionLevelAdmin)
 
 
-
-
-
-
 class EmployeeManagementAssignmentsForm(UserChangeForm):
     managed_holdings_assignments = forms.ModelMultipleChoiceField(
         queryset=Holding.objects.none(),
@@ -529,18 +525,6 @@ class EmployeeManagementAssignmentsForm(UserChangeForm):
         self._save_management_assignments()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 @admin.register(Employee)
 class EmployeeAdmin(UserAdmin):
     add_form_template = "admin/users/employee_add_form.html"
@@ -562,7 +546,10 @@ class EmployeeAdmin(UserAdmin):
         ("اطلاعات تماس", {"fields": ("phone_number",)}),
         (
             "اطلاعات سازمانی",
-            {"fields": ("center_of_charge", "assigned_subdepartments", "roles"), "classes": ("collapse",)},
+            {
+                "fields": ("center_of_charge", "assigned_subdepartments", "roles"),
+                "classes": ("collapse",),
+            },
         ),
         (
             "انتساب‌های مدیریتی جدید",
@@ -587,12 +574,7 @@ class EmployeeAdmin(UserAdmin):
                     "hr_accessible_departments",
                     "hr_accessible_subdepartments",
                     "hr_accessible_employees",
-
-
-
                     # "hr_accessible_holdings",
-
-
                     # "managed_factories_assignments",
                     # "managed_departments_assignments",
                     # "supervised_subdepartments_assignments",
@@ -615,6 +597,7 @@ class EmployeeAdmin(UserAdmin):
                     "guest_limit_reservation_for_others",
                     "free_limit_reservation_for_others",
                     "factory_limit_reservation_for_others",
+                    "extra_available_factories_for_food_reservation",
                 ),
                 "classes": ("collapse",),
             },
@@ -622,9 +605,7 @@ class EmployeeAdmin(UserAdmin):
         (
             "پنل گزارش گیری",
             {
-                "fields": (
-                    "reporting_permision",
-                ),
+                "fields": ("reporting_permision",),
                 "classes": ("collapse",),
             },
         ),
@@ -643,6 +624,7 @@ class EmployeeAdmin(UserAdmin):
             {
                 "fields": (
                     "is_active",
+                    "login_required",
                     "is_staff",
                     "is_superuser",
                     "is_first_login",
@@ -717,6 +699,7 @@ class EmployeeAdmin(UserAdmin):
         "assigned_subdepartments_display",
         "roles_display",
         "is_active",
+        "login_required",
         "is_staff",
         "is_superuser",
         "is_first_login",
@@ -760,6 +743,7 @@ class EmployeeAdmin(UserAdmin):
         "assigned_subdepartments",
         "is_contractor",
         "is_active",
+        "login_required",
         "is_staff",
         "is_superuser",
         "is_first_login",
@@ -856,7 +840,9 @@ class EmployeeAdmin(UserAdmin):
     def assigned_subdepartments_display(self, obj):
         return ", ".join([sd.name for sd in obj.assigned_subdepartments.all()]) or "-"
 
-    assigned_subdepartments_display.short_description = "زیربخش‌های تخصیص‌یافته (فقط برای نقش کارمند)"
+    assigned_subdepartments_display.short_description = (
+        "زیربخش‌های تخصیص‌یافته (فقط برای نقش کارمند)"
+    )
 
     def food_receiver_role_display(self, obj):
         return dict(obj.FOOD_RECEIVER_CHOICES).get(obj.food_receiver_role, "-")
@@ -902,9 +888,6 @@ class EmployeeAdmin(UserAdmin):
             ]
         ):
             form.instance._sync_hr_access_from_hierarchy()
-
-
-
 
 
 @admin.register(Participation)

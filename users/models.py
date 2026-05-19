@@ -21,6 +21,7 @@ from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
+from simple_history.models import HistoricalRecords
 
 from jdatetime import date as jdate
 
@@ -382,6 +383,7 @@ class Employee(AbstractUser):
         verbose_name="زیربخش‌های تخصیص‌یافته",
     )
 
+
     can_access_dashboard = models.BooleanField(default=True)
     can_access_all_departments = models.BooleanField(default=False)
     is_first_login = models.BooleanField(default=True, verbose_name="اولین ورود")
@@ -402,6 +404,18 @@ class Employee(AbstractUser):
         choices=reporting_permision_choices,
         verbose_name="مجوز گزارش گیری",
     )
+
+    extra_available_factories_for_food_reservation = models.ManyToManyField(
+        Factory,
+        related_name="extra_employee_for_food_reservation",
+        blank=True,
+        null=True,
+        verbose_name="کارخانه های اضافه مجاز به رزرو غذا",
+    )
+
+
+
+
 
     guest_limit_reservation = models.IntegerField(
         default=0, verbose_name="محدودیت رزرو مهمان"
@@ -601,6 +615,8 @@ class Employee(AbstractUser):
     login_required = models.BooleanField(
         default=False, verbose_name="نیاز به لاگین مجدد"
     )
+
+    # history = HistoricalRecords()
 
     class Meta:
         verbose_name = "کارمند"

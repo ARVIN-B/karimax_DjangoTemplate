@@ -260,7 +260,7 @@ def login_view(request):
         if user is not None:
             if user.login_required:
                 user.login_required = False
-                user.save(update_fields=['login_required'])
+                user.save(update_fields=["login_required"])
 
             _login_user_and_initialize_session(request, user)
 
@@ -272,27 +272,21 @@ def login_view(request):
                 "factory_manager",
                 "department_manager",
             }:
-                msg = (
-                    """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+                msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
                     «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
                     گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-                )
                 messages.success(request, msg)
 
             elif role_name == "supervisor":
-                msg = (
-                    """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+                msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
                     «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
                     گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-                )
                 messages.success(request, msg)
 
             elif role_name == "employee":
-                msg = (
-                    """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+                msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
                     «انتظار می‌رود حداقل یک مورد دانش جدید در هر ماه ثبت گردد»
                     گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-                )
                 messages.success(request, msg)
 
             return redirect("users:dashboard")
@@ -310,20 +304,21 @@ def logout_view(request):
 
     return redirect("users:login")
 
+
 @staff_member_required  # فقط ادمین‌ها (is_staff) دسترسی داشته باشند
-def force_logout_all_users(request):
+def force_logout_all_users(request, only_current_user=False):
     # تنظیم فلگ login_required برای همه کاربران فعال
     updated_count = Employee.objects.filter(is_active=True).update(login_required=True)
-    
+
     # پیام موفقیت
-    messages.success(request, f'{updated_count} کاربر برای خروج اجباری در درخواست بعدی علامت‌گذاری شدند.')
+    messages.success(
+        request,
+        f"{updated_count} کاربر برای خروج اجباری در درخواست بعدی علامت‌گذاری شدند.",
+    )
 
     Session.objects.all().delete()
-    
-    return redirect('users:login')
 
-
-
+    return redirect("users:login")
 
 
 def _normalize_mobile_number(raw_phone):
@@ -1061,11 +1056,9 @@ def switch_role(request):
         #     request,
         #     # "جهت ارتقای سازمان دانش‌محور، تجربیات ارزش‌آفرین خود را هفتگی در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
         # )
-        msg = (
-            """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+        msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
             «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
             گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-        )
         messages.success(request, msg)
 
     elif role_name == "supervisor":
@@ -1073,11 +1066,9 @@ def switch_role(request):
         #     request,
         #     # "سرپرستان و کارشناسان محترم، آموزه‌ها و تجربیات شغلی مفید خود را هفتگی در کاریمکس ثبت نمایید (حداقل یک دانش در هفته). گزارش‌گیری ماهانه.",
         # )
-        msg = (
-            """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+        msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
             «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
             گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-        )
         messages.success(request, msg)
 
     elif role_name == "employee":
@@ -1085,11 +1076,9 @@ def switch_role(request):
         #     request,
         #     # "اپراتورها و کارگران عزیز، تجربیات کاری ارزشمند خود را ماهیانه در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
         # )
-        msg = (
-            """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+        msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
             «انتظار می‌رود حداقل یک مورد دانش جدید در هر ماه ثبت گردد»
             گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-        )
         messages.success(request, msg)
 
     return redirect("users:dashboard")
@@ -1134,6 +1123,11 @@ def dashboard(request):
 
     if current_role_name:
         current_role = request.user.roles.filter(name=current_role_name).first()
+
+    if True:
+        msg = "testttttttttttttttttttttttttttttttttt"  # متن پیام
+        # اضافه کردن extra_tags='banner' برای تشخیص در قالب
+        messages.success(request, msg, extra_tags='banner')
 
     # کاربر فعلی که از نوع Employee هست
 
@@ -1688,7 +1682,6 @@ def food_delivery_page(request):
             item["guest"] += r.guest_quantity
 
         item["reservations"].append(r)
-
 
     # print(factories_map)
 
@@ -2808,8 +2801,6 @@ def manage_self_menu(request):
 #     return render(request, "users/reporting_panel.html", context)
 
 
-
-
 @login_required
 def managements_reports_dashboard(request):
     user = request.user
@@ -2822,9 +2813,7 @@ def managements_reports_dashboard(request):
     # if not Department.objects.filter(managers=request.user, reporting_permision=0).exists():
     #     pass
 
-
     # print(f"print : {user.reporting_permision}")
-
 
     if user.reporting_permision == 0:
         messages.error(request, "شما دسترسی به صفحه گزارش‌گیری ندارید.")
@@ -3210,10 +3199,6 @@ def managements_reports_dashboard(request):
     return render(request, "users/managements_reports_dashboard.html", context)
 
 
-
-
-
-
 # @login_required
 # def personal_reports_dashboard(request):
 #     user = request.user
@@ -3221,10 +3206,6 @@ def managements_reports_dashboard(request):
 #         "user": user,
 #     }
 #     return render(request, "users/personal_reports_dashboard.html", context)
-
-
-
-
 
 
 @login_required
@@ -3285,7 +3266,7 @@ def personal_reports_dashboard(request):
         for res in reservations:
             jdate_obj = jdatetime.date.fromgregorian(date=res.reservation_date)
             rows_date.append(jdate_obj.strftime("%Y/%m/%d"))
-            rows_day.append(jdate_obj.strftime("%A"))   # روز هفته فارسی
+            rows_day.append(jdate_obj.strftime("%A"))  # روز هفته فارسی
             rows_restaurant.append(res.menu_item.weekly_menu.restaurant.name)
             rows_food.append(res.menu_item.food.name)
             rows_factory.append(res.factory_quantity)
@@ -3306,9 +3287,13 @@ def personal_reports_dashboard(request):
         ]
 
         filename = f"Gozaresh_{user.full_name.replace(' ', '_')}_{today_jalali.strftime('%Y%m%d')}"
-        report_title = f"گزارش رزروهای {user.full_name} - مجموع بدهی: {total_debt:,} ریال"
+        report_title = (
+            f"گزارش رزروهای {user.full_name} - مجموع بدهی: {total_debt:,} ریال"
+        )
 
-        return export_to_excel(columns=data_columns, filename=filename, report_title=report_title)
+        return export_to_excel(
+            columns=data_columns, filename=filename, report_title=report_title
+        )
 
     # ----------------- داده‌های نمودار و کارت‌ها -----------------
     # جمع‌آوری رزروها در بازه برای کاربر جاری
@@ -3323,7 +3308,9 @@ def personal_reports_dashboard(request):
         .annotate(
             total_orders=Count("id"),
             total_price=Sum("total_price"),
-            total_qty=Sum("factory_quantity") + Sum("free_quantity") + Sum("guest_quantity"),
+            total_qty=Sum("factory_quantity")
+            + Sum("free_quantity")
+            + Sum("guest_quantity"),
         )
         .order_by("reservation_date")
     )
@@ -3363,12 +3350,6 @@ def personal_reports_dashboard(request):
     print(f"context : {context}")
 
     return render(request, "users/personal_reports_dashboard.html", context)
-
-
-
-
-
-
 
 
 @login_required
@@ -4040,14 +4021,21 @@ def food_reservation_view(request):
     can_choose_factory = False
     can_reserve_guest = False
 
+    extra_available_factories_for_food_reservation = (
+        user.extra_available_factories_for_food_reservation.all()
+    )
+
     if (
         role_name
         in ["super_admin", "holding_manager", "factory_manager", "department_manager"]
-        or user.unlimit_reservation
+        or user.unlimit_reservation or user.guest_limit_reservation > 0
     ):
         can_reserve_guest = True
 
-    if role_name in ["holding_manager", "super_admin"]:
+    if (
+        role_name in ["holding_manager", "super_admin"]
+        or extra_available_factories_for_food_reservation.exists()
+    ):
         can_choose_factory = True
 
         target_factory_id = request.GET.get("target_factory_id") or request.POST.get(
@@ -4056,8 +4044,25 @@ def food_reservation_view(request):
 
         if role_name == "super_admin":
             available_factories = Factory.objects.all()
-        else:
+        elif role_name == "holding_manager":
             available_factories = Factory.objects.filter(holding_id=holding_id).all()
+
+        if is_committee:
+            factory = Factory.objects.filter(id=factory_id).first().linked_factory
+        else:
+            factory = Factory.objects.filter(id=factory_id).first()
+
+        if factory:
+            available_factories = available_factories | Factory.objects.filter(
+                pk=factory.pk
+            )
+
+        if extra_available_factories_for_food_reservation.exists():
+            available_factories = (
+                available_factories | extra_available_factories_for_food_reservation
+            )
+
+        available_factories = available_factories.distinct()
 
         if target_factory_id:
             try:
@@ -4686,6 +4691,23 @@ def get_employee_reservation_info(request):
             get_factory_ids(employee)
         )
 
+        print(f"factory_ids : {factory_ids}")
+
+        # گرفتن شناسه‌های کارخانه‌های اضافی از فیلد ManyToMany کاربر
+        extra_ids = list(
+            employee.extra_available_factories_for_food_reservation.values_list(
+                "id", flat=True
+            )
+        )
+
+        # اضافه کردن به لیست اصلی
+        factory_ids.extend(extra_ids)
+
+        # حذف شناسه‌های تکراری (در صورت نیاز) با حفظ ترتیب
+        factory_ids = list(dict.fromkeys(factory_ids))
+
+        # print(f"factory_ids after adding extra: {factory_ids}")
+
         if employee.is_staff:
             factories = Factory.objects.all()
         elif is_holding_manager:
@@ -4798,24 +4820,38 @@ def get_employee_reservation_info(request):
                         }
                     )
 
-
         if user.can_reserve_for_others == 2:
             # بدون محدودیت مقصد
             max_factory = user.factory_limit_reservation_for_others
-            max_free    = user.free_limit_reservation_for_others
-            max_guest   = user.guest_limit_reservation_for_others
-            can_reserve_guest = (user.guest_limit_reservation_for_others > 0)
+            max_free = user.free_limit_reservation_for_others
+            max_guest = user.guest_limit_reservation_for_others
+            can_reserve_guest = user.guest_limit_reservation_for_others > 0
         elif user.can_reserve_for_others == 1:
             # با محدودیت مقصد
-            emp_factory_limit = employee.factory_limit_reservation if not employee.unlimit_reservation else 999999
-            emp_free_limit    = employee.free_limit_reservation    if not employee.unlimit_reservation else 999999
-            emp_guest_limit   = employee.guest_limit_reservation   if not employee.unlimit_reservation else 999999
+            emp_factory_limit = (
+                employee.factory_limit_reservation
+                if not employee.unlimit_reservation
+                else 999999
+            )
+            emp_free_limit = (
+                employee.free_limit_reservation
+                if not employee.unlimit_reservation
+                else 999999
+            )
+            emp_guest_limit = (
+                employee.guest_limit_reservation
+                if not employee.unlimit_reservation
+                else 999999
+            )
 
-            max_factory = min(user.factory_limit_reservation_for_others, emp_factory_limit)
-            max_free    = min(user.free_limit_reservation_for_others, emp_free_limit)
-            max_guest   = min(user.guest_limit_reservation_for_others, emp_guest_limit)
-            can_reserve_guest = (user.guest_limit_reservation_for_others > 0 and
-                                (employee.unlimit_reservation or employee.guest_limit_reservation > 0))
+            max_factory = min(
+                user.factory_limit_reservation_for_others, emp_factory_limit
+            )
+            max_free = min(user.free_limit_reservation_for_others, emp_free_limit)
+            max_guest = min(user.guest_limit_reservation_for_others, emp_guest_limit)
+            can_reserve_guest = user.guest_limit_reservation_for_others > 0 and (
+                employee.unlimit_reservation or employee.guest_limit_reservation > 0
+            )
         else:
             # مجاز نیست (اما نباید به اینجا برسد)
             max_factory = max_free = max_guest = 0
@@ -5022,13 +5058,17 @@ def food_reservation_for_others(request):
                     total_free_res = 0
                     total_guest_res = 0
 
-                    all_existing_reservations_qs = FoodReservation.objects.filter(
-                        employee=employee,
-                        reservation_date=today_gdate,  # تبدیل به میلادی
-                        is_canceled=False,
-                    ).select_related(
-                        "menu_item__food", "menu_item__weekly_menu__restaurant"
-                    ).exclude(reserved_by=user.id)
+                    all_existing_reservations_qs = (
+                        FoodReservation.objects.filter(
+                            employee=employee,
+                            reservation_date=today_gdate,  # تبدیل به میلادی
+                            is_canceled=False,
+                        )
+                        .select_related(
+                            "menu_item__food", "menu_item__weekly_menu__restaurant"
+                        )
+                        .exclude(reserved_by=user.id)
+                    )
 
                     for res in all_existing_reservations_qs:
                         total_factory_res = total_factory_res + int(
@@ -5072,20 +5112,6 @@ def food_reservation_for_others(request):
                         else:
                             # print("منو آیتم پیدا نشد")
                             continue
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
                         # چک وجود رزرو قبلی برای همین غذا + تاریخ + کارمند
                         existing = FoodReservation.objects.filter(
@@ -5390,31 +5416,32 @@ def load_more_participations(request):
 
 def convert_value(key, value, ftype):
     """مقدار خام را به فرم مناسب مدل تبدیل می‌کند"""
-    if ftype == 'str':
-        return value.strip() if value else ''
-    elif ftype == 'int':
+    if ftype == "str":
+        return value.strip() if value else ""
+    elif ftype == "int":
         try:
-            return int(value) if value not in [None, ''] else 0
+            return int(value) if value not in [None, ""] else 0
         except (ValueError, TypeError):
             return 0
-    elif ftype == 'int_null':
-        if value in [None, '']:
+    elif ftype == "int_null":
+        if value in [None, ""]:
             return None
         try:
             return int(value)
         except (ValueError, TypeError):
             return None
-    elif ftype == 'bool':
-        return value == 'True'
-    elif ftype == 'date':
+    elif ftype == "bool":
+        return value == "True"
+    elif ftype == "date":
         if value:
             try:
-                return datetime.strptime(value, '%Y-%m-%d').date()
+                return datetime.strptime(value, "%Y-%m-%d").date()
             except (ValueError, TypeError):
                 return None
         return None
     else:
         return value
+
 
 @login_required
 def user_management(request):
@@ -5523,14 +5550,8 @@ def user_management(request):
                 "center_of_charge": "str",
                 "birth_certificate_number": "str",
                 "father_name": "str",
-
-
-
-
                 "password": "str",
                 "confirm_password": "str",
-
-
                 # bool fields
                 "unlimit_reservation": "bool",
                 "is_contractor": "bool",
@@ -5543,7 +5564,6 @@ def user_management(request):
                 # "manage_sub_employees": "bool",
                 # "is_first_login": "bool",
                 # "is_active": "bool",
-
                 # # فیلدهای عددی (int)
                 # "guest_limit_reservation": "int",
                 # "free_limit_reservation": "int",
@@ -5555,7 +5575,6 @@ def user_management(request):
                 # "can_reserve_for_others": "int",
                 # "can_reserve_for_which_day": "int",
                 # "reporting_permision": "int",
-
                 # # فیلدهای خارجی (ForeignKey) - به صورت int ولی می‌تواند None باشد
                 # "food_receiver_factory": "int_null",
                 # "food_receiver_holding": "int_null",
@@ -5563,8 +5582,7 @@ def user_management(request):
                 # "gender": "int_null",
                 # "dependency_status": "int_null",
                 # "marital_status": "int_null",
-                # "birth_date": "date", 
-
+                # "birth_date": "date",
                 # فیلدهای ManyToMany - به صورت list (از request.POST.getlist)
                 "managing_holdings": "list",
                 "managing_factories": "list",
@@ -5577,22 +5595,13 @@ def user_management(request):
                 # "hr_accessible_departments": "list",
                 # "hr_accessible_subdepartments": "list",
                 # "hr_accessible_employees": "list",
-                
             }
 
-
-
-
             fields = [
-
                 "password",
                 "confirm_password",
-
-                
                 # هر فیلد تکی دیگر
             ]
-
-
 
             simple_fields = [f for f, t in FIELD_DEFINITIONS.items() if t != "list"]
             list_fields = [f for f, t in FIELD_DEFINITIONS.items() if t == "list"]
@@ -5602,13 +5611,6 @@ def user_management(request):
                 data[field] = request.POST.get(field)
             for field in list_fields:
                 data[field] = request.POST.getlist(field)
-
-
-
-
-
-
-
 
             if data["national_id"] in [None, ""]:
                 return JsonResponse(
@@ -5629,38 +5631,46 @@ def user_management(request):
                 is_exist = False
 
             if not is_exist:
-                if not data.get("password") or data["password"] != data.get("confirm_password"):
-                    return JsonResponse({
-                        "status": "message",
-                        "title": "خطا",
-                        "message": "رمز عبور و تکرار آن را صحیح وارد کنید",
-                        "icon": "error",
-                        "timer": 2500,
-                        "showConfirmButton": True,
-                    })
+                if not data.get("password") or data["password"] != data.get(
+                    "confirm_password"
+                ):
+                    return JsonResponse(
+                        {
+                            "status": "message",
+                            "title": "خطا",
+                            "message": "رمز عبور و تکرار آن را صحیح وارد کنید",
+                            "icon": "error",
+                            "timer": 2500,
+                            "showConfirmButton": True,
+                        }
+                    )
                 hashed_password = make_password(data["password"])
             else:
                 # در حالت ویرایش: اگر رمز جدید وارد شده باشد همان را هش کن، در غیر این صورت رمز قبلی حفظ شود
-                if data.get("password") and data["password"] == data.get("confirm_password"):
+                if data.get("password") and data["password"] == data.get(
+                    "confirm_password"
+                ):
                     hashed_password = make_password(data["password"])
                 else:
                     hashed_password = existing_emp.password
 
-
             REQUIRED_FIELDS = ["national_id", "first_name", "last_name", "phone_number"]
 
-            if any(data.get(f) in [None, ""] for f in REQUIRED_FIELDS if not (is_exist and f == "national_id")):
+            if any(
+                data.get(f) in [None, ""]
+                for f in REQUIRED_FIELDS
+                if not (is_exist and f == "national_id")
+            ):
                 return JsonResponse(
-                    {"status": "message",
-                     "title": "خطا",
-                    "message": "لطفا فیلدهای اجباری را پر کنید",
-                    "icon": "error",
-                    "timer": 2500,
-                    "showConfirmButton": True,
+                    {
+                        "status": "message",
+                        "title": "خطا",
+                        "message": "لطفا فیلدهای اجباری را پر کنید",
+                        "icon": "error",
+                        "timer": 2500,
+                        "showConfirmButton": True,
                     }
                 )
-
-            
 
             # # تبدیل به لیست اعداد صحیح (مقادیر خالی حذف شوند)
             # new_holdings = [int(id) for id in data["managing_holdings"] if id]
@@ -5763,9 +5773,6 @@ def user_management(request):
             #         a for a in new_assigned if a in accessible_subdepartments
             #     ]
 
-
-            
-
             # emp = {
             #     "national_id": data["national_id"],
             #     "personnel_code": data["personnel_code"],
@@ -5776,9 +5783,6 @@ def user_management(request):
             #     "password": hashed_password,
             #     "unlimit_reservation": data["unlimit_reservation"] if data["unlimit_reservation"] and data["unlimit_reservation"] not in ["" , None] else False,
 
-
-
-
             #     "managing_holdings": final_holdings,
             #     "managing_factories": final_factories,
             #     "managing_departments": final_departments,
@@ -5786,16 +5790,15 @@ def user_management(request):
             #     "assigned_subdepartments": final_assigned,
             # }
 
-
             emp = {}
             for field, ftype in FIELD_DEFINITIONS.items():
-                if ftype == 'list':
+                if ftype == "list":
                     continue
-                if field in ['password', 'confirm_password']:
+                if field in ["password", "confirm_password"]:
                     continue
                 emp[field] = convert_value(field, data.get(field), ftype)
 
-            emp['password'] = hashed_password
+            emp["password"] = hashed_password
 
             # print(emp)
 
