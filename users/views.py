@@ -321,6 +321,73 @@ def force_logout_all_users(request, only_current_user=False):
     return redirect("users:login")
 
 
+
+    
+# 1. تابع جدید ارسال پیامک عمومی (هر متنی)
+def _send_sms(mobile, message, sms_number=None):
+    """
+    ارسال پیامک متنی به یک شماره موبایل با استفاده از API پارس‌گرین.
+    پارامترها:
+        mobile: شماره موبایل نرمال‌شده (مثلاً 09123456789)
+        message: متن پیامک
+        sms_number: شماره خط ارسال‌کننده (اختیاری)
+    خروجی:
+        (موفقیت, پیام, داده‌ی پاسخ)
+    """
+    api_key = (getattr(settings, "PARSGREEN_SMS_API_KEY", "") or "").strip()
+    if not api_key:
+        api_key = PARSGREEN_DEFAULT_API_KEY
+
+    if sms_number is None:
+        sms_number = (
+            getattr(settings, "PARSGREEN_SMS_NUMBER", "")
+            or getattr(settings, "PARSGREEN_SMS_SENDER", "")
+            or ""
+        )
+    sms_number = str(sms_number).strip()
+
+    if not sms_number:
+        return False, "شماره خط پیامکی تنظیم نشده است.", {}
+
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": f"basic apikey:{api_key}",
+    }
+
+    payload = {
+        "SmsBody": message,
+        "Mobiles": [mobile],
+        "SmsNumber": sms_number,
+    }
+
+    try:
+        response = requests.post(
+            PARSGREEN_SEND_SMS_URL,
+            headers=headers,
+            json=payload,
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        return False, "خطا در ارتباط با سامانه پیامکی.", {"exception": str(exc)}
+
+    try:
+        data = response.json()
+    except ValueError:
+        data = {}
+
+    # بررسی موفقیت بر اساس مستندات پارس‌گرین
+    success = (
+        response.status_code < 400
+        and bool(data.get("R_Success"))
+        and int(data.get("R_Code", 0)) == 0
+    )
+    if success:
+        return True, "پیامک با موفقیت ارسال شد.", data
+    else:
+        return False, data.get("R_Message") or "ارسال پیامک ناموفق بود.", data
+
+
 def _normalize_mobile_number(raw_phone):
     if not raw_phone:
         return None
@@ -1125,7 +1192,7 @@ def dashboard(request):
         current_role = request.user.roles.filter(name=current_role_name).first()
 
     if True:
-        msg = "testttttttttttttttttttttttttttttttttt"  # متن پیام
+        msg = ""  # متن پیام
         # اضافه کردن extra_tags='banner' برای تشخیص در قالب
         messages.success(request, msg, extra_tags='banner')
 
@@ -3954,6 +4021,9 @@ def restaurant_management_dashboard(request):
         return export_to_excel(
             columns=data_columns, filename=filename, report_title=report_title
         )
+    
+    # page_expires_at = timezone.now() + timedelta(minutes=10)
+    expire_seconds = 30
 
     context = {
         "restaurant_name": restaurant.name,
@@ -3961,6 +4031,7 @@ def restaurant_management_dashboard(request):
         "weekly_data": weekly_report_data,
         "close_food_res_time_H": close_food_res_time_H,
         "close_food_res_time_M": close_food_res_time_M,
+        "expire_seconds": expire_seconds,
     }
 
     return render(request, "users/restaurant_management_dashboard.html", context)

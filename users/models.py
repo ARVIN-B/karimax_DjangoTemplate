@@ -21,7 +21,7 @@ from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
-from simple_history.models import HistoricalRecords
+# from simple_history.models import HistoricalRecords
 
 from jdatetime import date as jdate
 
@@ -383,7 +383,6 @@ class Employee(AbstractUser):
         verbose_name="زیربخش‌های تخصیص‌یافته",
     )
 
-
     can_access_dashboard = models.BooleanField(default=True)
     can_access_all_departments = models.BooleanField(default=False)
     is_first_login = models.BooleanField(default=True, verbose_name="اولین ورود")
@@ -412,10 +411,6 @@ class Employee(AbstractUser):
         null=True,
         verbose_name="کارخانه های اضافه مجاز به رزرو غذا",
     )
-
-
-
-
 
     guest_limit_reservation = models.IntegerField(
         default=0, verbose_name="محدودیت رزرو مهمان"
@@ -716,14 +711,14 @@ class Employee(AbstractUser):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
-    
+
     @property
     def birth_date_shamsi(self):
         """تاریخ تولد را به صورت شمسی (YYYY/MM/DD) برمی‌گرداند"""
         if self.birth_date:
             j_date = jdatetime.date.fromgregorian(date=self.birth_date)
-            return j_date.strftime('%Y/%m/%d')
-        return ''
+            return j_date.strftime("%Y/%m/%d")
+        return ""
 
 
 class Participation(models.Model):

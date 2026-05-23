@@ -25,6 +25,8 @@ ALLOWED_HOSTS = [
     "karimax.ir",
     "www.dev.karimax2.ir",
     "dev.karimax2.ir",
+    "karimax2.ir",
+    "www.karimax2.ir",
 ]
 
 # Application definition
@@ -44,10 +46,6 @@ INSTALLED_APPS = [
     "axes",
     "django.contrib.humanize",
     "widget_tweaks",
-
-
-
-    "simple_history",
 ]
 
 # CSRF_TRUSTED_ORIGINS = [
@@ -75,7 +73,7 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",  # اضافه شده برای django-axes
     # 'users.error_handler.GlobalErrorHandlerMiddleware',  # ← این رو اضافه کن
     "users.error_handler.GlobalErrorHandlerMiddleware",
-    'users.middleware.ForceLogoutMiddleware',
+    "users.middleware.ForceLogoutMiddleware",
 ]
 
 ROOT_URLCONF = "pmss.urls"
@@ -254,6 +252,10 @@ if DEBUG:
         "http://0.0.0.0:8002",
         "https://www.dev.karimax2.ir",
         "https://dev.karimax2.ir",
+        "http://karimax2.ir",
+        "http://www.karimax2.ir",
+        "https://karimax2.ir",
+        "https://www.karimax2.ir",
         # "*"
     ]
     CORS_ALLOW_CREDENTIALS = True
@@ -265,6 +267,8 @@ else:
     CORS_ALLOWED_ORIGINS = [
         "https://karimax.ir",
         "https://www.karimax.ir",
+        "https://karimax2.ir",
+        "https://www.karimax2.ir",
         # دامنه نهایی فرانت‌اندت
     ]
 
@@ -276,6 +280,8 @@ else:
     CSRF_TRUSTED_ORIGINS = [
         "https://karimax.ir",
         "https://www.karimax.ir",
+        "https://karimax2.ir",
+        "https://www.karimax2.ir",
     ]
 
 # CORS_ALLOW_CREDENTIALS = True
