@@ -383,6 +383,7 @@ class Employee(AbstractUser):
         verbose_name="زیربخش‌های تخصیص‌یافته",
     )
 
+    karimax_permision = models.BooleanField(default=True)
     can_access_dashboard = models.BooleanField(default=True)
     can_access_all_departments = models.BooleanField(default=False)
     is_first_login = models.BooleanField(default=True, verbose_name="اولین ورود")

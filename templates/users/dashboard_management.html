@@ -233,19 +233,19 @@
                                 <td>
                                     {%if participation.role_name == "super_admin"%}
                                     مدیر سیستم
-                                    
+
                                     {%elif participation.role_name == "factory_manager"%}
                                     مدیر کارخانه
 
                                     {%elif participation.role_name == "department_manager"%}
                                     مدیر بخش
-                                    
+
                                     {%elif participation.role_name == "supervisor"%}
                                     سرپرست
 
                                     {%elif participation.role_name == "employee"%}
                                     کارمند
-                                    
+
                                     {%endif%}
 
                                 </td>
@@ -264,9 +264,9 @@
                                     {%if participation.subdepartment%}
                                         - {{ participation.subdepartment.name }}
                                     {%endif%}
-                                
-                                
-                                
+
+
+
                                 </td>
 
 
@@ -595,3 +595,4 @@
         });
     </script>
 {% endblock %}
+{% block page_refactor_class %}app-users-page app-users-dashboard-management{% endblock %}

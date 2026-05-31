@@ -21,7 +21,7 @@
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.08);
-  --font-main: "estedad", system-ui, -apple-system, sans-serif;
+  --font-main: var(--app-font-family, "Anjoman FaNum", system-ui, -apple-system, sans-serif);
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

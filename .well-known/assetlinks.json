@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "ir.karimax2.twa",
+        "sha256_cert_fingerprints": ["C4:ED:9B:40:F5:87:23:E5:90:2E:92:8F:F0:FE:9C:8D:3A:51:10:B3:2A:2A:D6:63:C1:BB:B1:54:CC:71:BA:14"]
+      }
+    }]

@@ -7,6 +7,11 @@ from django.contrib.messages import constants as messages
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+CONTACT_PHONE_NUMBER = "09924876377"
+
+# SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+# SESSION_COOKIE_NAME = "sessionid"
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")
 DEBUG = config("DEBUG", default=True, cast=bool)
@@ -46,7 +51,55 @@ INSTALLED_APPS = [
     "axes",
     "django.contrib.humanize",
     "widget_tweaks",
+
+
+
+
+
+    # "mfa",
 ]
+
+# # MFA Settings
+# MFA_UNALLOWED_METHODS = ()  # متدهای مجاز ('TOTP','U2F')
+# MFA_LOGIN_CALLBACK = "users.views.mfa_login_callback"  # تابع ورود به سیستم
+# MFA_RECHECK = True
+# MFA_RECHECK_MIN = 10
+# MFA_RECHECK_MAX = 30
+# MFA_QUICKLOGIN = True
+# TOKEN_ISSUER_NAME = "YOUR_PROJECT_NAME"
+
+# # تنظیمات WebAuthn/FIDO2 برای لوکال هاست
+# U2F_APPID = "https://localhost"
+# FIDO_SERVER_ID = "localhost"  # دامنه پروژه
+# FIDO_SERVER_NAME = u"YOUR_PROJECT_NAME"
+
+# FIDO_SERVER_ID = "192.168.110.116"  # 👈 مهم: دقیقاً همان IP که سرور روی آن ران شده
+# FIDO_SERVER_NAME = "Your Project Name"
+
+# # warning
+# MFA_FIDO2_RESIDENT_KEY = 'discouraged'
+# MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = True
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # CSRF_TRUSTED_ORIGINS = [
 #     "https://karimax.ir",
@@ -66,6 +119,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "users.middleware.KarimaxPermissionMiddleware",
     "users.middleware.FirstLoginMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -94,6 +148,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.csrf",
                 "users.context_processors.user_role_context",
+                "users.context_processors.global_banner",
             ],
         },
     },
@@ -185,7 +240,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 # SECURE_SSL_REDIRECT = True  # فقط برای تولید با HTTPS (برای توسعه کامنت کن)
 # SESSION_COOKIE_SECURE = True  # فقط برای HTTPS (برای توسعه کامنت کن)
-CSRF_COOKIE_SECURE = True  # فقط برای HTTPS (برای توسعه کامنت کن)
+# CSRF_COOKIE_SECURE = True  # فقط برای HTTPS (برای توسعه کامنت کن)
 
 # محدودیت برای داده‌های POST (غیرفایل)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 314572800  # 300MB (300 * 1024 * 1024)
@@ -256,6 +311,8 @@ if DEBUG:
         "http://www.karimax2.ir",
         "https://karimax2.ir",
         "https://www.karimax2.ir",
+        "http://www.dev.karimax2.ir",
+        "http://dev.karimax2.ir",
         # "*"
     ]
     CORS_ALLOW_CREDENTIALS = True
@@ -282,6 +339,8 @@ else:
         "https://www.karimax.ir",
         "https://karimax2.ir",
         "https://www.karimax2.ir",
+        "http://www.dev.karimax2.ir",
+        "http://dev.karimax2.ir",
     ]
 
 # CORS_ALLOW_CREDENTIALS = True

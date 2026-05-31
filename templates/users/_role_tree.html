@@ -1,0 +1,154 @@
+{% for system in management_tree|default:"" %}
+<li class="tree-item tree-root">
+	<span class="tree-node-label system-label">سامانه</span>
+	{% if system.role and system.role != 'None' %}
+	<a
+		class="dropdown-item tree-role-link system-role-link"
+		href="{% url 'users:switch_role' %}?role={{ system.role }}&holding_id=None&factory_id=None&department_id=None&subdepartment_id=None"
+	>
+		<i class="fas fa-shield-haltered me-1"></i>مدیر سیستم
+	</a>
+	{% endif %}
+</li>
+{% for holding in system.holdings|default:"" %}
+<li class="tree-item tree-branch">
+	<button
+		class="tree-toggle collapsed"
+		data-bs-target="#{{ tree_id_prefix|default:'role' }}-holding-{{ holding.id }}"
+		aria-expanded="false"
+		type="button"
+	>
+		<i class="fas fa-chevron-left tree-chevron"></i>
+		<span class="tree-node-label">{{ holding.name }}</span>
+	</button>
+	<ul
+		class="tree-sub collapse"
+		id="{{ tree_id_prefix|default:'role' }}-holding-{{ holding.id }}"
+	>
+		{% if holding.role and holding.role != 'None' %}
+		<li>
+			<a
+				class="dropdown-item tree-role-link"
+				href="{% url 'users:switch_role' %}?role={{ holding.role }}&holding_id={{ holding.id }}&factory_id=None&department_id=None&subdepartment_id=None"
+			>
+				<i class="fas fa-building me-1"></i>مدیر هلدینگ
+			</a>
+		</li>
+		{% endif %}
+		{% for factory in holding.factories|default:"" %}
+		<li class="tree-item tree-branch">
+			<button
+				class="tree-toggle collapsed"
+				data-bs-target="#{{ tree_id_prefix|default:'role' }}-factory-{{ factory.id }}"
+				type="button"
+			>
+				<i class="fas fa-chevron-left tree-chevron"></i>
+				<span class="tree-node-label">{{ factory.name }}</span>
+			</button>
+			<ul
+				class="tree-sub collapse"
+				id="{{ tree_id_prefix|default:'role' }}-factory-{{ factory.id }}"
+			>
+				{% if factory.role and factory.role != 'None' %}
+				<li>
+					<a
+						class="dropdown-item tree-role-link"
+						href="{% url 'users:switch_role' %}?role={{ factory.role }}&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id=None&subdepartment_id=None"
+					>
+						<i class="fas fa-industry me-1"></i>مدیر کارخانه
+					</a>
+				</li>
+				{% endif %}
+				{% for department in factory.departments|default:"" %}
+				<li class="tree-item tree-branch">
+					<button
+						class="tree-toggle collapsed"
+						data-bs-target="#{{ tree_id_prefix|default:'role' }}-dept-{{ department.id }}"
+						type="button"
+					>
+						<i class="fas fa-chevron-left tree-chevron"></i>
+						<span class="tree-node-label">{{ department.name }}</span>
+					</button>
+					<ul
+						class="tree-sub collapse"
+						id="{{ tree_id_prefix|default:'role' }}-dept-{{ department.id }}"
+					>
+						{% if department.roles %}
+						{% for dept_role in department.roles %}
+						{% if dept_role == 'department_manager' %}
+						<li>
+							<a
+								class="dropdown-item tree-role-link"
+								href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=1"
+							>
+								<i class="fas fa-user-tie me-1"></i>مدیر بخش (اصلی)
+							</a>
+						</li>
+						{% elif dept_role == 'department_manager_2' %}
+						<li>
+							<a
+								class="dropdown-item tree-role-link"
+								href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager_2&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=2"
+							>
+								<i class="fas fa-user-tie me-1"></i>مدیر بخش (کمیته 2)
+							</a>
+						</li>
+						{% elif dept_role == 'department_manager_3' %}
+						<li>
+							<a
+								class="dropdown-item tree-role-link"
+								href="{% url 'users:switch_role' %}?role=department_manager&real_role=department_manager_3&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id=None&manager_type=3"
+							>
+								<i class="fas fa-user-tie me-1"></i>مدیر بخش (کمیته 3)
+							</a>
+						</li>
+						{% endif %}
+						{% endfor %}
+						{% endif %}
+						{% for subdepartment in department.subdepartments|default:"" %}
+						<li class="tree-item tree-branch">
+							<button
+								class="tree-toggle collapsed"
+								data-bs-target="#{{ tree_id_prefix|default:'role' }}-subdept-{{ subdepartment.id }}"
+								type="button"
+							>
+								<i class="fas fa-chevron-left tree-chevron"></i>
+								<span class="tree-node-label">{{ subdepartment.name }}</span>
+							</button>
+							<ul
+								class="tree-sub collapse"
+								id="{{ tree_id_prefix|default:'role' }}-subdept-{{ subdepartment.id }}"
+							>
+								{% if subdepartment.roles %}
+								<li>
+									{% if 'supervisor' in subdepartment.roles %}
+									<a
+										class="dropdown-item tree-role-link"
+										href="{% url 'users:switch_role' %}?role=supervisor&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id={{ subdepartment.id }}"
+									>
+										<i class="fas fa-clipboard-check me-1"></i>سرپرست
+									</a>
+									{% endif %}
+									{% if 'employee' in subdepartment.roles %}
+									<a
+										class="dropdown-item tree-role-link"
+										href="{% url 'users:switch_role' %}?role=employee&holding_id={{ holding.id }}&factory_id={{ factory.id }}&department_id={{ department.id }}&subdepartment_id={{ subdepartment.id }}"
+									>
+										<i class="fas fa-user me-1"></i>کارمند
+									</a>
+									{% endif %}
+								</li>
+								{% endif %}
+							</ul>
+						</li>
+						{% endfor %}
+					</ul>
+				</li>
+				{% endfor %}
+			</ul>
+		</li>
+		{% endfor %}
+	</ul>
+</li>
+{% endfor %}
+{% endfor %}

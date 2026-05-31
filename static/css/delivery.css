@@ -24,7 +24,7 @@
 body {
   background: var(--bg-page);
   font-family:
-    "Vazirmatn",
+    var(--font-main, "Anjoman FaNum"),
     system-ui,
     -apple-system,
     sans-serif;

@@ -243,7 +243,7 @@
 									{% for day_code, day_name in days %} {% with food.id|stringformat:"s"|add:":"|add:day_code as key %}
 									<td class="text-center align-middle checkbox-cell">
 										<div class="form-check d-flex justify-content-center">
-											
+
 											<input class="form-check-input custom-checkbox" type="checkbox"
 												name="food_{{ data.restaurant.id }}_{{ food.id }}_{{ day_code }}"
 												{% if key in data.selected_items %}checked{% endif %} />
@@ -383,3 +383,4 @@
 	});
 </script>
 {% endblock extra_js %}
+{% block page_refactor_class %}app-users-page app-users-manage-self-menu{% endblock %}

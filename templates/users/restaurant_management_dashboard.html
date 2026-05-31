@@ -6,427 +6,551 @@
 {% block breadcrumb_title %}مدیریت رستوران{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-3 mt-md-4 pb-5">
-
-    <!-- گزارش بازه زمانی -->
-    <div class="card mb-4">
-        <div class="card-header card-header-gradient text-white">
-            <h5 class="mb-0 d-flex align-items-center justify-content-center gap-2">
-                <i class="far fa-calendar-alt"></i>
-                گزارش رزروها در بازه دلخواه
-            </h5>
-        </div>
-        <div class="card-body p-4">
-            <div class="row g-4 justify-content-center align-items-end date-row">
-                <div class="col-12 col-md-5">
-                    <label class="form-label fw-semibold text-muted small mb-1">از تاریخ (شمسی)</label>
-                    <input type="text" id="from_date" class="form-control form-control-lg text-center"
-                           data-jdp placeholder="۱۴۰۴/۰۹/۰۱" autocomplete="off">
-                </div>
-                <div class="col-12 col-md-5">
-                    <label class="form-label fw-semibold text-muted small mb-1">تا تاریخ (شمسی)</label>
-                    <input type="text" id="to_date" class="form-control form-control-lg text-center"
-                           data-jdp placeholder="۱۴۰۴/۰۹/۳۰" autocomplete="off">
-                </div>
-                <div class="col-12 col-md">
-                    <button id="download-range-report" class="btn btn-lg text-white w-100" disabled>
-                        <i class="fas fa-file-excel me-2"></i>دانلود گزارش
-                    </button>
-                </div>
-            </div>
-            <div class="text-center mt-3">
-                <small class="text-muted">
-                    <i class="fas fa-info-circle me-1"></i>
-                    شامل رزروهای نهایی‌شده در بازه انتخابی
-                </small>
-            </div>
-        </div>
+<div class="restaurant-dashboard" data-restaurant-dashboard>
+  <header class="dashboard-hero">
+    <div class="dashboard-hero__copy">
+      <span class="dashboard-kicker">داشبورد مدیریت رستوران</span>
+      <h1>{{ restaurant_name }}</h1>
+      <p>گزارش رزروهای نهایی‌شده، خروجی اکسل و بازه‌های تحلیلی در یک نمای موبایل‌فرست و سریع.</p>
     </div>
 
-    <!-- پنل اصلی -->
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <h4 class="mb-0 d-flex align-items-center gap-2">
-                <i class="fas fa-utensils"></i>
-                {{ restaurant_name }}
-            </h4>
-            <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div class="badge bg-dark text-warning px-3 py-2 d-flex align-items-center gap-2">
-                    <i class="fas fa-clock"></i>
-                    این کارخانه تا ساعت<strong class="text-white mx-1">{{ close_food_res_time_H|add:"0"|stringformat:"02d" }}:{{ close_food_res_time_M|add:"0"|stringformat:"02d" }}</strong>امکان رزرو دارد
-                </div>
-                <a href="?export=excel" class="btn btn-success">
-                    <i class="fas fa-file-excel me-1"></i> اکسل کامل
-                </a>
-                <span class="badge bg-secondary-subtle text-secondary">{{ latest_menu_info }}</span>
-            </div>
-        </div>
+    <div class="dashboard-hero__meta">
+      <div class="meta-chip">
+        <span>مهلت رزرو</span>
+        <strong>{{ close_food_res_time_H|stringformat:"02d" }}:{{ close_food_res_time_M|stringformat:"02d" }}</strong>
+      </div>
+      <div class="meta-chip">
+        <span>آخرین منو</span>
+        <strong>{{ latest_menu_info|default:"ثبت نشده" }}</strong>
+      </div>
+      <div class="meta-chip">
+        <span>رزرو امروز</span>
+        <strong id="dashboard-today-count">0</strong>
+      </div>
+      <div class="meta-chip meta-chip--accent">
+        <span>زمان صفحه</span>
+        <strong id="page-timer">--:--</strong>
+      </div>
+    </div>
+  </header>
 
-        <div class="card-body p-0">
-            {% if not weekly_data %}
-                <div class="alert alert-info border-0 m-4 text-center py-5">
-                    <i class="fas fa-calendar-times fa-2x mb-3 d-block text-info"></i>
-                    هنوز منوی هفتگی تعریف نشده است.
-                </div>
-            {% else %}
-                <div class="accordion" id="kitchenReportAccordion">
-                    {% for day in weekly_data %}
-                    <div class="accordion-item {% if day.is_reservation_time %}open-reservation{% endif %}">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button {% if not day.is_today %}collapsed{% endif %}"
-                                    type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#collapse-{{ forloop.counter }}">
-                                <div class="d-flex w-100 justify-content-between align-items-center flex-wrap gap-3">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <span class="day-title fw-semibold">{{ day.jdate_str }}</span>
-                                        {% if day.is_today %}<span class="badge today-badge">امروز</span>{% endif %}
-                                        {% if day.is_reservation_time %}
-                                            <span class="badge open-res-badge d-flex align-items-center gap-1">
-                                                <i class="fas fa-hourglass-half fa-pulse fa-xs"></i>
-                                                رزرو باز
-                                            </span>
-                                        {% endif %}
-                                    </div>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <span class="text-muted small">
-                                            {{ day.foods|length|default:0 }} نوع غذا
-                                        </span>
-                                        <a href="?export_date={{ day.jdate_only }}"
-                                           class="btn btn-sm btn-outline-success"
-                                           onclick="event.stopPropagation(); event.preventDefault(); window.location=this.href;">
-                                           <i class="fas fa-file-excel me-1"></i> اکسل
-                                        </a>
-                                    </div>
-                                </div>
-                            </button>
-                        </h2>
-                        <div id="collapse-{{ forloop.counter }}"
-                             class="accordion-collapse collapse {% if day.is_today %}show{% endif %}"
-                             data-bs-parent="#kitchenReportAccordion">
-                            <div class="accordion-body p-4">
-                                {% if day.foods %}
-                                    <div class="table-responsive">
-                                        <table class="table table-hover align-middle mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>نام غذا</th>
-                                                    <th class="text-center">سهمیه پرسنلی</th>
-                                                    <th class="text-center">آزاد</th>
-                                                    <th class="text-center">مجموع</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for food in day.foods %}
-                                                <tr>
-                                                    <td class="fw-medium">{{ food.food_name }}</td>
-                                                    <td class="text-center">{{ food.quota_count|default:"—" }}</td>
-                                                    <td class="text-center">{{ food.extra_count|default:"—" }}</td>
-                                                    <td class="text-center total-cell fs-5">{{ food.total_count|default:"—" }}</td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                {% else %}
-                                    <div class="text-center text-muted py-5">
-                                        <i class="fas fa-utensils-slash fa-2x mb-3 d-block opacity-50"></i>
-                                        منویی برای این روز ثبت نشده است
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
+  <section class="dashboard-toolbar" aria-label="جستجو و فیلتر">
+    <label class="dashboard-search" for="dashboard-search-input">
+      <i class="fas fa-search" aria-hidden="true"></i>
+      <input
+        id="dashboard-search-input"
+        type="search"
+        autocomplete="off"
+        placeholder="جستجوی روز، غذا یا تعداد..."
+      />
+    </label>
+
+    <div class="dashboard-filters" role="tablist" aria-label="فیلتر گزارش‌ها">
+      <button type="button" class="filter-chip is-active" data-filter="all">همه</button>
+      <button type="button" class="filter-chip" data-filter="today">امروز</button>
+      <button type="button" class="filter-chip" data-filter="open">رزرو باز</button>
+      <button type="button" class="filter-chip" data-filter="filled">دارای غذا</button>
+      <button type="button" class="filter-chip" data-filter="empty">بدون منو</button>
+    </div>
+  </section>
+
+  <section class="summary-strip" aria-label="خلاصه گزارش">
+    <div class="summary-tile">
+      <span>روزها</span>
+      <strong id="summary-days">0</strong>
+    </div>
+    <div class="summary-tile">
+      <span>نمایش فعلی</span>
+      <strong id="summary-visible-days">0</strong>
+    </div>
+    <div class="summary-tile">
+      <span>نوع غذا</span>
+      <strong id="summary-food-types">0</strong>
+    </div>
+    <div class="summary-tile">
+      <span>مجموع رزرو</span>
+      <strong id="summary-total-count">0</strong>
+    </div>
+  </section>
+
+  <section class="range-strip" aria-label="خروجی بازه دلخواه">
+    <div class="range-strip__copy">
+      <span class="range-strip__label">خروجی اکسل</span>
+      <p>بازه دلخواه را با bottom sheet تنظیم کنید یا خروجی کامل بگیرید.</p>
+    </div>
+    <div class="range-strip__actions">
+      <button type="button" class="range-btn range-btn--secondary" data-range-open>
+        <i class="fas fa-sliders-h" aria-hidden="true"></i>
+        <span>بازه</span>
+      </button>
+      <a href="?export=excel" class="range-btn range-btn--primary" id="export-full-link">
+        <i class="fas fa-file-excel" aria-hidden="true"></i>
+        <span>اکسل کامل</span>
+      </a>
+    </div>
+  </section>
+
+  <div class="dashboard-skeleton" aria-hidden="true">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+
+  {% if not weekly_data %}
+  <section class="empty-state empty-state--page">
+    <i class="fas fa-calendar-times" aria-hidden="true"></i>
+    <strong>هنوز منوی هفتگی تعریف نشده است.</strong>
+    <span>بعد از ثبت منو، گزارش رزروها و خروجی‌ها همین‌جا نمایش داده می‌شود.</span>
+  </section>
+  {% else %}
+  <section class="report-list" id="report-list">
+    {% for day in weekly_data %}
+    <article
+      class="day-card"
+      data-day-card
+      data-state="{% if day.is_today %}today {% endif %}{% if day.is_reservation_time %}open {% endif %}{% if day.foods %}filled{% else %}empty{% endif %}"
+      data-search="{{ day.jdate_str }} {% if day.is_today %}امروز{% endif %} {% if day.is_reservation_time %}رزرو باز{% endif %} {% if day.foods %}{% for food in day.foods %}{{ food.food_name }} {{ food.total_count|default:0 }} {% endfor %}{% endif %}"
+    >
+      <details class="day-disclosure" {% if day.is_today or forloop.first %}open{% endif %}>
+        <summary class="day-summary">
+          <div class="day-summary__main">
+            <span class="day-date">{{ day.jdate_str }}</span>
+            <strong class="day-title">{% if day.is_today %}امروز{% else %}گزارش روز{% endif %}</strong>
+            <span class="day-subtitle">
+              {% if day.is_reservation_time %}
+              رزرو باز است
+              {% elif day.foods %}
+              دارای {{ day.foods|length }} نوع غذا
+              {% else %}
+              بدون منو
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="day-summary__meta">
+            {% if day.is_today %}
+            <span class="badge day-badge day-badge--today">امروز</span>
             {% endif %}
+            {% if day.is_reservation_time %}
+            <span class="badge day-badge day-badge--open">
+              <i class="fas fa-hourglass-half" aria-hidden="true"></i>
+              رزرو باز
+            </span>
+            {% endif %}
+            <span class="badge day-badge day-badge--count">{{ day.foods|length|default:0 }} غذا</span>
+            <a
+              href="?export_date={{ day.jdate_only }}"
+              class="day-export-btn"
+              onclick="event.stopPropagation(); window.location=this.href; return false;"
+            >
+              <i class="fas fa-file-excel" aria-hidden="true"></i>
+              <span>اکسل</span>
+            </a>
+            <i class="fas fa-chevron-down day-chevron" aria-hidden="true"></i>
+          </div>
+        </summary>
+
+        <div class="day-body">
+          {% if day.foods %}
+          <div class="food-list food-list--mobile">
+            {% for food in day.foods %}
+            <div class="food-row">
+              <div class="food-row__copy">
+                <strong>{{ food.food_name }}</strong>
+                <span>جمع رزروهای نهایی‌شده برای این غذا</span>
+              </div>
+              <div class="food-row__count" data-total-count="{{ food.total_count|default:0 }}">
+                {{ food.total_count|default:"—" }}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="table-responsive food-table-wrap">
+            <table class="table food-table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>نام غذا</th>
+                  <th class="text-center">مجموع</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for food in day.foods %}
+                <tr data-row-total="{{ food.total_count|default:0 }}">
+                  <td data-label="نام غذا" class="fw-medium">{{ food.food_name }}</td>
+                  <td data-label="مجموع" class="text-center total-cell">{{ food.total_count|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="empty-state empty-state--card">
+            <i class="fas fa-utensils-slash" aria-hidden="true"></i>
+            <strong>منویی برای این روز ثبت نشده است.</strong>
+            <span>پس از ثبت منو، این بخش به‌صورت خودکار پر می‌شود.</span>
+          </div>
+          {% endif %}
         </div>
+      </details>
+    </article>
+    {% endfor %}
+  </section>
+
+  <section class="report-empty-results empty-state" hidden>
+    <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+    <strong>نتیجه‌ای پیدا نشد.</strong>
+    <span>عبارت جستجو یا فیلتر را تغییر دهید.</span>
+  </section>
+  {% endif %}
+
+  <div class="dashboard-action-bar" aria-label="اکشن‌های سریع">
+    <button type="button" class="action-btn action-btn--ghost" data-scroll-top>
+      <i class="fas fa-arrow-up" aria-hidden="true"></i>
+      <span>بالا</span>
+    </button>
+    <button type="button" class="action-btn action-btn--secondary" data-range-open>
+      <i class="fas fa-sliders-h" aria-hidden="true"></i>
+      <span>بازه</span>
+    </button>
+    <a href="?export=excel" class="action-btn action-btn--primary" id="export-full-link-bottom">
+      <i class="fas fa-file-excel" aria-hidden="true"></i>
+      <span>اکسل کامل</span>
+    </a>
+  </div>
+
+  <button type="button" class="dashboard-fab" data-range-open aria-label="خروجی بازه">
+    <i class="fas fa-sliders-h" aria-hidden="true"></i>
+  </button>
+
+  <div class="range-sheet-backdrop" data-range-close hidden></div>
+  <section
+    class="range-sheet"
+    id="range-sheet"
+    role="dialog"
+    aria-modal="true"
+    aria-hidden="true"
+    aria-labelledby="range-sheet-title"
+  >
+    <button type="button" class="sheet-handle" data-range-close aria-label="بستن"></button>
+    <div class="sheet-header">
+      <div>
+        <span class="sheet-kicker">خروجی اکسل</span>
+        <h2 id="range-sheet-title">انتخاب بازه گزارش</h2>
+      </div>
+      <button type="button" class="sheet-close" data-range-close aria-label="بستن">
+        <i class="fas fa-times" aria-hidden="true"></i>
+      </button>
     </div>
+
+    <div class="sheet-body">
+      <div class="sheet-grid">
+        <label class="sheet-field">
+          <span>از تاریخ (شمسی)</span>
+          <input
+            type="text"
+            id="from_date"
+            class="form-control"
+            data-jdp
+            placeholder="۱۴۰۴/۰۹/۰۱"
+            autocomplete="off"
+            value="{{ request.GET.from_date|default:'' }}"
+          />
+        </label>
+        <label class="sheet-field">
+          <span>تا تاریخ (شمسی)</span>
+          <input
+            type="text"
+            id="to_date"
+            class="form-control"
+            data-jdp
+            placeholder="۱۴۰۴/۰۹/۳۰"
+            autocomplete="off"
+            value="{{ request.GET.to_date|default:'' }}"
+          />
+        </label>
+      </div>
+
+      <div class="sheet-preview" aria-live="polite">
+        <i class="fas fa-circle-info" aria-hidden="true"></i>
+        <span>فقط رزروهای نهایی‌شده در بازه انتخابی دانلود می‌شوند.</span>
+      </div>
+
+      <div class="sheet-actions">
+        <button id="download-range-report" class="sheet-submit-btn" type="button" disabled>
+          <i class="fas fa-file-arrow-down" aria-hidden="true"></i>
+          <span>دانلود گزارش</span>
+        </button>
+      </div>
+    </div>
+  </section>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-
-
-
 <script>
-// کد جاوااسکریپت قبلی بدون تغییر اساسی (فقط تمیزتر)
+  document.addEventListener("DOMContentLoaded", function () {
+    const page = document.querySelector("[data-restaurant-dashboard]");
+    const searchInput = document.getElementById("dashboard-search-input");
+    const filterButtons = Array.from(document.querySelectorAll(".filter-chip"));
+    const cards = Array.from(document.querySelectorAll("[data-day-card]"));
+    const emptyResults = document.querySelector(".report-empty-results");
+    const summaryDays = document.getElementById("summary-days");
+    const summaryVisibleDays = document.getElementById("summary-visible-days");
+    const summaryFoodTypes = document.getElementById("summary-food-types");
+    const summaryTotalCount = document.getElementById("summary-total-count");
+    const rangeSheet = document.getElementById("range-sheet");
+    const rangeBackdrop = document.querySelector(".range-sheet-backdrop");
+    const rangeOpenButtons = document.querySelectorAll("[data-range-open]");
+    const rangeCloseButtons = document.querySelectorAll("[data-range-close]");
+    const downloadRangeBtn = document.getElementById("download-range-report");
+    const fromInput = document.getElementById("from_date");
+    const toInput = document.getElementById("to_date");
+    const timerEl = document.getElementById("page-timer");
+    const expireSeconds = Number({{ expire_seconds|default:0 }});
 
-const EXPIRE_SECONDS = {{ expire_seconds }};
-
-
-
-
-$(document).ready(function() {
-    jalaliDatepicker.startWatch({
-        time: false, persianDigits: true, dateFormat: 'YYYY/MM/DD',
-        showTodayBtn: true, showEmptyBtn: true
-    });
-
-    const $from = $('#from_date'), $to = $('#to_date'), $btn = $('#download-range-report');
-
-    function checkDates() {
-        $btn.prop('disabled', !($from.val().trim() && $to.val().trim()));
+    function formatNumber(value) {
+      return new Intl.NumberFormat("fa-IR").format(value || 0);
     }
 
-    $from.on('change', checkDates);
-    $to.on('change', checkDates);
+    function normalizeDateString(value) {
+      const persianDigits = "۰۱۲۳۴۵۶۷۸۹";
+      const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+      return String(value || "")
+        .replace(/[۰-۹]/g, function (digit) {
+          return String(persianDigits.indexOf(digit));
+        })
+        .replace(/[٠-٩]/g, function (digit) {
+          return String(arabicDigits.indexOf(digit));
+        })
+        .replace(/\//g, "");
+    }
 
-    $btn.on('click', function() {
-        const fromVal = $from.val().trim(), toVal = $to.val().trim();
-        if (!fromVal || !toVal) return;
+    function showToast(message, type) {
+      const stack = document.querySelector(".app-toast-stack") || (function () {
+        const el = document.createElement("div");
+        el.className = "app-toast-stack";
+        el.setAttribute("aria-live", "polite");
+        el.setAttribute("aria-atomic", "true");
+        document.body.appendChild(el);
+        return el;
+      })();
 
-        const url = new URL(window.location.href);
-        url.searchParams.set('from_date', fromVal);
-        url.searchParams.set('to_date', toVal);
-        url.searchParams.set('export', 'range');
-        window.location = url;
-    });
+      const toast = document.createElement("div");
+      toast.className = "app-toast is-" + (type || "info");
+      toast.textContent = message;
+      stack.appendChild(toast);
+      window.setTimeout(function () {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(8px)";
+        window.setTimeout(function () {
+          toast.remove();
+        }, 220);
+      }, 2400);
+    }
 
+    function validateRange() {
+      const from = fromInput.value.trim();
+      const to = toInput.value.trim();
+      const valid = Boolean(from && to);
+      const fromDate = normalizeDateString(from);
+      const toDate = normalizeDateString(to);
+      const invalidOrder = Boolean(from && to && fromDate > toDate);
 
-    // ===== کد جدید تایمر انقضا =====
-    (function() {
-        if (!EXPIRE_SECONDS || EXPIRE_SECONDS <= 0) return;
+      downloadRangeBtn.disabled = !valid || invalidOrder;
+      fromInput.setAttribute("aria-invalid", invalidOrder ? "true" : "false");
+      toInput.setAttribute("aria-invalid", invalidOrder ? "true" : "false");
+    }
 
-        // محاسبهٔ زمان انقضا بر اساس ساعت محلی کاربر
-        const expiresAt = Date.now() + EXPIRE_SECONDS * 1000;
+    function openSheet() {
+      rangeSheet.classList.add("is-open");
+      rangeSheet.setAttribute("aria-hidden", "false");
+      rangeBackdrop.hidden = false;
+      window.setTimeout(function () {
+        fromInput.focus();
+      }, 30);
+    }
 
-        const timerEl = document.getElementById('page-timer');
-        const overlay = document.createElement('div');
-        overlay.id = 'expire-overlay';
-        overlay.innerHTML = `
-            <div style="
-                background: white; padding: 2rem; border-radius: 16px;
-                text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-                max-width: 90%;
-            ">
-                <h4 class="mb-3 text-danger">
-                    <i class="fas fa-clock fa-spin me-2"></i>
-                    زمان این صفحه به پایان رسیده است
-                </h4>
-                <p class="text-muted">لطفاً برای دریافت اطلاعات جدید صفحه را دوباره بارگذاری کنید.</p>
-                <button id="refresh-page-btn" class="btn btn-primary btn-lg px-4">
-                    <i class="fas fa-sync-alt me-2"></i>
-                    بارگذاری مجدد صفحه
-                </button>
-            </div>
-        `;
-        overlay.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); display: none;
-            justify-content: center; align-items: center; z-index: 99999;
-        `;
-        document.body.appendChild(overlay);
+    function closeSheet() {
+      rangeSheet.classList.remove("is-open");
+      rangeSheet.setAttribute("aria-hidden", "true");
+      rangeBackdrop.hidden = true;
+    }
 
-        document.getElementById('refresh-page-btn').addEventListener('click', function() {
-            window.location.reload();
+    function syncSummary() {
+      let totalFoods = 0;
+      let totalCount = 0;
+      let visibleDays = 0;
+      let todayTotal = 0;
+
+      cards.forEach(function (card) {
+        if (!card.hidden) visibleDays += 1;
+
+        card.querySelectorAll("[data-row-total], [data-total-count]").forEach(function (node) {
+          const count = parseInt(node.getAttribute("data-row-total") || node.getAttribute("data-total-count"), 10) || 0;
+          if (count > 0) totalCount += count;
         });
 
-        function updateTimer() {
-            const remaining = expiresAt - Date.now();
+        const foods = card.querySelectorAll("[data-row-total]");
+        totalFoods += foods.length;
 
-            if (remaining <= 0) {
-                overlay.style.display = 'flex';
-                if (timerEl) timerEl.textContent = '00:00';
-                return;
-            }
+        if (card.dataset.state.includes("today")) {
+          card.querySelectorAll("[data-row-total], [data-total-count]").forEach(function (node) {
+            todayTotal += parseInt(node.getAttribute("data-row-total") || node.getAttribute("data-total-count"), 10) || 0;
+          });
+        }
+      });
 
-            overlay.style.display = 'none';
+      summaryDays.textContent = formatNumber(cards.length);
+      summaryVisibleDays.textContent = formatNumber(visibleDays);
+      summaryFoodTypes.textContent = formatNumber(totalFoods);
+      summaryTotalCount.textContent = formatNumber(totalCount);
+      const todayChip = document.getElementById("dashboard-today-count");
+      if (todayChip) todayChip.textContent = formatNumber(todayTotal);
+      if (timerEl && timerEl.dataset.countdown) timerEl.textContent = timerEl.dataset.countdown;
+      else if (timerEl && !timerEl.dataset.countdown) timerEl.textContent = "فعال";
+    }
 
-            if (timerEl) {
-                const totalSeconds = Math.ceil(remaining / 1000);
-                const mins = Math.floor(totalSeconds / 60);
-                const secs = totalSeconds % 60;
-                timerEl.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
-            }
+    function applyFilters() {
+      const query = searchInput.value.trim().toLowerCase();
+      const activeFilter = document.querySelector(".filter-chip.is-active").dataset.filter;
+      let visibleCount = 0;
+
+      cards.forEach(function (card) {
+        const matchesQuery = !query || card.dataset.search.toLowerCase().includes(query);
+        const matchesFilter = activeFilter === "all" || card.dataset.state.includes(activeFilter);
+        const visible = matchesQuery && matchesFilter;
+        card.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+
+      if (emptyResults) {
+        emptyResults.hidden = visibleCount > 0 || !cards.length;
+      }
+      syncSummary();
+    }
+
+    function initDatepicker() {
+      if (window.jalaliDatepicker && typeof window.jalaliDatepicker.startWatch === "function") {
+        window.jalaliDatepicker.startWatch({
+          time: false,
+          persianDigits: true,
+          dateFormat: "YYYY/MM/DD",
+          showTodayBtn: true,
+          showEmptyBtn: true,
+          zIndex: 2001
+        });
+      }
+    }
+
+    if (expireSeconds > 0) {
+      const expiresAt = Date.now() + expireSeconds * 1000;
+      const overlay = document.createElement("div");
+      overlay.id = "expire-overlay";
+      overlay.innerHTML = `
+        <div class="expire-card">
+          <h4><i class="fas fa-clock"></i> زمان این صفحه به پایان رسیده است</h4>
+          <p>لطفاً برای دریافت اطلاعات جدید صفحه را دوباره بارگذاری کنید.</p>
+          <button id="refresh-page-btn" class="btn btn-primary btn-lg">
+            <i class="fas fa-sync-alt"></i>
+            بارگذاری مجدد صفحه
+          </button>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      document.getElementById("refresh-page-btn").addEventListener("click", function () {
+        window.location.reload();
+      });
+
+      function updateTimer() {
+        const remaining = expiresAt - Date.now();
+        if (remaining <= 0) {
+          overlay.style.display = "flex";
+          if (timerEl) timerEl.textContent = "00:00";
+          return;
         }
 
-        // updateTimer();
-        setInterval(updateTimer, 1000);
-    })();
-});
+        overlay.style.display = "none";
+        const totalSeconds = Math.ceil(remaining / 1000);
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        const text = String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+        if (timerEl) {
+          timerEl.dataset.countdown = text;
+          timerEl.textContent = text;
+        }
+      }
+
+      updateTimer();
+      window.setInterval(updateTimer, 1000);
+    }
+
+    filterButtons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        filterButtons.forEach(function (item) {
+          item.classList.remove("is-active");
+        });
+        button.classList.add("is-active");
+        applyFilters();
+      });
+    });
+
+    searchInput.addEventListener("input", applyFilters);
+
+    document.querySelectorAll("[data-scroll-top]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+
+    rangeOpenButtons.forEach(function (button) {
+      button.addEventListener("click", openSheet);
+    });
+
+    rangeCloseButtons.forEach(function (button) {
+      button.addEventListener("click", closeSheet);
+    });
+
+    rangeBackdrop.addEventListener("click", closeSheet);
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closeSheet();
+    });
+
+    fromInput.addEventListener("input", validateRange);
+    toInput.addEventListener("input", validateRange);
+
+    downloadRangeBtn.addEventListener("click", function () {
+      const fromVal = fromInput.value.trim();
+      const toVal = toInput.value.trim();
+      if (!fromVal || !toVal || downloadRangeBtn.disabled) {
+        showToast("لطفاً بازه را کامل و درست انتخاب کنید.", "warning");
+        return;
+      }
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("from_date", fromVal);
+      url.searchParams.set("to_date", toVal);
+      url.searchParams.set("export", "range");
+
+      downloadRangeBtn.classList.add("is-submitting");
+      downloadRangeBtn.disabled = true;
+      downloadRangeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>در حال آماده‌سازی...</span>';
+      window.location = url;
+    });
+
+    initDatepicker();
+    validateRange();
+    applyFilters();
+    syncSummary();
+    page.classList.add("is-ready");
+  });
 </script>
 {% endblock %}
 
-
 {% block extra_css %}
-<style>
-    :root {
-        --bg:        #f5f7fa;
-        --surface:   #ffffff;
-        --surface-2: #fafbfc;
-        --border:    #e2e8f0;
-        --text:      #1e293b;
-        --text-sec:  #64748b;
-        --primary:   #3b82f6;
-        --primary-d: #2563eb;
-        --success:   #10b981;
-        --warning:   #f59e0b;
-        --info:      #0ea5e9;
-        --danger:    #ef4444;
-        --radius:    0.875rem;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.08);
-        --shadow:    0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    body { background: var(--bg); color: var(--text); }
-
-    .card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-        transition: var(--transition);
-    }
-    .card:hover { box-shadow: var(--shadow); }
-
-
-    .accordion-item .btn{
-        margin: 0px 10px;
-        padding: 5px 10px;
-    }
-
-    .card-header {
-        background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-        border-bottom: 1px solid var(--border);
-        padding: 1.125rem 1.5rem;
-        font-weight: 600;
-        color: var(--text);
-    }
-
-    .card-header-gradient {
-        background: linear-gradient(135deg, var(--primary), var(--primary-d));
-        color: white;
-    }
-
-    .accordion-item {
-        border: none;
-        border-bottom: 1px solid var(--border);
-        border-radius: 0;
-        background: transparent;
-    }
-    .accordion-item:last-child { border-bottom: none; }
-
-    .accordion-button {
-        background: var(--surface-2);
-        border-radius: var(--radius) !important;
-        padding: 1rem 1.5rem;
-        font-weight: 500;
-        color: var(--text);
-        transition: var(--transition);
-    }
-    .accordion-button:not(.collapsed) {
-        background: #eff6ff;
-        color: var(--primary-d);
-        box-shadow: inset 0 -1px 0 var(--border);
-    }
-    .accordion-button:focus {
-        box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
-        z-index: 1;
-    }
-
-    /* حالت روزهایی که رزرو هنوز باز است */
-    .accordion-item.open-reservation .accordion-button {
-        background: #fefce8;
-        border-left: 4px solid var(--warning);
-    }
-    .accordion-item.open-reservation .accordion-button:not(.collapsed) {
-        background: #fef08a;
-    }
-
-    .badge {
-        font-weight: 500;
-        padding: 0.45em 0.9em;
-        border-radius: 1.25rem;
-    }
-
-    .today-badge     { background: var(--success); color: white; }
-    .open-res-badge  { background: var(--warning); color: #713f12; }
-
-    .table {
-        --bs-table-bg: transparent;
-        --bs-table-accent-bg: rgba(243,244,246,0.4);
-        --bs-table-striped-bg: rgba(243,244,246,0.25);
-    }
-    .table th { background: #f1f5f9; font-weight: 600; }
-    .table .total-cell {
-        font-weight: 700;
-        color: var(--success);
-        font-size: 1.25rem;
-    }
-
-    .btn-primary {
-        background: var(--primary);
-        border-color: var(--primary);
-        transition: var(--transition);
-    }
-    .btn-primary:hover {
-        background: var(--primary-d);
-        border-color: var(--primary-d);
-        transform: translateY(-1px);
-    }
-
-    #download-range-report {
-        background: var(--success);
-        border-color: var(--success);
-        font-weight: 600;
-    }
-    #download-range-report:hover {
-        background: #059669;
-        border-color: #059669;
-        transform: translateY(-1px) scale(1.02);
-    }
-    #download-range-report:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
-    }
-
-    .accordion-item:has(.badge) .accordion-body {
-    background-color: #d6a2aa;          /* قرمز خیلی روشن */
-    /* یا اگر قرمز پررنگ‌تر می‌خوای: */
-    /* background-color: #ef5350; */
-    /* background-color: rgba(244, 67, 54, 0.12); */
-    }
-
-    .accordion-item:has(.badge) .accordion-body tr:nth-child(odd) {
-    background-color: #dfdd9a;          /* قرمز خیلی روشن */
-    }
-
-    .accordion-item:has(.badge) .accordion-body tr:nth-child(even) {
-    background-color: #fff;          /* قرمز خیلی روشن */
-    
-
-    }
-    @media (max-width: 575.98px) {
-        .card-body { padding: 1rem; }
-        .accordion-button { padding: 0.875rem 1.125rem; font-size: 0.8rem; }
-        .day-title { font-size: 0.85rem; }
-        .card-header .badge { font-size: 0.95rem; }
-        .badge { font-size: 0.65rem; padding: 0.4em 0.75em; }
-        .table th, .table td { font-size: 0.9rem; padding: 0.65rem; }
-        .total-cell { font-size: 1.15rem; }
-        .btn-lg { padding: 0.65rem 1.25rem; font-size: 1rem; }
-    }
-
-    @media (min-width: 576px) and (max-width: 767.98px) {
-        .accordion-button { padding: 1rem 1.375rem; }
-        .table th, .table td { padding: 0.75rem; }
-    }
-
-    @media (min-width: 768px) and (max-width: 991.98px) {
-        .date-row > div { flex: 0 0 48%; max-width: 48%; }
-        .date-row > div:last-child { flex: 0 0 100%; max-width: 100%; margin-top: 0.5rem; }
-    }
-
-    @media (min-width: 992px) {
-        .date-row > div { flex: 0 0 auto; }
-        .container-fluid { max-width: 1480px; padding-left: 2.5rem; padding-right: 2.5rem; }
-    }
-
-    @media (min-width: 1400px) {
-        .container-fluid { max-width: 1640px; }
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/restaurant-management-dashboard.css' %}" />
 {% endblock %}
+
+{% block page_refactor_class %}app-users-page app-users-restaurant-management-dashboard{% endblock %}

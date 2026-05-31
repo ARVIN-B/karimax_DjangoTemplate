@@ -1,7 +1,10 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 from django.contrib.auth.views import LogoutView
 from django.views.generic import TemplateView
+
+# import mfa
+# import mfa.TrustedDevice
 
 app_name = "users"
 
@@ -24,7 +27,7 @@ urlpatterns = [
     ),
     path("users/", views.dashboard, name="dashboard"),
     path("profile/<int:user_id>/", views.user_profile, name="user_profile"),
-    path("register/", views.register_user, name="register_user"),
+    # path("register/", views.register_user, name="register_user"),
     path("logout/", LogoutView.as_view(next_page="users:login"), name="logout"),
     path(
         "submit-participation/", views.submit_participation, name="submit_participation"
@@ -96,20 +99,34 @@ urlpatterns = [
         views.get_employee_reservation_info,
         name="get_employee_reservation_info",
     ),
-
-    
-    path("managements_reports_dashboard/", views.managements_reports_dashboard, name="managements_reports_dashboard"),
+    path(
+        "managements_reports_dashboard/",
+        views.managements_reports_dashboard,
+        name="managements_reports_dashboard",
+    ),
     # path("managements_reports_dashboard/export/full/", views.export_full_debt_report, name="export_full_debt"),
     # path("managements_reports_dashboard/export/restaurant/", views.export_restaurant_report, name="export_restaurant"),
     # path("managements_reports_dashboard/export/employee/detailed/", views.export_detailed_employee_report, name="export_employee_detailed"),
     # path("managements_reports_dashboard/export/employee/summary/", views.export_employee_summary_report, name="export_employee_summary"),
-
-
-
-    
-    path('force-logout-all/', views.force_logout_all_users, name='force_logout_all'),
-
-    path("personal_reports_dashboard/", views.personal_reports_dashboard, name="personal_reports_dashboard"),
-
-    
+    path("force-logout-all/", views.force_logout_all_users, name="force_logout_all"),
+    path(
+        "personal_reports_dashboard/",
+        views.personal_reports_dashboard,
+        name="personal_reports_dashboard",
+    ),
+    path("landing/", views.landing_page, name="landing"),
+    # path('mfa/', include('mfa.urls')),
+    # path('devices/add/', mfa.TrustedDevice.add, name="mfa_add_new_trusted_device"),
+    path("send-otp-login/", views.send_otp_login, name="send_otp_login"),
+    path(
+        "management_food_reservation_view/",
+        views.management_food_reservation_view,
+        name="management_food_reservation_view",
+    ),
+    path(
+        "contact_us/",
+        views.contact_us,
+        name="contact_us",
+    ),
+    path("register/", views.register_view, name="register"),
 ]

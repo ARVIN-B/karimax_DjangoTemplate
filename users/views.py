@@ -21,6 +21,7 @@ from modules.import_users import import_employees_from_excel
 from modules.security import clean_user_text
 from modules import security
 from modules.excel_export import export_to_excel
+from django.views.decorators.http import require_POST
 
 from django.contrib import messages
 from django.http import (
@@ -125,6 +126,61 @@ FORGOT_PASSWORD_SESSION_KEY = "forgot_password_otp_state"
 FORGOT_PASSWORD_VERIFIED_SESSION_KEY = "forgot_password_verified_state"
 FORGOT_PASSWORD_OTP_EXPIRE_SECONDS = 180
 FORGOT_PASSWORD_VERIFIED_EXPIRE_SECONDS = 600
+
+
+LOGIN_OTP_SESSION_KEY = "login_otp"
+LOGIN_OTP_EXPIRE_SECONDS = 120  # 2 دقیقه
+MAX_OTP_ATTEMPTS = 5
+
+
+
+
+def manifest(request):
+    manifest_path = os.path.join(settings.BASE_DIR, 'manifest.json')
+
+    return FileResponse(
+        open(manifest_path, 'rb'),
+        content_type='application/manifest+json'
+    )
+
+
+
+
+
+
+def assetlinks(request):
+    data = [
+        {
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+                "namespace": "android_app",
+                "package_name": "ir.karimax2.twa",
+                "sha256_cert_fingerprints": [
+                    "2E:9B:A1:DE:EE:65:1F:2E:F6:57:B5:FF:11:23:9B:F0:23:84:21:0F:E5:E9:EB:DF:BA:D4:6D:15:70:50:4C:14"
+                ]
+            }
+        }
+    ]
+
+
+
+
+    return JsonResponse(data, safe=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def _resolve_login_backend(user):
@@ -249,49 +305,1016 @@ def _login_user_and_initialize_session(request, user):
     request.session["current_real_role"] = real_role if real_role else None
 
 
+
+
+
+
+
+
+def perform_login(request, user):
+
+    if user.login_required:
+        user.login_required = False
+        user.save(update_fields=["login_required"])
+
+    _login_user_and_initialize_session(request, user)
+
+    role_name = request.session["current_role"]
+
+    if role_name in {
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+    }:
+        msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+            «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
+            گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
+        messages.success(request, msg)
+
+    elif role_name == "supervisor":
+        msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+            «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
+            گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
+        messages.success(request, msg)
+
+    elif role_name == "employee":
+        msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
+            «انتظار می‌رود حداقل یک مورد دانش جدید در هر ماه ثبت گردد»
+            گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
+        messages.success(request, msg)
+
+    # return redirect("users:dashboard")
+    return redirect("users:landing")
+
+
+def authenticate_user(request):
+    national_id = request.POST.get("national_id")
+    password = request.POST.get("password")  # ممکن است خالی باشد
+    otp_code = request.POST.get("otp_code")  # ممکن است خالی باشد
+
+
+
+    if otp_code:
+        # ورود با OTP
+        # user, error_msg = _verify_otp(request, national_id, otp_code)
+        return _verify_otp(request, national_id, otp_code)
+    
+
+    # ورود با رمز عبور
+    user = authenticate(request, username=national_id, password=password)
+
+    if user is None:
+        return None, "کد ملی یا رمز عبور اشتباه است."
+
+
+    return user, None
+
+
+
+
+
+
 def login_view(request):
+    national_id = request.POST.get("national_id")
+    password = request.POST.get("password")  # ممکن است خالی باشد
+    otp_code = request.POST.get("otp_code")  # ممکن است خالی باشد
+
+    print(f"aaaaaaaaaaaaaaaaaaaaaa {password , national_id}")
+
+
+
     if request.user.is_authenticated:
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     if request.method == "POST":
-        national_id = request.POST.get("national_id")
-        password = request.POST.get("password")
-        user = authenticate(request, username=national_id, password=password)
+
+        user, error_msg = authenticate_user(request)
+
         if user is not None:
-            if user.login_required:
-                user.login_required = False
-                user.save(update_fields=["login_required"])
 
-            _login_user_and_initialize_session(request, user)
+            perform_login(request, user)
 
-            role_name = request.session["current_role"]
+            return redirect("users:landing")
 
-            if role_name in {
-                "super_admin",
-                "holding_manager",
-                "factory_manager",
-                "department_manager",
-            }:
-                msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
-                    «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
-                    گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-                messages.success(request, msg)
+        messages.error(request, error_msg or "خطا در ورود.")
 
-            elif role_name == "supervisor":
-                msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
-                    «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
-                    گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-                messages.success(request, msg)
-
-            elif role_name == "employee":
-                msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
-                    «انتظار می‌رود حداقل یک مورد دانش جدید در هر ماه ثبت گردد»
-                    گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
-                messages.success(request, msg)
-
-            return redirect("users:dashboard")
-        messages.error(request, "کد ملی یا رمز عبور اشتباه است.")
     return render(request, "users/login.html")
+
+
+
+
+
+
+def register_view(request):
+
+    if request.user.is_authenticated:
+        return redirect("users:landing")
+
+    if request.method != "POST":
+        return redirect("users:login")
+
+    first_name = request.POST.get("first_name", "").strip()
+    last_name = request.POST.get("last_name", "").strip()
+    phone = request.POST.get("phone", "").strip()
+    password = request.POST.get("password", "").strip()
+    national_id = request.POST.get("national_id", "").strip()
+
+    # validations
+    if not first_name:
+        messages.error(request, "نام الزامی است.")
+        return redirect("users:login")
+
+    if not last_name:
+        messages.error(request, "نام خانوادگی الزامی است.")
+        return redirect("users:login")
+
+    if not national_id or len(national_id) != 10:
+        messages.error(request, "کد ملی معتبر نیست.")
+        return redirect("users:login")
+
+    if not phone.startswith("09") or len(phone) != 11:
+        messages.error(request, "شماره موبایل معتبر نیست.")
+        return redirect("users:login")
+
+    if len(password) < 6:
+        messages.error(request, "رمز عبور باید حداقل ۶ کاراکتر باشد.")
+        return redirect("users:login")
+
+    if Employee.objects.filter(national_id=national_id).exists():
+        messages.error(request, "کاربری با این کد ملی وجود دارد.")
+        return redirect("users:login")
+
+    # create user
+    user = Employee.objects.create_user(
+        username=national_id,
+        national_id=national_id,
+        first_name=first_name,
+        last_name=last_name,
+        phone_number=phone,
+        password=password,
+    )
+    employee_role = Role.objects.filter(name="employee").first()
+
+    if employee_role:
+        user.roles.add(employee_role)
+
+    user.karimax_permision = False
+    user.is_active = True
+    user.is_first_login = False
+    user.save()
+
+    # login کامل سیستم
+    perform_login(request, user)
+
+    messages.success(request, "ثبت‌نام با موفقیت انجام شد.")
+
+    return redirect("users:landing")
+
+
+
+
+
+
+
+
+@require_POST
+def send_otp_login(request):
+    national_id = (request.POST.get("national_id") or "").strip()
+    if not re.fullmatch(r"\d{10}", national_id):
+        return JsonResponse(
+            {"ok": False, "message": "کد ملی باید ۱۰ رقم باشد."}, status=400
+        )
+
+    # کاربر فعال را پیدا کن
+    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
+    if not employee:
+        return JsonResponse(
+            {"ok": False, "message": "کاربری با این کد ملی یافت نشد."}, status=404
+        )
+
+    raw_phone = (employee.phone_number or "").strip()
+    if not raw_phone:
+        return JsonResponse(
+            {"ok": False, "message": "برای این کاربر شماره موبایل ثبت نشده است."},
+            status=400,
+        )
+
+    mobile = _normalize_mobile_number(raw_phone)
+    if not mobile:
+        return JsonResponse(
+            {"ok": False, "message": "شماره موبایل نامعتبر است."}, status=400
+        )
+
+    # تولید کد ۵ رقمی
+    otp_code = get_random_string(5, allowed_chars="0123456789")
+
+    # ارسال SMS با استفاده از همان تابع موجود
+    sent, provider_message, provider_data = _send_parsgreen_otp(
+        mobile, otp_code, request.get_host()
+    )
+
+    if not sent:
+        return JsonResponse({"ok": False, "message": provider_message}, status=503)
+
+    # ذخیره در سشن
+    request.session[LOGIN_OTP_SESSION_KEY] = {
+        "national_id": national_id,
+        "otp_code": otp_code,
+        "expires_at": (
+            timezone.now() + timedelta(seconds=LOGIN_OTP_EXPIRE_SECONDS)
+        ).isoformat(),
+        "attempts": 0,
+    }
+    request.session.modified = True
+
+    response_data = {"ok": True, "message": "کد تایید ارسال شد."}
+    if settings.DEBUG and request.POST.get("debug") == "1":
+        response_data["debug"] = {"mobile": mobile, "otp_code": otp_code}
+    return JsonResponse(response_data)
+
+
+def _verify_otp(request, national_id, otp_code):
+    """
+    بررسی کد تایید OTP برای ورود.
+    خروجی: (user_or_None, error_message_or_None)
+    """
+    if not re.fullmatch(r"\d{10}", national_id):
+        return None, "کد ملی باید ۱۰ رقم باشد."
+    if not re.fullmatch(r"\d{5}", otp_code):
+        return None, "کد تایید باید ۵ رقم باشد."
+
+    state = request.session.get(LOGIN_OTP_SESSION_KEY) or {}
+    if not state or state.get("national_id") != national_id:
+        return None, "درخواست ورود با کد یکبارمصرف نامعتبر است. لطفاً دوباره تلاش کنید."
+
+    # بررسی انقضا
+    expires_at_raw = state.get("expires_at")
+    try:
+        expires_at = datetime.fromisoformat(expires_at_raw)
+        if timezone.is_naive(expires_at):
+            expires_at = timezone.make_aware(
+                expires_at, timezone.get_current_timezone()
+            )
+    except (TypeError, ValueError):
+        request.session.pop(LOGIN_OTP_SESSION_KEY, None)
+        return None, "زمان اعتبار کد نامعتبر است."
+
+    if timezone.now() > expires_at:
+        request.session.pop(LOGIN_OTP_SESSION_KEY, None)
+        return None, "زمان اعتبار کد به پایان رسیده است. لطفاً دوباره درخواست کنید."
+
+    # بررسی تعداد تلاش
+    if otp_code != str(state.get("otp_code") or ""):
+        attempts = int(state.get("attempts", 0)) + 1
+        state["attempts"] = attempts
+        if attempts >= MAX_OTP_ATTEMPTS:
+            request.session.pop(LOGIN_OTP_SESSION_KEY, None)
+            return (
+                None,
+                "تعداد تلاش ناموفق بیش از حد مجاز شد. لطفاً دوباره درخواست دهید.",
+            )
+        request.session[LOGIN_OTP_SESSION_KEY] = state
+        request.session.modified = True
+        return None, "کد تایید اشتباه است."
+
+    # موفقیت‌آمیز
+    request.session.pop(LOGIN_OTP_SESSION_KEY, None)
+    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
+    if not employee:
+        return None, "کاربر یافت نشد."
+    return employee, None
+
+@login_required
+def landing_page(request):
+    # modules = {
+    #     "self": {
+    #         "name": "سلف",
+    #         "link": "/self",
+    #         "icon_name": "self.svg",
+    #         "color": "#23359c",
+    #         "micro_modules": {
+    #             "reserv": {
+    #                 "name": "رزرو غذا",
+    #                 "link": "/self/reserve",
+    #                 "icon_name": "mosharekat.svg",
+    #                 "color": "#8b2650",
+    #             }
+    #         },
+    #     },
+    # }
+
+
+
+    modules = {
+        "self": {
+            "name": "سلف",
+            "link": "/self",
+            "icon_name": "self.svg",
+            "color": "#23359c",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "رزرو غذا",
+                    "link": "users:food_reservation",
+                    "icon_name": "self\رزرو غذا.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
+                "reserv1": {
+                    "name": "گزارش فردی",
+                    "link": "users:personal_reports_dashboard",
+                    "icon_name": "self\گزاش فردی.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
+                "reserv3": {
+                    "name": "سلامت فردی",
+                    "link": "#",
+                    "icon_name": "self\سلامت فردی .svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv4": {
+                    "name": "تحویل غذا",
+                    "link": "users:food_delivery_page",
+                    "icon_name": "self\تحویل غذا.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
+                "reserv5": {
+                    "name": "نظر دهی",
+                    "link": "#",
+                    "icon_name": "self\نظر دهی.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv6": {
+                    "name": "رزرو غذا برای دیگران",
+                    "link": "users:food_reservation_for_others",
+                    "icon_name": "self\رزرو غذا برای دیگران.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv7": {
+                    "name": "رزرو غذای مدیریتی",
+                    "link": "users:management_food_reservation_view",
+                    "icon_name": "self\رزرو غذای مدیریتی .svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
+                "reserv8": {
+                    "name": "مدیریت منوی سلف",
+                    "link": "users:manage_self_menu",
+                    "icon_name": "self\مدیریت منوی سلف.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv9": {
+                    "name": "گزارش گیری مدیریتی",
+                    "link": "users:managements_reports_dashboard",
+                    "icon_name": "self\گزارش گیری بدهی سلف.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
+                "reserv10": {
+                    "name": "رزرو غذای میهمان ",
+                    "link": "#",
+                    "icon_name": "self\رزرو غذای مهمان .svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+        "participation": {
+            "name": "مدیریت دانش",
+            "link": "/self",
+            "icon_name": "mosharekat.svg",
+            "color": "#9c3b23",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "ثبت مشارکت",
+                    "link": "users:submit_participation",
+                    "icon_name": "add_participation\add.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
+                "reserv1": {
+                    "name": "مشارکت های من",
+                    "link": "users:dashboard",
+                    "icon_name": "add_participation\my_particip.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
+                "reserv2": {
+                    "name": "داشبورد مدیریتی",
+                    "link": "users:management_dashboard",
+                    "icon_name": "add_participation\Vector.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "پنل گزارش گیری",
+                    "link": "users:dashboard",
+                    "icon_name": "add_participation\report.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv4": {
+                    "name": "ارجاع",
+                    "link": "#",
+                    "icon_name": "add_participation\refere.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv5": {
+                    "name": "ارجاعات دریافتی",
+                    "link": "users:referrals_inbox",
+                    "icon_name": "add_participation\refere.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+        "edari": {
+            "name": "امور اداری",
+            "link": "/self",
+            "icon_name": "mosharekat.svg",
+            "color": "#239c47",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "فیش حقوقی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "مساعده",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv2": {
+                    "name": "قراردادها",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "نامه های اداری",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv4": {
+                    "name": "مقررات سازمانی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv5": {
+                    "name": "شرح شغلی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv6": {
+                    "name": "سوابق کاری",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv7": {
+                    "name": "تردد",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv8": {
+                    "name": "اموالی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+        "trip": {
+            "name": "سفر",
+            "link": "/self",
+            "icon_name": "morakhasi.svg",
+            "color": "#9c2378",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "درخواست سفر",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "لیست درخواست ها",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv2": {
+                    "name": "تاییدات",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "تاریخچه تاییدات",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv4": {
+                    "name": "راهنمای سفر",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv5": {
+                    "name": "دستورالعمل",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv6": {
+                    "name": "سوالات متداول",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+
+
+
+        "amalkard": {
+            "name": "مدیریت عملکرد",
+            "link": "/self",
+            "icon_name": "arzyabiamalkard.svg",
+            "color": "#909c23",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "مدیریت عملکرد",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                
+            },
+        },
+
+
+
+        
+        "Support": {
+            "name": "پشتیبانی",
+            "link": "/self",
+            "icon_name": "shekayat.svg",
+            "color": "#238a9c",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "تماس",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "تغییر رمز",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+
+
+        "train": {
+            "name": "آموزش",
+            "link": "/self",
+            "icon_name": "amoozesh.svg",
+            "color": "#9c6c23",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "آموزش",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "آموزش های من",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv2": {
+                    "name": "گواهی های من",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "دانشنامه دیجیتال",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv4": {
+                    "name": "آموزش های بهبودی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv5": {
+                    "name": "لیست دوره ها",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv6": {
+                    "name": "سوالات متداول",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+        
+
+
+
+        "welfare_affairs": {
+            "name": "اموررفاهی",
+            "link": "/self",
+            "icon_name": "hoghoogh.svg",
+            "color": "#0ee2ad",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "سپ کارت",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "ارزاق",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+
+        "jazb": {
+            "name": "جذب و استخدام",
+            "link": "/self",
+            "icon_name": "estekhdam.svg",
+            "color": "#9c234b",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "ساخت رزومه جدید",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "رزومه های من",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv2": {
+                    "name": "پیشنهادات شغلی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "ایجاد آگهی شغلی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv4": {
+                    "name": "مدیریت کاربران",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv5": {
+                    "name": "شغل های پیشنهاد شده به کاربر",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv6": {
+                    "name": "مدیریت رزومه ها",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+
+
+
+
+
+
+
+        "quiz": {
+            "name": "آزمون ها",
+            "link": "/self",
+            "icon_name": "taghvimjalasat.svg",
+            "color": "#239c82",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "آزمون های من",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "مدیریت آزمون ها",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv2": {
+                    "name": "ساخت آزمون جدید ",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "گزارش گیری",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv4": {
+                    "name": "مدیریت کاربران",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+
+
+        "dept": {
+            "name": "صتدوق وام",
+            "link": "/self",
+            "icon_name": "mosharekat.svg",
+            "color": "#0b6b28",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "درخواست جدید",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "درخواست های من",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv2": {
+                    "name": "مدیریت درخواست ها",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "گزارش گیری",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+
+        "charity": {
+            "name": "نیکوکاری",
+            "link": "/self",
+            "icon_name": "mosharekat.svg",
+            "color": "#0c1650",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "خیریه نذر اشتغال",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "نذورات",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv2": {
+                    "name": "قربانی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "گزارش گیری",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+        "insurance": {
+            "name": "بیمه",
+            "link": "/self",
+            "icon_name": "asnad.svg",
+            "color": "#23359c",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "بیمه تکمیلی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "بیماران خاص",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv2": {
+                    "name": "سامانه نوبت دهی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv3": {
+                    "name": "گزارش گیری",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+
+        "exercise": {
+            "name": "تربیت بدنی",
+            "link": "/self",
+            "icon_name": "mosharekat.svg",
+            "color": "#5f72e0",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "مسابقات ورزشی",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "افتخارات",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+
+
+
+
+        "clouds_services": {
+            "name": "سامانه های ابری",
+            "link": "/clouds",
+            "icon_name": "mosharekat.svg",
+            "color": "#5f6836",
+            "coming_soon": False,
+            "micro_modules": {
+                "reserv": {
+                    "name": "فضای ابری",
+                    "link": "https://cloud.karimax.ir/",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv1": {
+                    "name": "سامانه میت",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+            },
+        },
+        
+
+
+
+
+
+
+    }
+
+    context = {
+        "modules": modules,
+    }
+
+    return render(request, "users/landing.html", context)
+
+
+
+
+
+def contact_us(request):
+
+    context = {
+        "contact_phone_number": settings.CONTACT_PHONE_NUMBER,
+    }
+
+    return render(request, "users/contact_us.html", context)
+
+
+
 
 
 def logout_view(request):
@@ -321,8 +1344,6 @@ def force_logout_all_users(request, only_current_user=False):
     return redirect("users:login")
 
 
-
-    
 # 1. تابع جدید ارسال پیامک عمومی (هر متنی)
 def _send_sms(mobile, message, sms_number=None):
     """
@@ -976,6 +1997,8 @@ def build_management_tree(user):
             "role": "None",
             "holdings": management_tree_1,
         }
+
+    # print([management_tree])
     return [management_tree]
 
     # return management_tree
@@ -1002,26 +2025,31 @@ def switch_role(request):
     # اعتبار سنجی نقش
     if role_name not in [r.name for r in user.roles.all()]:
         messages.error(request, "شما این نقش را ندارید.")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     # اعتبار سنجی مکان‌ها بر اساس نقش
     if role_name == "super_admin":
         if holding_id or factory_id or department_id or subdepartment_id:
             messages.error(request, "برای super_admin هیچ مکانی نباید مشخص شود.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
     elif role_name == "holding_manager":
         if not holding_id:
             messages.error(request, "holding_id الزامی است.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
 
         holding = get_object_or_404(Holding, id=holding_id, managers=user)
         if factory_id or department_id or subdepartment_id:
             messages.error(request, "برای holding_manager فقط holding_id معتبر است.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
     elif role_name == "factory_manager":
         if not factory_id:
             messages.error(request, "factory_id الزامی است.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
         factory = get_object_or_404(Factory, id=factory_id, managers=user)
         holding_id = factory.holding.id if factory.holding else None
         is_committee = factory.is_committee if factory.is_committee else False
@@ -1030,12 +2058,14 @@ def switch_role(request):
                 request,
                 "برای factory_manager فقط factory_id (و holding_id اختیاری) معتبر است.",
             )
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
     elif role_name == "department_manager":
 
         if not department_id:
             messages.error(request, "department_id الزامی است.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
 
         if real_role == "department_manager":
             # department = get_object_or_404(Department, id=department_id, manager=user)
@@ -1063,11 +2093,13 @@ def switch_role(request):
                 request,
                 "برای department_manager فقط department_id (و بالادستی‌ها) معتبر است.",
             )
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
     elif role_name == "supervisor":
         if not subdepartment_id:
             messages.error(request, "subdepartment_id الزامی است.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
 
         subdepartment = get_object_or_404(
             Subdepartment,  # Q(supervisor=user) |
@@ -1088,11 +2120,13 @@ def switch_role(request):
     elif role_name == "employee":
         if not subdepartment_id:
             messages.error(request, "subdepartment_id الزامی است.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
         # اعتبار سنجی که کاربر به این subdepartment تخصیص یافته باشد
         if not user.assigned_subdepartments.filter(id=subdepartment_id).exists():
             messages.error(request, "شما به این زیربخش تخصیص نیافته‌اید.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
         subdepartment = get_object_or_404(Subdepartment, id=subdepartment_id)
         department_id = subdepartment.department.id
         factory_id = subdepartment.department.factory.id
@@ -1148,7 +2182,8 @@ def switch_role(request):
             گزارش‌گیری از دانش‌های ثبت‌شده به‌صورت ماهانه انجام خواهد شد"""
         messages.success(request, msg)
 
-    return redirect("users:dashboard")
+    # return redirect("users:dashboard")
+    return redirect("users:landing")
 
 
 @login_required
@@ -1194,7 +2229,7 @@ def dashboard(request):
     if True:
         msg = ""  # متن پیام
         # اضافه کردن extra_tags='banner' برای تشخیص در قالب
-        messages.success(request, msg, extra_tags='banner')
+        messages.success(request, msg, extra_tags="banner")
 
     # کاربر فعلی که از نوع Employee هست
 
@@ -1333,6 +2368,8 @@ def dashboard(request):
 
     can_report = user.reporting_permision != 0
 
+    can_reserve_management_food = user.can_reserve_management_food
+
     return render(
         request,
         "users/dashboard.html",
@@ -1364,6 +2401,8 @@ def dashboard(request):
             "can_reserve_for_others": can_reserve_for_others,
             "personnel_management_access": personnel_management_access,
             "can_report": can_report,
+            "can_reserve_management_food": can_reserve_management_food,
+            "contact_phone_number": settings.CONTACT_PHONE_NUMBER,
         },
     )
 
@@ -1438,7 +2477,8 @@ def notification_create(request):
 
     if current_role not in management_roles:
         messages.error(request, "شما اجازه ایجاد اعلان ندارید.")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     if request.method == "POST":
 
@@ -1497,7 +2537,8 @@ def notification_create(request):
         notification.save()
 
         messages.success(request, "اعلان با موفقیت ایجاد شد.")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     else:
         can_choose_holdings = True
@@ -1674,18 +2715,21 @@ def food_delivery_page(request):
     # دسترسی
     if user.food_receiver_role == 0:
         messages.error(request, "شما دسترسی دریافت غذا ندارید.")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     # لیست کارخانه‌ها بر اساس نقش
     if user.food_receiver_role == 2:  # تحویل‌گیرنده هلدینگ
         if not user.food_receiver_holding:
             messages.error(request, "شما به هلدینگ خاصی وصل نیستید.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
         factories = Factory.objects.filter(holding=user.food_receiver_holding)
     else:  # role == 1 -> تحویل گیرنده کارخانه
         if not user.food_receiver_factory:
             messages.error(request, "شما به کارخانه‌ای وصل نیستید.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
         factories = Factory.objects.filter(id=user.food_receiver_factory.id)
 
     # گرفتن رزروهای امروز برای این کارخانه‌ها (که کنسل نشده و تحویل نشده)
@@ -1804,7 +2848,8 @@ def register_user(request):
             participation.user = request.user
             participation.save()
             messages.success(request, "مشارکت با موفقیت ثبت شد.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
     else:
         form = ParticipationForm()
     return render(request, "users/register_user.html", {"form": form})
@@ -2884,7 +3929,8 @@ def managements_reports_dashboard(request):
 
     if user.reporting_permision == 0:
         messages.error(request, "شما دسترسی به صفحه گزارش‌گیری ندارید.")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     # آمار برای کارت‌ها
     total_employees = Employee.objects.filter(is_active=True).count()
@@ -3746,13 +4792,15 @@ def restaurant_management_dashboard(request):
     # 2. بررسی دسترسی
     if role_name != "supervisor" or not subdepartment_id:
         messages.error(request, "شما دسترسی به داشبورد مدیریت رستوران را ندارید.")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     restaurant = get_object_or_404(Subdepartment, id=subdepartment_id)
 
     if not restaurant.is_restaurant:
         messages.error(request, "زیربخش فعلی شما به عنوان رستوران تعریف نشده است.")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     export_mode = request.GET.get("export")
 
@@ -4021,9 +5069,9 @@ def restaurant_management_dashboard(request):
         return export_to_excel(
             columns=data_columns, filename=filename, report_title=report_title
         )
-    
+
     # page_expires_at = timezone.now() + timedelta(minutes=10)
-    expire_seconds = 30
+    expire_seconds = 60
 
     context = {
         "restaurant_name": restaurant.name,
@@ -4099,7 +5147,8 @@ def food_reservation_view(request):
     if (
         role_name
         in ["super_admin", "holding_manager", "factory_manager", "department_manager"]
-        or user.unlimit_reservation or user.guest_limit_reservation > 0
+        or user.unlimit_reservation
+        or user.guest_limit_reservation > 0
     ):
         can_reserve_guest = True
 
@@ -4170,7 +5219,8 @@ def food_reservation_view(request):
         messages.warning(
             request, "کارخانه شما مشخص نشده است. لطفا با بخش هوش مصنوعی تماس بگیرید."
         )
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     close_food_res_time_H = (
         factory.close_food_res_time_H
@@ -4227,20 +5277,13 @@ def food_reservation_view(request):
         weekly_menus = WeeklyMenu.objects.none()
 
     if weekly_menus:
-        if not can_reserve_management_food:
-            all_menu_items = (
-                MenuItem.objects.filter(
-                    weekly_menu__in=weekly_menus, food__is_management_food=False
-                )
-                .select_related("food", "weekly_menu__restaurant")
-                .all()
+        all_menu_items = (
+            MenuItem.objects.filter(
+                weekly_menu__in=weekly_menus, food__is_management_food=False
             )
-        else:
-            all_menu_items = (
-                MenuItem.objects.filter(weekly_menu__in=weekly_menus)
-                .select_related("food", "weekly_menu__restaurant")
-                .all()
-            )
+            .select_related("food", "weekly_menu__restaurant")
+            .all()
+        )
     else:
         all_menu_items = MenuItem.objects.none()
 
@@ -4251,6 +5294,7 @@ def food_reservation_view(request):
             reservation_date__lte=week_start_date + timedelta(days=6),
             related_factory=factory,
             is_canceled=False,
+            menu_item__food__is_management_food=False,
         )
         .select_related(
             "menu_item__food", "menu_item__weekly_menu__restaurant__department"
@@ -4298,7 +5342,8 @@ def food_reservation_view(request):
 
         users_feedbacks = (
             FoodReservation.objects.filter(
-                menu_item__id__in=user_food_ids
+                menu_item__id__in=user_food_ids,
+                menu_item__food__is_management_food=False,
                 # ).exclude(employee=user
             )
             .exclude(Q(feedback__isnull=True) & Q(rating__isnull=True))
@@ -4433,19 +5478,23 @@ def food_reservation_view(request):
                 employee=user,
                 related_factory=factory,
                 reservation_date__gte=today,
+                menu_item__food__is_management_food=False,
             ).delete()
         else:
             FoodReservation.objects.filter(
                 employee=user,
                 related_factory=factory,
                 reservation_date__gt=today,
+                menu_item__food__is_management_food=False,
             ).delete()
 
         for item in parsed_reservations:
 
             date_g = datetime.strptime(item["date"], "%Y-%m-%d").date()
 
-            menu_item = MenuItem.objects.filter(id=item["food_choice"]).first()
+            menu_item = MenuItem.objects.filter(
+                id=item["food_choice"], food__is_management_food=False
+            ).first()
             if not menu_item:
                 continue
 
@@ -4478,6 +5527,7 @@ def food_reservation_view(request):
                 menu_item=menu_item,
                 related_factory=factory,
                 is_canceled=False,
+                menu_item__food__is_management_food=False,
             ).first()
 
             if existing:
@@ -4556,6 +5606,7 @@ def food_reservation_view(request):
             reservation_date=comment_date,
             menu_item__id=menu_item_id,
             related_factory=factory,
+            menu_item__food__is_management_food=False,
         ).first()
 
         # آپدیت نظر و امتیاز
@@ -4583,6 +5634,530 @@ def food_reservation_view(request):
     }
 
     return render(request, "users/food_reservation.html", context)
+
+
+@transaction.atomic
+@login_required
+def management_food_reservation_view(request):
+
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    is_committee = request.session["current_is_committee"]
+    can_choose_factory = False
+    available_factories = Factory.objects.none()
+    user = request.user
+    factory = None
+
+    max_factory_quantity = user.factory_limit_reservation
+    max_free_quantity = user.free_limit_reservation
+    max_guest_quantity = user.guest_limit_reservation
+
+    today_gdate = date.today()
+    today_jdate = jdatetime.date.today()
+
+    if "form_token" not in request.session:
+        request.session["form_token"] = get_random_string(32)
+
+    can_reserve_management_food = user.can_reserve_management_food
+
+    form_token = request.session["form_token"]
+
+    can_choose_factory = False
+    can_reserve_guest = False
+
+    extra_available_factories_for_food_reservation = (
+        user.extra_available_factories_for_food_reservation.all()
+    )
+
+    if (
+        role_name
+        in ["super_admin", "holding_manager", "factory_manager", "department_manager"]
+        or user.unlimit_reservation
+        or user.guest_limit_reservation > 0
+    ):
+        can_reserve_guest = True
+
+    if (
+        role_name in ["holding_manager", "super_admin"]
+        or extra_available_factories_for_food_reservation.exists()
+    ):
+        can_choose_factory = True
+
+        target_factory_id = request.GET.get("target_factory_id") or request.POST.get(
+            "target_factory_id"
+        )
+
+        if role_name == "super_admin":
+            available_factories = Factory.objects.all()
+        elif role_name == "holding_manager":
+            available_factories = Factory.objects.filter(holding_id=holding_id).all()
+
+        if is_committee:
+            factory = Factory.objects.filter(id=factory_id).first().linked_factory
+        else:
+            factory = Factory.objects.filter(id=factory_id).first()
+
+        if factory:
+            available_factories = available_factories | Factory.objects.filter(
+                pk=factory.pk
+            )
+
+        if extra_available_factories_for_food_reservation.exists():
+            available_factories = (
+                available_factories | extra_available_factories_for_food_reservation
+            )
+
+        available_factories = available_factories.distinct()
+
+        if target_factory_id:
+            try:
+                selected_factory = Factory.objects.filter(id=target_factory_id).first()
+                if selected_factory:
+                    factory = selected_factory
+                    request.session["food_target_factory_id"] = selected_factory.id
+                else:
+                    messages.error(request, "کارخانه انتخاب‌شده معتبر نیست.")
+            except (ValueError, TypeError):
+                messages.error(request, "شناسه کارخانه نامعتبر است.")
+        elif request.session.get("food_target_factory_id") != None:
+            # اگر هیچ target_factory_id نبود، از سشن قبلی استفاده کن
+            session_factory_id = request.session.get("food_target_factory_id")
+            if session_factory_id:
+                selected_factory = available_factories.filter(
+                    id=session_factory_id
+                ).first()
+                if selected_factory:
+                    factory = selected_factory
+        else:
+            if role_name == "super_admin":
+                factory = Factory.objects.first()
+            else:
+                factory = Factory.objects.filter(holding_id=holding_id).first()
+
+    else:
+        if is_committee:
+            factory = Factory.objects.filter(id=factory_id).first().linked_factory
+        else:
+            factory = Factory.objects.filter(id=factory_id).first()
+
+    if not factory:
+        messages.warning(
+            request, "کارخانه شما مشخص نشده است. لطفا با بخش هوش مصنوعی تماس بگیرید."
+        )
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
+
+    close_food_res_time_H = (
+        factory.close_food_res_time_H
+        if (
+            factory.close_food_res_time_H
+            and factory.close_food_res_time_H >= 0
+            and factory.close_food_res_time_H < 24
+        )
+        else default_close_food_res_time_H
+    )
+    close_food_res_time_M = (
+        factory.close_food_res_time_M
+        if (
+            factory.close_food_res_time_M
+            and factory.close_food_res_time_M >= 0
+            and factory.close_food_res_time_M < 60
+        )
+        else default_close_food_res_time_M
+    )
+    # print(f"********** {close_food_res_time_H}")
+
+    days_until_saturday = today_jdate.weekday()
+    week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
+    week_start_date = (
+        week_start_jdate.togregorian()
+    )  # تاریخ میلادی برای جستجوی WeeklyMenu
+
+    latest_start_dates = (
+        WeeklyMenu.objects.filter(
+            restaurant__department__factory=factory,
+            week_start_date__lte=week_start_date,
+        )
+        .values("restaurant")
+        .annotate(latest_start_date=Max("week_start_date"))
+    )
+
+    # 2. ساخت Q object برای فچ کردن منوهای دقیق (Greatest-N-per-Group)
+    q_objects = Q()
+    if latest_start_dates.exists():
+        for item in latest_start_dates:
+            # ترکیب شناسه رستوران و آخرین تاریخ شروع آن
+            q_objects |= Q(
+                restaurant_id=item["restaurant"],
+                week_start_date=item["latest_start_date"],
+            )
+
+        # فچ کردن منوهای هفتگی که شرایط Q object را دارند
+        weekly_menus = (
+            WeeklyMenu.objects.filter(q_objects)
+            .select_related("restaurant", "restaurant__department")
+            .all()
+        )
+    else:
+        weekly_menus = WeeklyMenu.objects.none()
+
+    if weekly_menus:
+        all_menu_items = (
+            MenuItem.objects.filter(
+                weekly_menu__in=weekly_menus, food__is_management_food=True
+            )
+            .select_related("food", "weekly_menu__restaurant")
+            .all()
+        )
+    else:
+        all_menu_items = MenuItem.objects.none()
+
+    existing_reservations = (
+        FoodReservation.objects.filter(
+            employee=user,
+            reservation_date__gte=week_start_date,
+            reservation_date__lte=week_start_date + timedelta(days=6),
+            related_factory=factory,
+            is_canceled=False,
+            menu_item__food__is_management_food=True,
+        )
+        .select_related(
+            "menu_item__food", "menu_item__weekly_menu__restaurant__department"
+        )
+        .order_by("reserved_at")
+        .all()
+    )
+
+    weekly_data = []
+    week_days = [code for code, name in PERSIAN_WEEK_DAYS]
+
+    for i, day_code in enumerate(week_days):
+        day_date_j = week_start_jdate + jdatetime.timedelta(days=i)
+        day_date_g = week_start_date + timedelta(days=i)
+        day_name = dict(PERSIAN_WEEK_DAYS)[day_code]
+
+        # لیست منوها برای این روز (هر ترکیب غذا + رستوران جداگانه)
+        menus = all_menu_items.filter(day_persian=day_code)
+
+        # امکان رزرو: آینده یا امروز قبل از ۱۰ صبح
+        is_reservation_possible = day_date_g >= today_gdate
+
+        tehran_aware_datetime = timezone.localtime(timezone.now())
+        is_reservation_time_passed = False
+        if day_date_g == today_gdate:
+            is_reservation_time_passed = tehran_aware_datetime.time() > time(
+                close_food_res_time_H, close_food_res_time_M
+            )
+
+        is_today_comment_time = (
+            not is_reservation_possible
+            or (day_date_g == today_gdate)
+            and tehran_aware_datetime.time()
+            > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
+        )
+
+        # لیست IDهای منوهای موجود (برای چک رزروهای قدیمی)
+        available_menu_ids = list(menus.values_list("id", flat=True))
+        print(f"**************{available_menu_ids}")
+
+        # رزروهای قبلی برای این روز
+        day_reservations = existing_reservations.filter(reservation_date=day_date_g)
+
+        user_food_ids = day_reservations.values_list("menu_item__id", flat=True)
+
+        users_feedbacks = (
+            FoodReservation.objects.filter(
+                menu_item__id__in=user_food_ids,
+                menu_item__food__is_management_food=True,
+                # ).exclude(employee=user
+            )
+            .exclude(Q(feedback__isnull=True) & Q(rating__isnull=True))
+            .select_related("menu_item__food", "employee")
+        )
+
+        # دیکشنری خروجی نهایی
+        day_food_feedbacks = {}
+        # print(users_feedbacks)
+
+        for item in users_feedbacks:
+            food_id = item.menu_item.id
+            user_can_comment = True if item.employee != user else False
+
+            # print(user_can_comment)
+
+            if food_id not in day_food_feedbacks:
+                day_food_feedbacks[food_id] = {"comments": [], "ratings": []}
+
+            if item.feedback:
+                day_food_feedbacks[food_id]["comments"].append(
+                    {
+                        "text": item.feedback,
+                        "rating": item.rating,
+                        "user": item.employee.full_name,
+                        "date": item.reserved_at,
+                        "user_can_comment": user_can_comment,
+                    }
+                )
+
+            if item.rating:
+                day_food_feedbacks[food_id]["ratings"].append((item.rating))
+
+        day_previous_comments = []
+        day_average_ratings = 3.5
+        user_can_comment = True
+        is_today_comment_time = True
+
+        weekly_data.append(
+            {
+                "day_name": day_name,
+                "jdate_str": day_date_j.strftime("%Y/%m/%d"),
+                "gdate_str": day_date_g.strftime("%Y-%m-%d"),
+                "menus": menus,
+                "is_reservation_possible": is_reservation_possible,
+                "is_reservation_time_passed": is_reservation_time_passed,
+                "available_menu_ids": available_menu_ids,
+                # 'previous_comments': day_previous_comments,
+                "average_ratings": day_average_ratings,
+                "user_can_comment": user_can_comment,
+                "day_reservations": day_reservations,
+                "day_food_feedbacks": day_food_feedbacks,
+                "reservation_time_limit": time(
+                    close_food_res_time_H, close_food_res_time_M
+                ),
+                "is_today_comment_time": is_today_comment_time,
+            }
+        )
+        # print(weekly_data)
+
+    if request.method == "POST" and "submit_reservations" in request.POST:
+
+        post_token = request.POST.get("form_token")
+        session_token = request.session.get("form_token")
+
+        if not post_token or post_token != session_token:
+            messages.error(request, "فرم معتبر نیست. لطفا مجددا تلاش کنید.")
+            return redirect(request.path)
+
+        # بعد از پردازش موفق، توکن جدید ایجاد کن
+        request.session["form_token"] = get_random_string(32)
+
+        is_reservation_time_passed = tehran_aware_datetime.time() > time(
+            close_food_res_time_H, close_food_res_time_M
+        )
+
+        today = tehran_aware_datetime.date()
+
+        parsed_reservations = []
+
+        for key, value in request.POST.items():
+            print("key : ", key, "value : ", value)
+            if not key.startswith("reservations["):
+                continue
+
+            parts = key.split("][")
+
+            date_str = parts[0].replace("reservations[", "")
+            index = parts[1]
+            field = parts[2].replace("]", "")
+
+            if date_str not in [d["date"] for d in parsed_reservations]:
+                pass  # handled below
+
+            # یک دیکشنری پیدا کن (یا بساز)
+            target_key = f"{date_str}-{index}"
+            # print(f"aaaaaaaaa{parsed_reservations}")
+
+            if target_key not in [r.get("key") for r in parsed_reservations]:
+                parsed_reservations.append(
+                    {
+                        "key": target_key,
+                        "date": date_str,
+                        "food_choice": None,
+                        "quantity": None,
+                        "price_type": None,
+                    }
+                )
+
+            # print(f"bbbbbbbbb{parsed_reservations}")
+
+            # دیکشنری مربوطه را بگیر
+            target = next(r for r in parsed_reservations if r["key"] == target_key)
+
+            # حالا مقدار فیلد را ثبت کن
+            if field == "food_choice":
+                target["food_choice"] = int(value)
+            elif field == "quantity":
+                target["quantity"] = int(value)
+            elif field == "price_type":
+                target["price_type"] = value
+
+        # حذف رکوردهای خالی یا food_choice=0
+        parsed_reservations = [
+            r
+            for r in parsed_reservations
+            if r["food_choice"] not in [None, 0] and r["quantity"] > 0
+        ]
+
+        if not is_reservation_time_passed:
+            FoodReservation.objects.filter(
+                employee=user,
+                related_factory=factory,
+                reservation_date__gte=today,
+                menu_item__food__is_management_food=True,
+            ).delete()
+        else:
+            FoodReservation.objects.filter(
+                employee=user,
+                related_factory=factory,
+                reservation_date__gt=today,
+                menu_item__food__is_management_food=True,
+            ).delete()
+
+        for item in parsed_reservations:
+
+            date_g = datetime.strptime(item["date"], "%Y-%m-%d").date()
+
+            menu_item = MenuItem.objects.filter(id=item["food_choice"]).first()
+            if not menu_item:
+                continue
+
+            # نوع قیمت → انتخاب فیلدها
+            fq = ffree = fg = 0
+            if item["price_type"] == "factory":
+                fq = item["quantity"]
+                fq = fq if (fq <= max_factory_quantity) else max_factory_quantity
+                unit_price = menu_item.food.factory_price
+            elif item["price_type"] == "free":
+                ffree = item["quantity"]
+                ffree = ffree if (ffree <= max_free_quantity) else max_free_quantity
+                unit_price = menu_item.food.free_price
+            elif item["price_type"] == "guest":
+                if can_reserve_guest:
+                    fg = item["quantity"]
+                    fg = fg if (fg <= max_guest_quantity) else max_guest_quantity
+                    print(f"done{fg}")
+                else:
+                    print("0")
+                    fg = 0
+                unit_price = menu_item.food.guest_price
+
+            # -----------------------------------------
+            # 1) چک کن آیا رکورد موجود هست؟
+            # -----------------------------------------
+            existing = FoodReservation.objects.filter(
+                employee=request.user,
+                reservation_date=date_g,
+                menu_item=menu_item,
+                related_factory=factory,
+                is_canceled=False,
+                menu_item__food__is_management_food=True,
+            ).first()
+
+            if existing:
+                # -----------------------------------------
+                # 2) اگر هست → فقط مقدارها رو اضافه کن
+                # -----------------------------------------
+                existing.factory_quantity += fq
+                existing.free_quantity += ffree
+                existing.guest_quantity += fg
+
+                existing.factory_quantity = (
+                    existing.factory_quantity
+                    if (existing.factory_quantity <= max_factory_quantity)
+                    else max_factory_quantity
+                )
+                existing.free_quantity = (
+                    existing.free_quantity
+                    if (existing.free_quantity <= max_free_quantity)
+                    else max_free_quantity
+                )
+                existing.guest_quantity = (
+                    existing.guest_quantity
+                    if (existing.guest_quantity <= max_guest_quantity)
+                    else max_guest_quantity
+                )
+
+                # قیمت‌ها یک بار برای همیشه ثابت می‌مونن
+                existing.factory_price = menu_item.food.factory_price
+                existing.free_price = menu_item.food.free_price
+                existing.guest_price = menu_item.food.guest_price
+
+                # total_price باید مجموع همه‌ی قیمت‌ها بشه
+                existing.total_price = (
+                    existing.factory_quantity * existing.factory_price
+                    + existing.free_quantity * existing.free_price
+                    + existing.guest_quantity * existing.guest_price
+                )
+
+                existing.save()
+                continue
+
+            # -----------------------------------------
+            # 3) اگر نبود → رکورد جدید بساز
+            # -----------------------------------------
+            FoodReservation.objects.create(
+                employee=request.user,
+                menu_item=menu_item,
+                reservation_date=date_g,
+                related_factory=factory,
+                factory_quantity=fq,
+                free_quantity=ffree,
+                guest_quantity=fg,
+                factory_price=menu_item.food.factory_price,
+                free_price=menu_item.food.free_price,
+                guest_price=menu_item.food.guest_price,
+                total_price=(unit_price * item["quantity"]),
+            )
+        messages.success(request, "رزروهای شما با موفقیت ثبت شدند.")
+        return redirect(request.path)
+
+    elif request.method == "POST" and "submit_comment" in request.POST:
+        # print("comment")
+        # print(request.POST)
+        comment_text = request.POST.get("comment_text")
+        rating = request.POST.get("rating")
+        menu_item_id = request.POST.get("menu_item_id")
+        comment_date = request.POST.get("comment_date")
+
+        # print(comment_text)
+        # print(rating)
+        # print(menu_item_id)
+        # print(comment_date)
+
+        existing = FoodReservation.objects.filter(
+            employee=request.user,
+            reservation_date=comment_date,
+            menu_item__id=menu_item_id,
+            related_factory=factory,
+            menu_item__food__is_management_food=True,
+        ).first()
+
+        # آپدیت نظر و امتیاز
+        existing.feedback = comment_text
+        existing.rating = rating
+
+        existing.save(update_fields=["feedback", "rating"])
+
+    context = {
+        "weekly_data": weekly_data,
+        "week_start_date": week_start_date,
+        "max_factory_quantity": max_factory_quantity,
+        "max_free_quantity": max_free_quantity,
+        "max_guest_quantity": max_guest_quantity,
+        "can_reserve_guest": can_reserve_guest,
+        "user_factory_name": factory.name,
+        "can_choose_factory": can_choose_factory,
+        "available_factories": available_factories,
+        "selected_factory_id": factory.id,
+        "current_factory_id": factory.id,
+        "today_gdate_str": tehran_aware_datetime.date(),
+        "is_reservation_time_passed": is_reservation_time_passed,
+        "form_token": form_token,
+        "can_reserve_management_food": can_reserve_management_food,
+    }
+
+    return render(request, "users/management_food_reservation.html", context)
 
 
 def get_factory_ids(employee):
@@ -5360,7 +6935,8 @@ def food_reservation_for_others(request):
 
         else:
             messages.error(request, "مجاز به دسترسی به این سرویس نیستید")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
 
 
 @login_required
@@ -6443,7 +8019,8 @@ def process_participation(request, participation_id):
                 participation.delete()
                 messages.success(request, "مشارکت با موفقیت حذف شد.")
                 # هدایت به داشبورد پس از حذف موفق
-                return redirect("users:dashboard")
+                # return redirect("users:dashboard")
+                return redirect("users:landing")
             except Exception as e:
                 messages.error(request, f"خطا در حذف مشارکت: {str(e)}")
 
@@ -7089,7 +8666,8 @@ def referral_create(request, participation_id):
             messages.success(
                 request, f"ارجاع با موفقیت به {to_user.get_full_name()} ارسال شد."
             )
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
 
         except Exception as e:
             messages.error(request, f"خطا در ایجاد ارجاع: {str(e)}")
@@ -7708,7 +9286,8 @@ def change_password_view(request):
                 user.save(update_fields=["is_first_login"])
 
             messages.success(request, "رمز عبور شما با موفقیت تغییر کرد.")
-            return redirect("users:dashboard")
+            # return redirect("users:dashboard")
+            return redirect("users:landing")
 
         else:
             return render(request, "users/change_password.html", {"form": form})
@@ -7725,7 +9304,8 @@ def import_employees_view(request):
     if not request.user.is_staff:
         # توجه: باید نام صحیح داشبورد را جایگزین کنید (مثلاً 'users:dashboard')
         messages.error(request, "شما مجاز به دسترسی به این بخش نیستید.")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     if request.method == "POST":
         form = EmployeeImportForm(request.POST, request.FILES)
@@ -8025,7 +9605,8 @@ def manage_bimeh(request):
 
     if not can_manage_bimeh:
         messages.error(request, "شما اجازه دسترسی به این صفحه را ندارید..")
-        return redirect("users:dashboard")
+        # return redirect("users:dashboard")
+        return redirect("users:landing")
 
     if (
         request.GET.get("export") == "full"
@@ -8626,7 +10207,8 @@ def insurance_info(request):
         bank_account.save()
 
         # ریدایرکت به داشبورد
-        return redirect("users:dashboard")  # تغییر دهید اگر نام url متفاوت است
+        # return redirect("users:dashboard")
+        return redirect("users:landing")  # تغییر دهید اگر نام url متفاوت است
 
     return render(request, "users/insurance_info.html", context)
 
@@ -9566,4 +11148,5 @@ def add_managers(request):
             s.supervisors.add(supervisor)
             s.save()
 
-    return redirect("users:dashboard")
+    # return redirect("users:dashboard")
+    return redirect("users:landing")

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}تماس با ما{% endblock %}
+{% block breadcrumb_title %}تماس با ما{% endblock %}
+
+{% block extra_css %}
+<style>
+  .contact-page {
+    width: min(100%, 980px);
+    margin-inline: auto;
+    display: grid;
+    gap: 18px;
+  }
+
+  .contact-hero {
+    display: grid;
+    gap: 16px;
+    padding: 24px;
+    border: 1px solid var(--app-border, rgba(15, 23, 42, 0.1));
+    border-radius: 24px;
+    background:
+      radial-gradient(circle at top right, rgba(249, 115, 22, 0.18), transparent 40%),
+      linear-gradient(135deg, color-mix(in srgb, var(--app-surface-strong, #fff) 94%, transparent), color-mix(in srgb, var(--app-surface-soft, #f8fafc) 86%, transparent));
+    box-shadow: var(--app-shadow-lg, 0 24px 64px rgba(15, 23, 42, 0.12));
+  }
+
+  .contact-kicker {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary, #f97316) 12%, transparent);
+    color: var(--primary-dark, #ea580c);
+    font-weight: 800;
+    font-size: 0.88rem;
+  }
+
+  .contact-hero h1 {
+    margin: 0;
+    font-size: clamp(1.5rem, 1.1rem + 1.8vw, 2.2rem);
+    font-weight: 900;
+    line-height: 1.2;
+    color: var(--text-primary, #0f172a);
+  }
+
+  .contact-hero p {
+    margin: 0;
+    color: var(--text-secondary, #334155);
+    line-height: 1.9;
+  }
+
+  .contact-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .contact-call-btn,
+  .contact-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 0 18px;
+    border-radius: 16px;
+    text-decoration: none;
+    font-weight: 800;
+  }
+
+  .contact-call-btn {
+    background: linear-gradient(135deg, var(--primary, #f97316), var(--primary-dark, #ea580c));
+    color: #fff;
+    box-shadow: 0 16px 30px rgba(249, 115, 22, 0.22);
+  }
+
+  .contact-back-btn {
+    border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.06));
+    background: var(--glass-bg, rgba(255, 255, 255, 0.7));
+    color: var(--text-primary, #0f172a);
+  }
+
+  .contact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .contact-card {
+    display: grid;
+    gap: 10px;
+    padding: 18px;
+    border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.06));
+    border-radius: 18px;
+    background: var(--glass-bg, rgba(255, 255, 255, 0.72));
+    box-shadow: var(--shadow-sm, 0 4px 12px rgba(0, 0, 0, 0.04));
+  }
+
+  .contact-card i {
+    color: var(--primary-dark, #ea580c);
+    font-size: 1.15rem;
+  }
+
+  .contact-card strong {
+    color: var(--text-primary, #0f172a);
+  }
+
+  .contact-card p {
+    margin: 0;
+    color: var(--text-muted, #64748b);
+    line-height: 1.8;
+  }
+
+  .contact-notes {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.06));
+    background: var(--glass-bg, rgba(255, 255, 255, 0.72));
+  }
+
+  .contact-notes h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 900;
+  }
+
+  .contact-notes ul {
+    margin: 0;
+    padding: 0 18px 0 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  .contact-notes li {
+    line-height: 1.9;
+    color: var(--text-secondary, #334155);
+  }
+
+  @media (max-width: 767.98px) {
+    .contact-hero,
+    .contact-notes {
+      padding: 18px;
+      border-radius: 18px;
+    }
+
+    .contact-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="contact-page">
+  <header class="contact-hero">
+    <span class="contact-kicker"><i class="fas fa-headset" aria-hidden="true"></i> پشتیبانی</span>
+    <h1>{{ contact_title }}</h1>
+    <p>{{ contact_intro }}</p>
+    <div class="contact-actions">
+      <a class="contact-call-btn" href="tel:{{ contact_phone_number }}">
+        <i class="fas fa-phone" aria-hidden="true"></i>
+        <span>تماس با پشتیبانی</span>
+      </a>
+      <a class="contact-back-btn" href="{% url 'users:landing' %}">
+        <i class="fas fa-arrow-right" aria-hidden="true"></i>
+        <span>بازگشت به لندینگ</span>
+      </a>
+    </div>
+  </header>
+
+  <section class="contact-grid" aria-label="اطلاعات تماس">
+    <article class="contact-card">
+      <i class="fas fa-phone-volume" aria-hidden="true"></i>
+      <strong>شماره مستقیم پشتیبانی</strong>
+      <p><a href="tel:{{ contact_phone_number }}">{{ contact_phone_number }}</a></p>
+    </article>
+    <article class="contact-card">
+      <i class="fas fa-clock" aria-hidden="true"></i>
+      <strong>زمان پاسخ‌گویی</strong>
+      <p>روزهای کاری، از ساعت ۸ تا ۱۶. درخواست‌های خارج از این بازه در اولین فرصت بررسی می‌شوند.</p>
+    </article>
+    <article class="contact-card">
+      <i class="fas fa-shield-heart" aria-hidden="true"></i>
+      <strong>پیگیری درخواست</strong>
+      <p>پس از تماس، در صورت نیاز می‌توانید موضوع را از طریق پیام داخلی یا بخش‌های مرتبط سامانه پیگیری کنید.</p>
+    </article>
+  </section>
+
+  <section class="contact-notes">
+    <h2>راهنمای کوتاه</h2>
+    <ul>
+      {% for note in contact_notes %}
+      <li>{{ note }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+</section>
+{% endblock %}

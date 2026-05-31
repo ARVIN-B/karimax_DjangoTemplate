@@ -1,5 +1,11 @@
 {% extends "admin/change_form.html" %}
-{% load i18n admin_urls %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/mobile-refactor.css' %}">
+  <script src="{% static 'js/mobile-refactor.js' %}" defer></script>
+{% endblock %}
 
 {% block content %}
   <h1>{% trans 'اضافه کردن کارمند جدید' %}</h1>

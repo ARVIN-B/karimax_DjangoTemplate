@@ -1,8 +1,9 @@
 # users/middleware.py
 
 from django.shortcuts import redirect
-from django.urls import reverse
 from django.contrib.auth import logout
+from django.urls import resolve, Resolver404, reverse
+from django.conf import settings
 
 
 class FirstLoginMiddleware:
@@ -65,3 +66,45 @@ class ForceLogoutMiddleware:
 
         response = self.get_response(request)
         return response
+    
+
+class KarimaxPermissionMiddleware:
+    """
+    کاربرانی که karimax_permision=False دارند، فقط می‌توانند صفحه‌ی لندینگ و
+    خروج از حساب را ببینند. سایر مسیرها به صفحه‌ی لندینگ منتقل می‌شوند.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # لیست view name هایی که کاربر محدود مجاز به دیدن آن‌هاست
+        self.allowed_views = getattr(
+            settings,
+            'KARIMAX_RESTRICTED_ALLOWED_VIEWS',
+            ['users:landing', 'users:logout']
+        )
+        self.landing_url = reverse('users:landing')
+
+    def __call__(self, request):
+        # فقط کاربران لاگین‌شده و فاقد مجوز را بررسی می‌کنیم
+        if request.user.is_authenticated and not request.user.karimax_permision:
+            # مسیرهای static و media را نادیده بگیرید تا سایت ظاهر درستی داشته باشد
+            if (
+                request.path.startswith(settings.STATIC_URL)
+                or request.path.startswith(settings.MEDIA_URL)
+            ):
+                return self.get_response(request)
+
+            # پیدا کردن نام view مربوط به مسیر جاری
+            try:
+                match = resolve(request.path)
+                view_name = match.view_name
+            except Resolver404:
+                # اگر مسیر اصلاً تعریف نشده باشد هم ریدایرکت به لندینگ
+                return redirect(self.landing_url)
+
+            # اگر view_name در لیست مجاز نباشد، کاربر را به لندینگ بفرستید
+            if view_name not in self.allowed_views:
+                return redirect(self.landing_url)
+
+        # برای سایر کاربران (یا مسیرهای مجاز) درخواست به صورت عادی پردازش شود
+        return self.get_response(request)

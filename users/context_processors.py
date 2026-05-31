@@ -1,3 +1,5 @@
+from django.conf import settings
+
 # users/context_processors.py
 def management_context(request):
     if request.user.is_authenticated:
@@ -35,3 +37,29 @@ def user_role_context(request):
     }
 
     return context
+
+
+def global_banner(request):
+    """
+    این پردازشگر یک متن بنر سراسری را در اختیار تمام قالب‌ها قرار می‌دهد.
+    شما می‌توانید متن را به‌صورت داینامیک از دیتابیس، تنظیمات، یا هر منطق دیگری بخوانید.
+    """
+
+    phone_number = settings.CONTACT_PHONE_NUMBER
+    # فرض می‌کنیم متن مورد نظر شما در یک متغیر به نام 'test' از backend می‌آید.
+    # می‌توانید اینجا منطق دلخواه خود را پیاده کنید.
+    # banner_text = f"در صورت وجود هرگونه مشکل ، لطفا با پشتیبانی تماس حاصل بفرمایید. شماره تماس پشتیبانی : {phone_number}"  # مقدار پیش‌فرض
+    
+    # اگر می‌خواهید متن را از تنظیمات Django بخوانید:
+    # from django.conf import settings
+    # banner_text = getattr(settings, 'GLOBAL_BANNER_TEXT', banner_text)
+    
+    # یا از یک مدل:
+    # from .models import SiteBanner
+    # active_banner = SiteBanner.objects.filter(is_active=True).first()
+    # if active_banner:
+    #     banner_text = active_banner.text
+    
+    return {
+        # 'global_banner_text': banner_text
+    }

@@ -27,7 +27,7 @@
 /* ======================== BASE & TYPOGRAPHY ======================== */
 body {
   background: var(--bg-page);
-  font-family: "Vazirmatn", "Segoe UI", sans-serif;
+  font-family: var(--font-main, "Anjoman FaNum", "Segoe UI", sans-serif);
   color: var(--text-primary);
   direction: rtl;
   line-height: 1.7;

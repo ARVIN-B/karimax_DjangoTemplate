@@ -11,12 +11,12 @@
 		</div>
 		<!-- دکمه‌های دسترسی سریع -->
 		<div class="quick-actions">
-			<a
+			<!-- <a
 				href="https://cloud.karimax.ir/"
 				class="quick-action-item"
 			>
 				<i class="fas fa-cloud"></i> سامانه ابری
-			</a>
+			</a> -->
 
 			{% if can_reserve_for_others %}
 			<a
@@ -25,6 +25,15 @@
 			>
 				<i class="fas fa-utensils"></i> رزرو غذا برای دیگران
 			</a>
+			{% endif %} {% if can_reserve_management_food %}
+
+			<!-- <a
+				href="{% url 'users:management_food_reservation_view' %}"
+				class="quick-action-item"
+			>
+				<i class="fas fa-utensils"></i> رزرو غذای مدیریتی
+			</a> -->
+
 			{% endif %} {% if personnel_management_access %}
 
 			<a
@@ -35,14 +44,14 @@
 			</a>
 
 			{% endif %} {% if has_management_access %}
-			<a
+			<!-- <a
 				href="{% url 'users:management_dashboard' %}"
 				class="quick-action-item"
 			>
 				<i class="fas fa-tachometer-alt"></i> داشبورد مدیریتی
-			</a>
+			</a> -->
 			{% endif %} {% if current_role_name == "super_admin" %}
-			<form
+			<!-- <form
 				method="get"
 				class="quick-action-form"
 			>
@@ -51,15 +60,15 @@
 					name="action"
 					value="update_food_prices"
 				/>
-				<button class="quick-action-item quick-action-btn"><i class="fas fa-sync-alt"></i> اپدیت رزرو ها</button>
+				<button class="quick-action-item quick-action-btn"><i class="fas fa-sync-alt"></i> اپدیت رزرو ها</button> -->
 			</form>
 			{% endif %} {% if can_report %}
-			<a
+			<!-- <a
 				href="{% url 'users:managements_reports_dashboard' %}"
 				class="quick-action-item"
 			>
 				<i class="fas fa-chart-bar"></i> پنل گزارش گیری مدیریتی
-			</a>
+			</a> -->
 
 			{% endif %} {% if current_role_name == "super_admin" %}
 			<a
@@ -70,36 +79,62 @@
 			</a>
 			{% endif %}
 
-			<a
+			<!-- <a
 				href="{% url 'users:submit_participation' %}"
 				class="quick-action-item"
 			>
 				<i class="fas fa-plus-circle"></i> ثبت مشارکت جدید
-			</a>
+			</a> -->
 
 			{% if food_receiver_role %}
-			<a
+			<!-- <a
 				href="{% url 'users:food_delivery_page' %}"
 				class="quick-action-item"
 			>
 				<i class="fas fa-truck"></i> تحویل غذا
-			</a>
+			</a> -->
 			{% endif %}
 
-			<a
+			<!-- <a
 				href="{% url 'users:personal_reports_dashboard' %}"
 				class="quick-action-item"
 			>
 				<i class="fas fa-clipboard-user"></i> پنل گزارش گیری فردی
-			</a>
+			</a> -->
 
+			{% if contact_phone_number %}
+			<!-- <a
+				href="tel:{{ contact_phone_number }}"
+				class="quick-action-item"
+			>
+				<i class="fas fa-phone-alt"></i> تماس با پشتیبانی
+			</a> -->
+			{% endif %}
 
-			<a
+			<!-- #\aaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->
+
+			<!-- <a
+				href="https://jazb.dev.karimax2.ir/dashboard/"
+				class="quick-action-item"
+			>
+				<i class="fas fa-clipboard-user"></i> سامانه جذب
+			</a> -->
+
+			<!-- <a
+				href="{% url 'users:landing' %}"
+				class="quick-action-item"
+			>
+				<i class="fas fa-clipboard-user"></i> لندینگ
+			</a> -->
+
+			<!-- #\aaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->
+
+			<!-- <a
 				href="#"
 				class="quick-action-item"
 			>
 				<i class="fas fa-robot"></i> چت‌بات
-			</a>
+			</a> -->
 
 			<!-- <a
 				href="{% url 'users:referrals_inbox' %}"
@@ -129,11 +164,11 @@
 			>
 			{% endif %} -->
 
-			<a
+			<!-- <a
 				href="{% url 'users:referrals_inbox' %}"
 				class="quick-action-item"
 				><i class="fas fa-inbox"></i> ارجاعات دریافتی</a
-			>
+			> -->
 
 			<!-- <a
 				href="{% url 'users:insurance_info' %}"
@@ -427,7 +462,8 @@
 	const ctx = document.getElementById('participationChart')?.getContext('2d');
 	if (ctx) {
 	  const dataValues = JSON.parse('{{ chart_data|safe }}');
-	  Chart.defaults.font.family = 'estedad';
+	  const appFontFamily = getComputedStyle(document.documentElement).getPropertyValue('--font-main').trim() || 'Anjoman FaNum, Tahoma, sans-serif';
+	  Chart.defaults.font.family = appFontFamily;
 	  new Chart(ctx, {
 	    type: 'pie',
 	    data: {
@@ -445,7 +481,7 @@
 	      plugins: {
 	        datalabels: {
 	          color: '#fff',
-	          font: { size: window.innerWidth < 576 ? 10 : 12, family: 'estedad' },
+	          font: { size: window.innerWidth < 576 ? 10 : 12, family: appFontFamily },
 	          formatter: (value, ctx) => {
 	            let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
 	            return sum > 0 ? ((value / sum) * 100).toFixed(2) + "%" : "0%";
@@ -455,11 +491,11 @@
 	        },
 	        legend: {
 	          position: 'bottom',
-	          labels: { font: { size: window.innerWidth < 576 ? 10 : 12, family: 'estedad' }, padding: 10 }
+	          labels: { font: { size: window.innerWidth < 576 ? 10 : 12, family: appFontFamily }, padding: 10 }
 	        },
 	        tooltip: {
-	          bodyFont: { size: window.innerWidth < 576 ? 10 : 12, family: 'estedad' },
-	          titleFont: { size: window.innerWidth < 576 ? 12 : 14, family: 'estedad' }
+	          bodyFont: { size: window.innerWidth < 576 ? 10 : 12, family: appFontFamily },
+	          titleFont: { size: window.innerWidth < 576 ? 12 : 14, family: appFontFamily }
 	        }
 	      }
 	    },
@@ -504,3 +540,4 @@
 	});
 </script>
 {% endblock %}
+{% block page_refactor_class %}app-users-page app-users-dashboard{% endblock %}

@@ -7,7 +7,7 @@
     <div class="card shadow">
         <div class="card-header bg-warning text-dark">
             <h4 class="mb-0">
-                ارجاعات دریافتی 
+                ارجاعات دریافتی
                 <span class="badge bg-danger fs-5">{{ total_referrals }}</span>
             </h4>
             <small class="text-muted">شما به عنوان: <strong>{{ current_role_display }}</strong></small>
@@ -80,3 +80,4 @@
     </div>
 </div>
 {% endblock %}
+{% block page_refactor_class %}app-users-page app-users-referrals-inbox{% endblock %}

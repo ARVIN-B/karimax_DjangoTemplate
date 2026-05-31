@@ -12,6 +12,8 @@ urlpatterns = [
     path('evaluations/', include('evaluations.urls')),
     path('login/', views.login_view, name='login'),
     path('', RedirectView.as_view(url='/login/', permanent=True)),
+    path("manifest.json", views.manifest),
+    path(".well-known/assetlinks.json", views.assetlinks),
 ]
 
 if settings.DEBUG:

@@ -1,17 +1,17 @@
 {% load custom_filters %}
 {% for participation in participations %}
     {% if participation.is_committee %}
-        <tr style="background-color: #f8d7da;">
+        <tr class="app-participation-row is-committee" style="background-color: #f8d7da;">
     {% else %}
-        <tr>
+        <tr class="app-participation-row">
     {% endif %}
         {% if is_management_view %}
-        <td>{{ participation.user.full_name }}</td>
+        <td data-label="کاربر">{{ participation.user.full_name }}</td>
         {% endif %}
-        <td>{{ participation.title }}</td>
-        <td>{{ participation.get_item_type_display }}</td>
-        <td>{{ participation.created_at|date:"Y-m-d" }}</td>
-        <td>
+        <td data-label="عنوان">{{ participation.title }}</td>
+        <td data-label="نوع">{{ participation.get_item_type_display }}</td>
+        <td data-label="تاریخ">{{ participation.created_at|date:"Y-m-d" }}</td>
+        <td data-label="عملیات">
             {% if not is_management_view %}
                 {% if participation.status == 'pending' and participation.attachment %}
                     <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-primary mb-1">عملیات</a>
@@ -34,6 +34,6 @@
                 {% endif %}
             {% endif %}
         </td>
-        <td>{{ participation.get_status_display }}</td>
+        <td data-label="وضعیت">{{ participation.get_status_display }}</td>
     </tr>
 {% endfor %}

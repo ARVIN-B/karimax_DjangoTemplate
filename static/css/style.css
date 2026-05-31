@@ -54,6 +54,8 @@ body {
   padding-bottom: 1rem;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  margin: 0 !important;
+
 }
 
 /* === حذف دکوراسیون پیش‌فرض لینک‌ها === */
@@ -65,6 +67,9 @@ a {
 a:hover {
   color: var(--primary);
 }
+
+
+
 
 /* === لودینگ اسپینر مدرن === */
 .loading-overlay {
@@ -109,6 +114,7 @@ a:hover {
    نوار ناوبری شیشه‌ای (Glass Navbar)
    ============================================ */
 .glass-navbar {
+  position: fixed;
   background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -116,6 +122,7 @@ a:hover {
   box-shadow: var(--shadow-sm);
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
+  z-index: 9999;
 }
 
 .brand-icon {
@@ -192,7 +199,7 @@ a:hover {
 }
 
 .notification-badge {
-  font-family: "estedad", sans-serif;
+  font-family: var(--font-main, "Anjoman FaNum", sans-serif);
   padding: 0.25rem 0.4rem;
 }
 
@@ -447,10 +454,23 @@ a:hover {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
 }
 
+
+body{
+  margin: 0;
+  max-width: 100%;
+  min-width: 0;
+}
+
 /* ============================================
    رسپانسیو برای موبایل‌های کوچک (≥320px)
    ============================================ */
 @media (max-width: 575.98px) {
+
+  body{
+  max-width: 100%;
+  min-width: 0;
+  }
+
   .glass-navbar {
     padding-top: 0.4rem;
     padding-bottom: 0.4rem;
@@ -522,7 +542,7 @@ a:hover {
   }
 
   .main-container {
-    padding-top: 4.5rem !important;
+    padding-top: 1rem !important;
   }
 }
 
