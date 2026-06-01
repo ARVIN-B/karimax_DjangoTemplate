@@ -401,6 +401,11 @@
 
       scroller.addEventListener("pointerdown", function (event) {
         if (event.pointerType === "mouse" && event.button !== 0) return;
+
+
+        // مشکل کلیک نشدن دکمه ها از اینجاست
+        if (event.target.closest("button, a, input, select, textarea, label, .btn")) return;
+
         isDown = true;
         startX = event.clientX;
         scrollLeft = scroller.scrollLeft;

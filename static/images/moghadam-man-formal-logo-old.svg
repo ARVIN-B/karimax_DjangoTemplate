@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg">
+  <title>لوگوی رسمی مقدم من</title>
+  <desc>Formal editable SVG logo for "مقدم من"</desc>
+
+  <style>
+    :root{
+      --logo-color:#142744;
+      --bg:transparent;
+    }
+    .bg{fill:var(--bg);}
+    .stroke{stroke:var(--logo-color);}
+    .fill{fill:var(--logo-color);}
+    .wordmark{
+      font-family:"Vazirmatn","IRANSansX","IRANSans","Shabnam","Tahoma",sans-serif;
+      font-size:132px;
+      font-weight:700;
+      fill:var(--logo-color);
+    }
+  </style>
+
+  <rect class="bg" width="1200" height="1200"/>
+
+  <!-- outer rounded-square app frame -->
+  <rect x="220" y="160" width="760" height="760" rx="150" ry="150"
+        fill="none" class="stroke" stroke-width="18"/>
+
+  <!-- inner monogram -->
+  <!-- large right arch -->
+  <path class="fill" d="M610 350
+                         L610 430
+                         C703 430 780 507 780 600
+                         L780 805
+                         L695 805
+                         L695 600
+                         C695 554 656 515 610 515
+                         L610 595
+                         L525 595
+                         L525 470
+                         C525 404 578 350 610 350Z"/>
+
+  <!-- left smaller arch -->
+  <path class="fill" d="M520 490
+                         C439 490 373 556 373 637
+                         L373 805
+                         L458 805
+                         L458 637
+                         C458 603 486 575 520 575
+                         C554 575 582 603 582 637
+                         L582 805
+                         L667 805
+                         L667 637
+                         C667 556 601 490 520 490Z"/>
+
+  <!-- central separator notch -->
+  <rect x="589" y="350" width="22" height="70" fill="white"/>
+
+  <!-- dot -->
+  <circle cx="498" cy="690" r="39" class="fill"/>
+
+  <!-- wordmark -->
+  <text x="600" y="1085"
+        text-anchor="middle"
+        direction="rtl"
+        unicode-bidi="bidi-override"
+        class="wordmark">مقدم من</text>
+</svg>

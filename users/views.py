@@ -108,7 +108,6 @@ from autogen_agentchat.messages import TextMessage
 from collections import defaultdict
 import re
 
-
 if sys.platform == "win32":
     os.system("chcp 65001 >nul")  # تغییر کدپیج کنسول به UTF-8
 
@@ -133,19 +132,12 @@ LOGIN_OTP_EXPIRE_SECONDS = 120  # 2 دقیقه
 MAX_OTP_ATTEMPTS = 5
 
 
-
-
 def manifest(request):
-    manifest_path = os.path.join(settings.BASE_DIR, 'manifest.json')
+    manifest_path = os.path.join(settings.BASE_DIR, "manifest.json")
 
     return FileResponse(
-        open(manifest_path, 'rb'),
-        content_type='application/manifest+json'
+        open(manifest_path, "rb"), content_type="application/manifest+json"
     )
-
-
-
-
 
 
 def assetlinks(request):
@@ -157,30 +149,12 @@ def assetlinks(request):
                 "package_name": "ir.karimax2.twa",
                 "sha256_cert_fingerprints": [
                     "2E:9B:A1:DE:EE:65:1F:2E:F6:57:B5:FF:11:23:9B:F0:23:84:21:0F:E5:E9:EB:DF:BA:D4:6D:15:70:50:4C:14"
-                ]
-            }
+                ],
+            },
         }
     ]
 
-
-
-
     return JsonResponse(data, safe=False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def _resolve_login_backend(user):
@@ -305,12 +279,6 @@ def _login_user_and_initialize_session(request, user):
     request.session["current_real_role"] = real_role if real_role else None
 
 
-
-
-
-
-
-
 def perform_login(request, user):
 
     if user.login_required:
@@ -353,13 +321,10 @@ def authenticate_user(request):
     password = request.POST.get("password")  # ممکن است خالی باشد
     otp_code = request.POST.get("otp_code")  # ممکن است خالی باشد
 
-
-
     if otp_code:
         # ورود با OTP
         # user, error_msg = _verify_otp(request, national_id, otp_code)
         return _verify_otp(request, national_id, otp_code)
-    
 
     # ورود با رمز عبور
     user = authenticate(request, username=national_id, password=password)
@@ -367,12 +332,7 @@ def authenticate_user(request):
     if user is None:
         return None, "کد ملی یا رمز عبور اشتباه است."
 
-
     return user, None
-
-
-
-
 
 
 def login_view(request):
@@ -380,9 +340,7 @@ def login_view(request):
     password = request.POST.get("password")  # ممکن است خالی باشد
     otp_code = request.POST.get("otp_code")  # ممکن است خالی باشد
 
-    print(f"aaaaaaaaaaaaaaaaaaaaaa {password , national_id}")
-
-
+    # print(f"aaaaaaaaaaaaaaaaaaaaaa {password , national_id}")
 
     if request.user.is_authenticated:
         # return redirect("users:dashboard")
@@ -401,10 +359,6 @@ def login_view(request):
         messages.error(request, error_msg or "خطا در ورود.")
 
     return render(request, "users/login.html")
-
-
-
-
 
 
 def register_view(request):
@@ -471,12 +425,6 @@ def register_view(request):
     messages.success(request, "ثبت‌نام با موفقیت انجام شد.")
 
     return redirect("users:landing")
-
-
-
-
-
-
 
 
 @require_POST
@@ -586,6 +534,7 @@ def _verify_otp(request, national_id, otp_code):
         return None, "کاربر یافت نشد."
     return employee, None
 
+
 @login_required
 def landing_page(request):
     # modules = {
@@ -604,8 +553,6 @@ def landing_page(request):
     #         },
     #     },
     # }
-
-
 
     modules = {
         "self": {
@@ -672,13 +619,20 @@ def landing_page(request):
                     "coming_soon": True,
                 },
                 "reserv9": {
+                    "name": "مدیریت رستوران",
+                    "link": "users:restaurant_management_dashboard",
+                    "icon_name": "self\مدیریت منوی سلف.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                },
+                "reserv10": {
                     "name": "گزارش گیری مدیریتی",
                     "link": "users:managements_reports_dashboard",
                     "icon_name": "self\گزارش گیری بدهی سلف.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
                 },
-                "reserv10": {
+                "reserv11": {
                     "name": "رزرو غذای میهمان ",
                     "link": "#",
                     "icon_name": "self\رزرو غذای مهمان .svg",
@@ -868,10 +822,6 @@ def landing_page(request):
                 },
             },
         },
-
-
-
-
         "amalkard": {
             "name": "مدیریت عملکرد",
             "link": "/self",
@@ -886,13 +836,8 @@ def landing_page(request):
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
-                
             },
         },
-
-
-
-        
         "Support": {
             "name": "پشتیبانی",
             "link": "/self",
@@ -916,9 +861,6 @@ def landing_page(request):
                 },
             },
         },
-
-
-
         "train": {
             "name": "آموزش",
             "link": "/self",
@@ -977,11 +919,6 @@ def landing_page(request):
                 },
             },
         },
-
-        
-
-
-
         "welfare_affairs": {
             "name": "اموررفاهی",
             "link": "/self",
@@ -1005,8 +942,6 @@ def landing_page(request):
                 },
             },
         },
-
-
         "jazb": {
             "name": "جذب و استخدام",
             "link": "/self",
@@ -1065,14 +1000,6 @@ def landing_page(request):
                 },
             },
         },
-
-
-
-
-
-
-
-
         "quiz": {
             "name": "آزمون ها",
             "link": "/self",
@@ -1117,9 +1044,6 @@ def landing_page(request):
                 },
             },
         },
-
-
-
         "dept": {
             "name": "صتدوق وام",
             "link": "/self",
@@ -1157,8 +1081,6 @@ def landing_page(request):
                 },
             },
         },
-
-
         "charity": {
             "name": "نیکوکاری",
             "link": "/self",
@@ -1196,7 +1118,6 @@ def landing_page(request):
                 },
             },
         },
-
         "insurance": {
             "name": "بیمه",
             "link": "/self",
@@ -1234,8 +1155,6 @@ def landing_page(request):
                 },
             },
         },
-
-
         "exercise": {
             "name": "تربیت بدنی",
             "link": "/self",
@@ -1259,10 +1178,6 @@ def landing_page(request):
                 },
             },
         },
-
-
-
-
         "clouds_services": {
             "name": "سامانه های ابری",
             "link": "/clouds",
@@ -1286,13 +1201,6 @@ def landing_page(request):
                 },
             },
         },
-        
-
-
-
-
-
-
     }
 
     context = {
@@ -1302,9 +1210,6 @@ def landing_page(request):
     return render(request, "users/landing.html", context)
 
 
-
-
-
 def contact_us(request):
 
     context = {
@@ -1312,9 +1217,6 @@ def contact_us(request):
     }
 
     return render(request, "users/contact_us.html", context)
-
-
-
 
 
 def logout_view(request):
