@@ -722,6 +722,39 @@ class Employee(AbstractUser):
         return ""
 
 
+class UserPasskey(models.Model):
+    user = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="passkeys"
+    )
+
+    credential_id = models.TextField(unique=True)
+
+    public_key = models.TextField()
+
+    sign_count = models.IntegerField(default=0)
+
+    device_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
+
+    transports = models.JSONField(default=list)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    last_used_at = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+
+    class Meta:
+        verbose_name = "Passkey"
+        verbose_name_plural = "Passkeys"
+        
+
 class Participation(models.Model):
     ITEM_TYPES = (
         ("performance_file", "ارسال فایل عملکرد"),

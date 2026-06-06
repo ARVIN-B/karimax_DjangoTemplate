@@ -335,12 +335,149 @@ def authenticate_user(request):
     return user, None
 
 
+# import json
+# import base64
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+# from webauthn import (
+#     generate_authentication_options,
+#     options_to_json,
+#     verify_authentication_response,   # ← این خط خیلی مهمه!
+# )
+# from webauthn.helpers import bytes_to_base64url
+# from webauthn.helpers.structs import UserVerificationRequirement
+
+
+# @csrf_exempt
+# def passkey_begin(request):
+#     """شروع احراز هویت Passkey"""
+
+#     # دریافت national_id
+#     if request.content_type == "application/json":
+#         try:
+#             data = json.loads(request.body)
+#             national_id = data.get("national_id")
+#         except:
+#             national_id = None
+#     else:
+#         national_id = request.POST.get("national_id")
+
+#     if not national_id or len(str(national_id)) != 10:
+#         return JsonResponse({"success": False, "error": "کد ملی نامعتبر است"}, status=400)
+
+#     try:
+#         user = Employee.objects.get(national_id=national_id)
+#     except User.DoesNotExist:
+#         return JsonResponse({"success": False, "error": "کاربر یافت نشد"})
+
+#     # تولید گزینه‌های WebAuthn
+#     options = generate_authentication_options(
+#         rp_id=request.get_host().split(':')[0],
+#         allow_credentials=[
+#             {"type": "public-key", "id": bytes_to_base64url(pk.credential_id)}
+#             for pk in user.passkeys.all()
+#         ],
+#         user_verification=UserVerificationRequirement.PREFERRED,
+#     )
+
+#     # ✅ تبدیل bytes به base64 قبل از ذخیره در session
+#     challenge_b64 = base64.b64encode(options.challenge).decode('ascii')
+
+#     request.session['webauthn_challenge'] = challenge_b64
+#     request.session['webauthn_user_id'] = user.id
+#     request.session.modified = True
+
+#     # تبدیل options به JSON قابل قبول
+#     options_dict = json.loads(options_to_json(options))
+
+#     return JsonResponse({
+#         "success": True,
+#         "publicKey": options_dict
+#     })
+
+
+
+# import base64
+
+# @csrf_exempt
+# def passkey_complete(request):
+#     """تکمیل لاگین با Passkey"""
+#     if request.content_type != "application/json":
+#         return JsonResponse({"success": False, "error": "JSON required"}, status=400)
+
+#     try:
+#         data = json.loads(request.body)
+#         national_id = data.get("national_id")
+#         credential = data.get("credential")
+#     except Exception:
+#         return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+
+#     if not national_id or not credential:
+#         return JsonResponse({"success": False, "error": "اطلاعات ناقص"}, status=400)
+
+#     try:
+#         user = Employee.objects.get(national_id=national_id)
+
+#         # بازیابی challenge
+#         challenge_b64 = request.session.get('webauthn_challenge')
+#         if not challenge_b64:
+#             return JsonResponse({"success": False, "error": "Session expired"})
+
+#         challenge = base64.b64decode(challenge_b64)
+
+#         session_user_id = request.session.get('webauthn_user_id')
+#         if user.id != session_user_id:
+#             return JsonResponse({"success": False, "error": "Session invalid"})
+
+#         # پیدا کردن Passkey کاربر
+#         raw_credential_id = base64.b64decode(credential.get("rawId"))
+#         passkey = user.passkeys.get(credential_id=raw_credential_id)
+
+#         # بررسی پاسخ
+#         verification = verify_authentication_response(
+#             credential=credential,
+#             expected_challenge=challenge,
+#             expected_rp_id=request.get_host().split(':')[0],
+#             expected_origin=request.build_absolute_uri('/')[:-1],
+#             credential_public_key=passkey.public_key,
+#             credential_sign_count=passkey.sign_count,
+#             require_user_verification=True,
+#         )
+
+#         # به‌روزرسانی شمارنده
+#         passkey.sign_count = verification.new_sign_count
+#         passkey.last_used_at = timezone.now()  # اگر فیلد داری
+#         passkey.save()
+
+#         perform_login(request, user)
+
+#         # پاک کردن session
+#         request.session.pop('webauthn_challenge', None)
+#         request.session.pop('webauthn_user_id', None)
+
+#         return JsonResponse({"success": True})
+
+#     except User.DoesNotExist:
+#         return JsonResponse({"success": False, "error": "User not found"})
+#     except Exception as e:
+#         return JsonResponse({"success": False, "error": str(e)})
+
+
+
+
+
+
+
+
+
+
+
+
+
 def login_view(request):
     national_id = request.POST.get("national_id")
     password = request.POST.get("password")  # ممکن است خالی باشد
     otp_code = request.POST.get("otp_code")  # ممکن است خالی باشد
-
-    # print(f"aaaaaaaaaaaaaaaaaaaaaa {password , national_id}")
 
     if request.user.is_authenticated:
         # return redirect("users:dashboard")
@@ -353,6 +490,20 @@ def login_view(request):
         if user is not None:
 
             perform_login(request, user)
+
+
+            # has_passkey = user.passkeys.exists()
+    
+            # return render(request, "users/login.html", {
+            #     "has_passkey": has_passkey,
+            #     "national_id": national_id,   # برای پیش‌فرض کردن فیلد
+            # })
+
+
+
+
+
+
 
             return redirect("users:landing")
 
@@ -565,77 +716,77 @@ def landing_page(request):
                 "reserv": {
                     "name": "رزرو غذا",
                     "link": "users:food_reservation",
-                    "icon_name": "self\رزرو غذا.svg",
+                    "icon_name": "self/رزرو غذا.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
                 },
                 "reserv1": {
                     "name": "گزارش فردی",
                     "link": "users:personal_reports_dashboard",
-                    "icon_name": "self\گزاش فردی.svg",
+                    "icon_name": "self/گزاش فردی.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
                 },
                 "reserv3": {
                     "name": "سلامت فردی",
                     "link": "#",
-                    "icon_name": "self\سلامت فردی .svg",
+                    "icon_name": "self/سلامت فردی .svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
                 "reserv4": {
                     "name": "تحویل غذا",
                     "link": "users:food_delivery_page",
-                    "icon_name": "self\تحویل غذا.svg",
+                    "icon_name": "self/تحویل غذا.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
                 },
                 "reserv5": {
                     "name": "نظر دهی",
                     "link": "#",
-                    "icon_name": "self\نظر دهی.svg",
+                    "icon_name": "self/نظر دهی.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
                 "reserv6": {
                     "name": "رزرو غذا برای دیگران",
                     "link": "users:food_reservation_for_others",
-                    "icon_name": "self\رزرو غذا برای دیگران.svg",
+                    "icon_name": "self/رزرو غذا برای دیگران.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
                 "reserv7": {
                     "name": "رزرو غذای مدیریتی",
                     "link": "users:management_food_reservation_view",
-                    "icon_name": "self\رزرو غذای مدیریتی .svg",
+                    "icon_name": "self/رزرو غذای مدیریتی .svg",
                     "color": "#8b2650",
                     "coming_soon": False,
                 },
                 "reserv8": {
                     "name": "مدیریت منوی سلف",
                     "link": "users:manage_self_menu",
-                    "icon_name": "self\مدیریت منوی سلف.svg",
+                    "icon_name": "self/مدیریت منوی سلف.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
                 "reserv9": {
                     "name": "مدیریت رستوران",
                     "link": "users:restaurant_management_dashboard",
-                    "icon_name": "self\مدیریت منوی سلف.svg",
+                    "icon_name": "self/مدیریت منوی سلف.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
                 "reserv10": {
                     "name": "گزارش گیری مدیریتی",
                     "link": "users:managements_reports_dashboard",
-                    "icon_name": "self\گزارش گیری بدهی سلف.svg",
+                    "icon_name": "self/گزارش گیری بدهی سلف.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
                 },
                 "reserv11": {
                     "name": "رزرو غذای میهمان ",
                     "link": "#",
-                    "icon_name": "self\رزرو غذای مهمان .svg",
+                    "icon_name": "self/رزرو غذای مهمان .svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
@@ -651,42 +802,42 @@ def landing_page(request):
                 "reserv": {
                     "name": "ثبت مشارکت",
                     "link": "users:submit_participation",
-                    "icon_name": "add_participation\add.svg",
+                    "icon_name": "add_participation/add.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
                 },
                 "reserv1": {
                     "name": "مشارکت های من",
                     "link": "users:dashboard",
-                    "icon_name": "add_participation\my_particip.svg",
+                    "icon_name": "add_participation/my_particip.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
                 },
                 "reserv2": {
                     "name": "داشبورد مدیریتی",
                     "link": "users:management_dashboard",
-                    "icon_name": "add_participation\Vector.svg",
+                    "icon_name": "add_participation/Vector.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
                 "reserv3": {
                     "name": "پنل گزارش گیری",
                     "link": "users:dashboard",
-                    "icon_name": "add_participation\report.svg",
+                    "icon_name": "add_participation/report.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
                 "reserv4": {
                     "name": "ارجاع",
                     "link": "#",
-                    "icon_name": "add_participation\refere.svg",
+                    "icon_name": "add_participation/refere.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
                 "reserv5": {
                     "name": "ارجاعات دریافتی",
                     "link": "users:referrals_inbox",
-                    "icon_name": "add_participation\refere.svg",
+                    "icon_name": "add_participation/refere.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                 },
@@ -949,6 +1100,16 @@ def landing_page(request):
             "color": "#9c234b",
             "coming_soon": False,
             "micro_modules": {
+                
+                "jazb1": {
+                    "name": "داشبورد سامانه جذب و استخدام",
+                    "link": "https://jazb.karimax2.ir/dashboard",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
+
+
                 "reserv": {
                     "name": "ساخت رزومه جدید",
                     "link": "#",
@@ -1007,6 +1168,15 @@ def landing_page(request):
             "color": "#239c82",
             "coming_soon": False,
             "micro_modules": {
+                
+                
+                "quizb1": {
+                    "name": "داشبورد سامانه کوییز",
+                    "link": "https://quiz.karimax2.ir",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                },
                 "reserv": {
                     "name": "آزمون های من",
                     "link": "#",
@@ -4739,7 +4909,7 @@ def restaurant_management_dashboard(request):
                 reservation_date__range=(from_gdate, to_gdate),
                 is_canceled=False,
             )
-            .values("reservation_date", "menu_item__food__name")
+            .values("reservation_date", "menu_item__food__name", "menu_item__food__free_price")
             .annotate(
                 quota_count=Sum("factory_quantity"),
                 extra_count=Sum("free_quantity"),
@@ -4749,7 +4919,7 @@ def restaurant_management_dashboard(request):
         )
 
         col_days, col_dates, col_foods = [], [], []
-        col_quota, col_extra, col_guest, col_total = [], [], [], []
+        col_quota, col_extra, col_guest, col_total, col_food_price, col_total_dept = [], [], [], [], [], []
 
         for row in range_rows:
             gdate = row["reservation_date"]
@@ -4765,6 +4935,8 @@ def restaurant_management_dashboard(request):
             col_extra.append(extra_count)
             col_guest.append(guest_count)
             col_total.append(quota_count + extra_count + guest_count)
+            col_food_price.append((row.get("menu_item__food__free_price")))
+            col_total_dept.append((quota_count + extra_count + guest_count) * (int(row.get("menu_item__food__free_price"))))
 
         data_columns = [
             ("روز هفته", col_days),
@@ -4774,6 +4946,8 @@ def restaurant_management_dashboard(request):
             ("تعداد آزاد", col_extra),
             ("تعداد مهمان", col_guest),
             ("مجموع کل", col_total),
+            ("هزینه هر پرس", col_food_price),
+            ("هزینه کل", col_total_dept)
         ]
 
         filename = f"گزارش_کارخانه_{factory_name}_در بازه زمانی_{from_date_str.replace('/', '-')}_تا_{to_date_str.replace('/', '-')}"

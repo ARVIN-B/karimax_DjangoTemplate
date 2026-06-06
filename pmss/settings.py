@@ -9,8 +9,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CONTACT_PHONE_NUMBER = "09924876377"
 
-# SESSION_COOKIE_DOMAIN = ".karimax2.ir"
-# SESSION_COOKIE_NAME = "sessionid"
+SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+SESSION_COOKIE_NAME = "sessionid"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")
@@ -51,13 +51,18 @@ INSTALLED_APPS = [
     "axes",
     "django.contrib.humanize",
     "widget_tweaks",
-
-
-
-
-
     # "mfa",
 ]
+
+# WEBAUTHN_RP_ID = "karimax2.ir"
+# WEBAUTHN_RP_NAME = "Karimax"
+# WEBAUTHN_ORIGIN = "https://karimax2.ir"
+
+
+WEBAUTHN_RP_ID = "dev.karimax2.ir"
+WEBAUTHN_RP_NAME = "dev.Karimax"
+WEBAUTHN_ORIGIN = "https://dev.karimax2.ir"
+
 
 # # MFA Settings
 # MFA_UNALLOWED_METHODS = ()  # متدهای مجاز ('TOTP','U2F')
@@ -79,26 +84,6 @@ INSTALLED_APPS = [
 # # warning
 # MFA_FIDO2_RESIDENT_KEY = 'discouraged'
 # MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = True
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # CSRF_TRUSTED_ORIGINS = [
@@ -341,6 +326,8 @@ else:
         "https://www.karimax2.ir",
         "http://www.dev.karimax2.ir",
         "http://dev.karimax2.ir",
+        "https://www.dev.karimax2.ir",
+        "https://dev.karimax2.ir",
     ]
 
 # CORS_ALLOW_CREDENTIALS = True

@@ -1,15 +1,14 @@
-{% extends 'base.html' %}
-{% load static %}
-
-{% block title %}مقدم من | ورود و ثبت‌نام{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/login.css' %}" />
-{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% load static %} {% block title %}مقدم من | ورود و ثبت‌نام{% endblock %} {% block extra_css %}
+<link
+	rel="stylesheet"
+	href="{% static 'css/login.css' %}"
+/>
+{% endblock %} {% block content %}
 <div class="auth-page">
-	<div class="auth-page__ambient" aria-hidden="true"></div>
+	<div
+		class="auth-page__ambient"
+		aria-hidden="true"
+	></div>
 
 	<main class="auth-shell">
 		<section class="auth-hero">
@@ -20,12 +19,13 @@
 					class="auth-logo img-fluid"
 				/>
 				<h1 class="auth-title">سامانه یکپارچه مقدم من</h1>
-				<p class="auth-subtitle">
-					درگاه رسمی ورود و ثبت‌نام برای استفاده از خدمات سامانه.
-				</p>
+				<p class="auth-subtitle">درگاه رسمی ورود و ثبت‌نام برای استفاده از خدمات سامانه.</p>
 			</div>
 
-			<div class="auth-badges" aria-label="ویژگی‌ها">
+			<div
+				class="auth-badges"
+				aria-label="ویژگی‌ها"
+			>
 				<span class="auth-badge">ورود ایمن</span>
 				<span class="auth-badge">ثبت‌نام کاربران</span>
 				<span class="auth-badge">احراز هویت پیامکی</span>
@@ -35,10 +35,7 @@
 		<section class="auth-card">
 			<div class="auth-card__header">
 				<p class="auth-card__title">احراز هویت</p>
-				<p class="auth-card__text">
-					برای ورود به سامانه، یکی از دو مسیر «رمز عبور» یا «کد یکبارمصرف» را
-					انتخاب کنید. ثبت‌نام نیز از همین صفحه در دسترس است.
-				</p>
+				<p class="auth-card__text">برای ورود به سامانه، یکی از دو مسیر «رمز عبور» یا «کد یکبارمصرف» را انتخاب کنید. ثبت‌نام نیز از همین صفحه در دسترس است.</p>
 			</div>
 
 			<div
@@ -134,12 +131,17 @@
 							id="national_id"
 							name="national_id"
 							inputmode="numeric"
-							autocomplete="username"
+							autocomplete="username webauthn"
 							pattern="[0-9]{10}"
 							required
 							placeholder="مثلا 0012345678"
 							aria-describedby="national_id_help"
 						/>
+
+
+
+
+
 						<small
 							id="national_id_help"
 							class="form-text"
@@ -173,7 +175,7 @@
 					<div
 						id="otp-field"
 						class="auth-field"
-						style="display: none;"
+						style="display: none"
 					>
 						<label
 							for="otp_code"
@@ -204,7 +206,7 @@
 						<small
 							id="otp-timer"
 							class="form-text text-warning"
-							style="display: none;"
+							style="display: none"
 						></small>
 					</div>
 
@@ -216,6 +218,16 @@
 						>
 							ورود
 						</button>
+
+						<!-- <button
+							type="button"
+							id="biometric-login-btn"
+							class="btn btn-dark w-100 mt-2"
+							style="display: none"
+						>
+							ورود با اثر انگشت
+						</button> -->
+
 						<div class="text-center">
 							<button
 								type="button"
@@ -228,7 +240,7 @@
 								type="text"
 								id="otp-hidden"
 								autocomplete="one-time-code"
-								style="display: none;"
+								style="display: none"
 							/>
 						</div>
 					</div>
@@ -244,9 +256,7 @@
 			>
 				<div class="auth-card__header">
 					<p class="auth-section-title">ثبت‌نام در سامانه یکپارچه مقدم من</p>
-					<p class="auth-card__text">
-						برای ایجاد حساب کاربری، اطلاعات پایه خود را وارد کنید.
-					</p>
+					<p class="auth-card__text">برای ایجاد حساب کاربری، اطلاعات پایه خود را وارد کنید.</p>
 				</div>
 
 				<form
@@ -380,9 +390,7 @@
 		</section>
 	</main>
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script>
 	document.addEventListener("DOMContentLoaded", function () {
 		const panelButtons = Array.from(document.querySelectorAll("[data-auth-panel]"));
@@ -404,8 +412,10 @@
 		const registerPasswordInput = document.getElementById("register_password");
 		const registerPasswordConfirmInput = document.getElementById("register_password_confirm");
 
+
 		let countdownInterval = null;
-		let storedPanel = "register";
+		// let storedPanel = "register";
+		let storedPanel = localStorage.getItem("auth-active-panel") || "login";
 		let storedLoginMode = localStorage.getItem("auth-login-mode") || "password";
 
 		function syncTabButtons(activePanel) {
@@ -805,6 +815,113 @@
 		window.addEventListener("beforeunload", () => stopOtpTimer());
 	});
 </script>
-{% endblock %}
 
-{% block page_refactor_class %}app-users-page app-users-login{% endblock %}
+
+<!-- <script>
+	document.addEventListener("DOMContentLoaded", function () {
+		const nationalIdInput = document.getElementById("national_id");
+		const loginForm = document.getElementById("login-form");
+		const hasPasskey = {{ has_passkey|yesno:"true,false" }};
+		const prefillNationalId = "{{ national_id|default:'' }}";
+
+		let autoLoginAttempted = false;
+
+		// پیش‌فرض کردن کد ملی اگر از سرور آمد
+		if (prefillNationalId) {
+			nationalIdInput.value = prefillNationalId;
+		}
+
+		// ====================== توابع WebAuthn ======================
+
+		async function getPasskeyAssertion(nationalId) {
+			if (!nationalId || nationalId.length !== 10) return;
+
+			try {
+				const response = await fetch("{% url 'users:passkey_begin' %}", {
+					method: "POST",
+					headers: {
+						"X-CSRFToken": "{{ csrf_token }}",
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ national_id: nationalId })
+				});
+
+
+
+
+
+
+
+
+
+				const options = await response.json();
+
+				if (!options.success) {
+					console.log("No passkey registered or error");
+					return;
+				}
+
+				// استفاده از SimpleWebAuthn
+				const credential = await SimpleWebAuthn.browser.get({
+					publicKey: options.publicKey,
+				});
+
+				// ارسال assertion به سرور
+				const verifyRes = await fetch("{% url 'users:passkey_complete' %}", {
+					method: "POST",
+					headers: {
+						"X-CSRFToken": "{{ csrf_token }}",
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						national_id: nationalId,
+						credential: credential
+					})
+				});
+
+				const result = await verifyRes.json();
+
+				if (result.success) {
+					window.location.href = "{% url 'users:landing' %}";
+				} else {
+					console.error("Passkey verification failed");
+				}
+
+			} catch (err) {
+				if (err.name !== "NotAllowedError") {
+					console.error("Passkey error:", err);
+				}
+			}
+		}
+
+		// ====================== ورود اتوماتیک ======================
+
+		async function attemptAutoLogin() {
+			if (autoLoginAttempted) return;
+			autoLoginAttempted = true;
+
+			const nationalId = nationalIdInput.value.trim();
+
+			if (nationalId.length === 10) {
+				await getPasskeyAssertion(nationalId);
+			}
+		}
+
+		// رویدادها
+		nationalIdInput.addEventListener("blur", attemptAutoLogin);
+		nationalIdInput.addEventListener("change", attemptAutoLogin);
+
+		// اگر قبلاً لاگین کرده و passkey داشته → سعی کن اتوماتیک وارد کنه
+		if (hasPasskey && prefillNationalId) {
+			setTimeout(attemptAutoLogin, 800); // کمی صبر برای لود کامل
+		}
+
+		// فوکوس اولیه روی کد ملی
+		setTimeout(() => {
+			nationalIdInput.focus();
+		}, 600);
+	});
+</script> -->
+
+
+{% endblock %} {% block page_refactor_class %}app-users-page app-users-login{% endblock %}

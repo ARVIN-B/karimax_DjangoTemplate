@@ -794,6 +794,8 @@
 					<a href="#" class="submodule-item is-coming-soon" aria-disabled="true" tabindex="-1" data-coming-soon="true">
 					{% elif submodule.link == "#" %}
 					<a href="#" class="submodule-item">
+					{% elif submodule.link|first == "h" %}
+					<a href="{{ submodule.link }}" class="submodule-item">
 					{% else %}
 					<a href="{% url submodule.link %}" class="submodule-item">
 					{% endif %}
@@ -898,5 +900,9 @@
 	});
 
 </script>
+
+
+
+
 {% endblock %}
 {% block page_refactor_class %}app-users-page app-users-landing{% endblock %}
