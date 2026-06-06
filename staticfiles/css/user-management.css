@@ -31,7 +31,7 @@
 
 body {
   background: var(--bg-page);
-  font-family: system-ui, "Segoe UI", "Vazirmatn", sans-serif;
+  font-family: var(--font-main, "Anjoman FaNum", system-ui, "Segoe UI", sans-serif);
   color: var(--text-primary);
   font-size: var(--font-size-base);
   line-height: 1.5;
@@ -334,7 +334,7 @@ body {
 /* دکمه شناور (FAB) */
 .um-fab {
   position: fixed;
-  bottom: 1.5rem;
+  bottom: calc(var(--nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 24px);
   left: 1.5rem;
   z-index: 100;
 }
@@ -436,7 +436,7 @@ body {
   margin-bottom: 0.75rem;
   border: 1px solid #eef2f8;
   border-radius: var(--radius-sm);
-  overflow: hidden;
+  /* overflow: hidden; */
 }
 
 .um-accordion-header {
@@ -474,6 +474,28 @@ body {
 .um-empty-state i {
   font-size: 3rem;
   margin-bottom: 1rem;
+}
+
+.btn-um-primary {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+}
+.btn-um-secondary {
+  background: #6c757d !important;
+  color: #fff !important;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+}
+.btn-um-success {
+  background: var(--secondary) !important;
+  color: #fff !important;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
 }
 
 /* ریسپانسیو موبایل خیلی کوچک */
