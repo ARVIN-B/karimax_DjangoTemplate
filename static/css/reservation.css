@@ -529,7 +529,7 @@ body[data-users-page="food-reservation"] {
 }
 
 .slot-topline {
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto;
   align-items: center;
 }
 
@@ -1195,7 +1195,6 @@ body[data-users-page="food-reservation"] {
   }
 
   .slot-controls {
-    grid-template-columns: minmax(0, 1fr) minmax(84px, 96px);
     align-items: end;
   }
 

@@ -5282,8 +5282,10 @@ def food_reservation_view(request):
         else:
             if role_name == "super_admin":
                 factory = Factory.objects.first()
-            else:
+            elif role_name == "holding_manager":
                 factory = Factory.objects.filter(holding_id=holding_id).first()
+            else:
+                factory = Factory.objects.filter(id=factory_id).first()
 
     else:
         if is_committee:

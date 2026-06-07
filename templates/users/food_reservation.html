@@ -174,7 +174,7 @@
                     </button>
                   </div>
 
-                  <label class="quantity-field">
+                  <!-- <label class="quantity-field">
                     <span>تعداد</span>
                     <input
                       type="number"
@@ -186,7 +186,25 @@
                       form="reservation-main-form"
                     />
                   </label>
-                </div>
+                </div> -->
+
+
+                <label class="quantity-field quantity-spinner">
+                  <span>تعداد</span>
+                  <div class="spinner-wrapper">
+                    <button type="button" class="spinner-btn spinner-minus" aria-label="کم کردن">-</button>
+                    <input
+                      type="number"
+                      class="quantity-input"
+                      name="reservations[{{ day_data.gdate_str }}][0][quantity]"
+                      value="0"
+                      min="0"
+                      inputmode="numeric"
+                      form="reservation-main-form"
+                    />
+                    <button type="button" class="spinner-btn spinner-plus" aria-label="اضافه کردن">+</button>
+                  </div>
+                </label>
 
                 <div class="slot-footer">
                   <span class="price-total" aria-live="polite">0 ریال</span>
@@ -932,9 +950,13 @@
               <span class="price-type-text">مهمان</span><span class="price-value">0 ریال</span>
             </button>
           </div>
-          <label class="quantity-field">
+          <label class="quantity-field quantity-spinner">
             <span>تعداد</span>
-            <input type="number" class="quantity-input" name="reservations[${dateStr}][${index}][quantity]" value="1" min="0" inputmode="numeric" form="reservation-main-form">
+            <div class="spinner-wrapper">
+              <button type="button" class="spinner-btn spinner-minus" aria-label="کم کردن">-</button>
+              <input type="number" class="quantity-input" name="reservations[${dateStr}][${index}][quantity]" value="1" min="0" inputmode="numeric" form="reservation-main-form">
+              <button type="button" class="spinner-btn spinner-plus" aria-label="اضافه کردن">+</button>
+            </div>
           </label>
         </div>
         <div class="slot-footer">
@@ -1189,12 +1211,102 @@
     syncActionSummary();
     applyFilters();
     page.classList.add("is-ready");
+
+
+
+
+
+    // Spinner buttons
+    function handleSpinner(e) {
+      const btn = e.target.closest('.spinner-btn');
+      if (!btn) return;
+
+      const wrapper = btn.closest('.spinner-wrapper');
+      const input = wrapper.querySelector('.quantity-input');
+      if (!input) return;
+
+      const slot = input.closest('.reservation-slot');
+      let value = parseInt(input.value, 10) || 0;
+
+      if (btn.classList.contains('spinner-plus')) {
+        value++;
+      } else {
+        value = Math.max(0, value - 1);
+      }
+
+      input.value = value;
+      // مهم: تریگر کردن event input برای اینکه لاجیک‌های موجود (enforceQuantityLimit و ...) کار کنند
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    document.body.addEventListener('click', handleSpinner);
   });
 </script>
 {% endblock extra_js %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/reservation.css' %}" />
+
+
+<style>
+  .quantity-spinner .spinner-wrapper {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    overflow: hidden;
+    background: white;
+  }
+
+  .quantity-spinner input.quantity-input {
+    border: none;
+    text-align: center;
+    font-size: 1.1rem;
+    width: 60px;
+    padding: 8px 4px;
+    -moz-appearance: textfield; /* مخفی کردن spinner پیش‌فرض فایرفاکس */
+  }
+
+  .quantity-spinner input.quantity-input::-webkit-outer-spin-button,
+  .quantity-spinner input.quantity-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* دکمه‌ها */
+  .spinner-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f8f9fa;
+    color: #333;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .spinner-btn:hover {
+    background: #e9ecef;
+  }
+
+  .spinner-minus {
+    border-left: 1px solid #ccc;
+  }
+
+  .spinner-plus {
+    border-right: 1px solid #ccc;
+  }
+
+  /* برای موبایل بهتر نمایش بده */
+  @media (max-width: 768px) {
+    .quantity-spinner .spinner-wrapper {
+      width: 100%;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block page_refactor_class %}app-users-page app-users-food-reservation{% endblock %}
