@@ -9,8 +9,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CONTACT_PHONE_NUMBER = "09924876377"
 
-SESSION_COOKIE_DOMAIN = ".karimax2.ir"
-SESSION_COOKIE_NAME = "sessionid"
+# SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+# SESSION_COOKIE_NAME = "sessionid"
+
+WEEKS_COUNT = 4
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")

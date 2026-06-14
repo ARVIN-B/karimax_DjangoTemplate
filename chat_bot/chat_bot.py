@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler  # pip install apscheduler
 import tiktoken
+import mysql
 
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient

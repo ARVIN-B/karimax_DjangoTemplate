@@ -261,9 +261,12 @@
 
 				<form
 					id="register-form"
+					method="post"
+    				action="{% url 'users:register' %}"
 					class="auth-form"
 					autocomplete="on"
 				>
+					{% csrf_token %}
 					<div class="auth-grid auth-grid--two">
 						<div class="auth-field">
 							<label
@@ -378,7 +381,7 @@
 
 					<div class="auth-inline-actions">
 						<button
-							type="button"
+							type="submit"
 							class="btn btn-primary w-100"
 							id="register-submit-btn"
 						>
@@ -669,9 +672,10 @@
 				input.addEventListener("blur", syncRegisterPasswordValidity);
 			});
 
-			registerSubmitBtn.addEventListener("click", function () {
+			registerForm.addEventListener("submit", function (e) {
 				const passwordsOk = syncRegisterPasswordValidity();
 				if (!registerForm.reportValidity() || !passwordsOk) {
+					e.preventDefault();
 					Swal.fire({
 						icon: "error",
 						title: "خطا",
