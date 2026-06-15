@@ -739,16 +739,18 @@
 	<div class="services-grid">
 		{% for key, module in modules.items %}
 			<a
-				href="{% if module.coming_soon %}#{% else %}{{ module.link }}{% endif %}"
-				class="service-item module-trigger{% if module.coming_soon %} is-coming-soon{% endif %}"
+				href="{% if module.coming_soon or not module.have_permision %}#{% else %}{{ module.link }}{% endif %}"
+				class="service-item module-trigger{% if module.coming_soon or not module.have_permision %} is-coming-soon{% endif %}"
 				data-module="{{ key }}"
 				data-has-children="{% if module.micro_modules %}true{% else %}false{% endif %}"
-				data-coming-soon="{% if module.coming_soon %}true{% else %}false{% endif %}"
-				{% if module.coming_soon %}aria-disabled="true" tabindex="-1"{% endif %}
+				data-coming-soon="{% if module.coming_soon or not module.have_permision %}true{% else %}false{% endif %}"
+				{% if module.coming_soon or not module.have_permision %}aria-disabled="true" tabindex="-1"{% endif %}
 			>
-				<div class="service-badge{% if module.coming_soon %} is-coming-soon{% endif %}" style="background: {{ module.color }}">
+				<div class="service-badge{% if module.coming_soon or not module.have_permision %} is-coming-soon{% endif %}" style="background: {{ module.color }}">
 					{% if module.coming_soon %}
 						<span class="coming-soon-pill">به زودی</span>
+					{% elif not module.have_permision %}
+						<span class="coming-soon-pill">نیاز به مجوز</span>
 					{% endif %}
 					<img src="{% static 'icons/'|add:module.icon_name %}" alt="{{ module.name }}">
 				</div>
@@ -800,9 +802,11 @@
 					<a href="{% url submodule.link %}" class="submodule-item">
 					{% endif %}
 						<div class="submodule-right">
-							<div class="submodule-icon{% if submodule.coming_soon %} is-coming-soon{% endif %}">
+							<div class="submodule-icon{% if submodule.coming_soon or not submodule.have_permision %} is-coming-soon{% endif %}">
 								{% if submodule.coming_soon %}
 									<span class="coming-soon-pill">به زودی</span>
+								{% elif not submodule.have_permision %}
+									<span class="coming-soon-pill">نیاز به مجوز</span>
 								{% endif %}
 								<img src="{% static 'icons/'|add:submodule.icon_name %}" alt="">
 							</div>

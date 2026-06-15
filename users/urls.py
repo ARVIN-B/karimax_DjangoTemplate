@@ -28,7 +28,8 @@ urlpatterns = [
     path("users/", views.dashboard, name="dashboard"),
     path("profile/<int:user_id>/", views.user_profile, name="user_profile"),
     # path("register/", views.register_user, name="register_user"),
-    path("logout/", LogoutView.as_view(next_page="users:login"), name="logout"),
+    # path("logout/", LogoutView.as_view(next_page="users:login"), name="logout"),
+    path("logout/", views.logout_view, name="logout"),
     path(
         "submit-participation/", views.submit_participation, name="submit_participation"
     ),

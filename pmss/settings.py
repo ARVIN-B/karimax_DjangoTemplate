@@ -9,17 +9,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CONTACT_PHONE_NUMBER = "09924876377"
 
-# SESSION_COOKIE_DOMAIN = ".karimax2.ir"
-# SESSION_COOKIE_NAME = "sessionid"
+if config("DJANGO_ENV") == "production":
+    SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+    SESSION_COOKIE_NAME = "sessionid"
+    DEBUG = False
+elif config("DJANGO_ENV") == "development":
+    SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+    SESSION_COOKIE_NAME = "sessionid"
+    DEBUG = True
+elif config("DJANGO_ENV") == "localhost":
+    DEBUG = True
 
-WEEKS_COUNT = 4
+WEEKS_COUNT = 2
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")
-DEBUG = config("DEBUG", default=True, cast=bool)
+# DEBUG = config("DEBUG", default=True, cast=bool)
 
-# DEBUG = False
-DEBUG = True
+
 
 AXES_ENABLED = False
 
@@ -337,3 +344,5 @@ else:
 #
 # CORS_ALLOW_ALL_ORIGINS = True
 # CORS_ALLOW_CREDENTIALS = True
+
+CSRF_FAILURE_VIEW = 'users.views.csrf_failure'

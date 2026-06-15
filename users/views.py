@@ -156,6 +156,17 @@ def assetlinks(request):
 
     return JsonResponse(data, safe=False)
 
+def csrf_failure(request, reason=""):
+    """مدیریت ساده ارور CSRF - بدون تمپلیت جدید"""
+    
+    # اگر درخواست از صفحه لاگین باشد
+    if "login" in request.path.lower():
+        return redirect("users:landing")
+    
+    # برای صفحات دیگر، رفتار پیش‌فرض Django
+    from django.views.csrf import csrf_failure as default_csrf_failure
+    return default_csrf_failure(request, reason)
+
 
 def _resolve_login_backend(user):
     backend = getattr(user, "backend", None)
@@ -466,14 +477,6 @@ def authenticate_user(request):
 
 
 
-
-
-
-
-
-
-
-
 def login_view(request):
     national_id = request.POST.get("national_id")
     password = request.POST.get("password")  # ممکن است خالی باشد
@@ -484,6 +487,9 @@ def login_view(request):
         return redirect("users:landing")
 
     if request.method == "POST":
+        if request.user.is_authenticated:
+            return redirect("users:landing")
+
 
         user, error_msg = authenticate_user(request)
 
@@ -500,16 +506,15 @@ def login_view(request):
             # })
 
 
-
-
-
-
-
             return redirect("users:landing")
+        
 
         messages.error(request, error_msg or "خطا در ورود.")
 
-    return render(request, "users/login.html")
+    # return render(request, "users/login.html")
+    return render(request, "users/login.html", {
+        "next": request.GET.get("next", ""),
+    })
 
 
 def register_view(request):
@@ -688,167 +693,205 @@ def _verify_otp(request, national_id, otp_code):
 
 @login_required
 def landing_page(request):
-    # modules = {
-    #     "self": {
-    #         "name": "سلف",
-    #         "link": "/self",
-    #         "icon_name": "self.svg",
-    #         "color": "#23359c",
-    #         "micro_modules": {
-    #             "reserv": {
-    #                 "name": "رزرو غذا",
-    #                 "link": "/self/reserve",
-    #                 "icon_name": "mosharekat.svg",
-    #                 "color": "#8b2650",
-    #             }
-    #         },
-    #     },
-    # }
+    
+    user = request.user
 
-    modules = {
-        "self": {
+    modules = build_modules_for_user(request)
+    
+    context = {
+        "modules": modules,
+    }
+
+    return render(request, "users/landing.html", context)
+
+
+def build_modules_for_user(request):
+    role_name = request.session["current_role"]
+    holding_id = request.session["current_holding_id"]
+    factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
+    user = request.user
+    management_tree = request.session.get("management_tree", [])
+    is_committee = request.session["current_is_committee"]
+    real_role_name = request.GET.get("current_real_role")
+
+    management_access = role_name in {"super_admin","holding_manager","factory_manager","department_manager",}
+
+
+    user = request.user
+    current_host = request.get_host()
+
+    modules = {}
+
+    if user.karimax_permision:
+
+        modules["self"] = {
             "name": "سلف",
             "link": "/self",
             "icon_name": "self.svg",
             "color": "#23359c",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
-                "reserv": {
+                "food_reservation": {
                     "name": "رزرو غذا",
                     "link": "users:food_reservation",
                     "icon_name": "self/رزرو غذا.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
+                    "have_permision": True,
                 },
-                "reserv1": {
+                "personal_report": {
                     "name": "گزارش فردی",
                     "link": "users:personal_reports_dashboard",
                     "icon_name": "self/گزاش فردی.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
+                    "have_permision": True,
+                    "have_permision": True,
                 },
-                "reserv3": {
+                "health": {
                     "name": "سلامت فردی",
                     "link": "#",
                     "icon_name": "self/سلامت فردی .svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
-                "reserv4": {
+                "food_delivery": {
                     "name": "تحویل غذا",
                     "link": "users:food_delivery_page",
                     "icon_name": "self/تحویل غذا.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
+                    "have_permision": user.food_receiver_role > 0,
                 },
-                "reserv5": {
+                "comments": {
                     "name": "نظر دهی",
                     "link": "#",
                     "icon_name": "self/نظر دهی.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
-                "reserv6": {
+                "food_reservation_for_others": {
                     "name": "رزرو غذا برای دیگران",
                     "link": "users:food_reservation_for_others",
                     "icon_name": "self/رزرو غذا برای دیگران.svg",
                     "color": "#8b2650",
-                    "coming_soon": True,
+                    "coming_soon": False,
+                    "have_permision": user.can_reserve_for_others > 0,
                 },
-                "reserv7": {
+                "management_food_reservation_view": {
                     "name": "رزرو غذای مدیریتی",
                     "link": "users:management_food_reservation_view",
                     "icon_name": "self/رزرو غذای مدیریتی .svg",
                     "color": "#8b2650",
                     "coming_soon": False,
+                    "have_permision": user.can_reserve_management_food,
                 },
-                "reserv8": {
+                "manage_self_menu": {
                     "name": "مدیریت منوی سلف",
                     "link": "users:manage_self_menu",
                     "icon_name": "self/مدیریت منوی سلف.svg",
                     "color": "#8b2650",
-                    "coming_soon": True,
+                    "coming_soon": False,
+                    "have_permision": role_name == "department_manager" and Department.objects.filter(Q(managers=request.user),is_self=True,).exists()
                 },
-                "reserv9": {
+                "restaurant_management_dashboard": {
                     "name": "مدیریت رستوران",
                     "link": "users:restaurant_management_dashboard",
                     "icon_name": "self/مدیریت منوی سلف.svg",
                     "color": "#8b2650",
-                    "coming_soon": True,
+                    "coming_soon": False,
+                    "have_permision": role_name == "supervisor" and Subdepartment.objects.filter(Q(supervisors=request.user),is_restaurant=True,).exists(),
                 },
-                "reserv10": {
+                "managements_reports_dashboard": {
                     "name": "گزارش گیری مدیریتی",
                     "link": "users:managements_reports_dashboard",
                     "icon_name": "self/گزارش گیری بدهی سلف.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
+                    "have_permision": user.reporting_permision == 1,
                 },
-                "reserv11": {
+                "gust_food_reservation_view": {
                     "name": "رزرو غذای میهمان ",
                     "link": "#",
                     "icon_name": "self/رزرو غذای مهمان .svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "participation": {
+        }
+
+        modules["participation"] = {
             "name": "مدیریت دانش",
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#9c3b23",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
-                "reserv": {
+                "submit_participation": {
                     "name": "ثبت مشارکت",
                     "link": "users:submit_participation",
                     "icon_name": "add_participation/add.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
+                    "have_permision": True,
                 },
-                "reserv1": {
+                "dashboard": {
                     "name": "مشارکت های من",
                     "link": "users:dashboard",
                     "icon_name": "add_participation/my_particip.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
+                    "have_permision": True,
                 },
-                "reserv2": {
+                "management_dashboard": {
                     "name": "داشبورد مدیریتی",
                     "link": "users:management_dashboard",
                     "icon_name": "add_participation/Vector.svg",
                     "color": "#8b2650",
-                    "coming_soon": True,
+                    "coming_soon": False,
+                    "have_permision": management_access,
                 },
-                "reserv3": {
+                "participation_reports": {
                     "name": "پنل گزارش گیری",
                     "link": "users:dashboard",
                     "icon_name": "add_participation/report.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
-                "reserv4": {
+                "referral": {
                     "name": "ارجاع",
                     "link": "#",
                     "icon_name": "add_participation/refere.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
-                "reserv5": {
+                "referrals_inbox": {
                     "name": "ارجاعات دریافتی",
                     "link": "users:referrals_inbox",
                     "icon_name": "add_participation/refere.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "edari": {
+        }
+
+        modules["edari"] = {
             "name": "امور اداری",
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#239c47",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "فیش حقوقی",
@@ -856,6 +899,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "مساعده",
@@ -863,6 +907,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv2": {
                     "name": "قراردادها",
@@ -870,6 +915,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv3": {
                     "name": "نامه های اداری",
@@ -877,6 +923,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv4": {
                     "name": "مقررات سازمانی",
@@ -884,6 +931,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv5": {
                     "name": "شرح شغلی",
@@ -891,6 +939,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv6": {
                     "name": "سوابق کاری",
@@ -898,6 +947,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv7": {
                     "name": "تردد",
@@ -905,6 +955,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv8": {
                     "name": "اموالی",
@@ -912,15 +963,18 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "trip": {
+        }
+        
+        modules["trip"] = {
             "name": "سفر",
             "link": "/self",
             "icon_name": "morakhasi.svg",
             "color": "#9c2378",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "درخواست سفر",
@@ -928,6 +982,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "لیست درخواست ها",
@@ -935,6 +990,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv2": {
                     "name": "تاییدات",
@@ -942,6 +998,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv3": {
                     "name": "تاریخچه تاییدات",
@@ -949,6 +1006,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv4": {
                     "name": "راهنمای سفر",
@@ -956,6 +1014,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv5": {
                     "name": "دستورالعمل",
@@ -963,6 +1022,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv6": {
                     "name": "سوالات متداول",
@@ -970,15 +1030,18 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "amalkard": {
+        }
+
+        modules["amalkard"] = {
             "name": "مدیریت عملکرد",
             "link": "/self",
             "icon_name": "arzyabiamalkard.svg",
             "color": "#909c23",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "مدیریت عملکرد",
@@ -986,38 +1049,45 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "Support": {
+        }
+
+        modules["Support"] = {
             "name": "پشتیبانی",
             "link": "/self",
             "icon_name": "shekayat.svg",
             "color": "#238a9c",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "تماس",
-                    "link": "#",
+                    "link": "users:contact_us",
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
-                    "coming_soon": True,
+                    "coming_soon": False,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "تغییر رمز",
-                    "link": "#",
+                    "link": "users:change_password",
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
-                    "coming_soon": True,
+                    "coming_soon": False,
+                    "have_permision": True,
                 },
             },
-        },
-        "train": {
+        }
+
+        modules["train"] = {
             "name": "آموزش",
             "link": "/self",
             "icon_name": "amoozesh.svg",
             "color": "#9c6c23",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "آموزش",
@@ -1025,6 +1095,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "آموزش های من",
@@ -1032,6 +1103,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv2": {
                     "name": "گواهی های من",
@@ -1039,6 +1111,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv3": {
                     "name": "دانشنامه دیجیتال",
@@ -1046,6 +1119,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv4": {
                     "name": "آموزش های بهبودی",
@@ -1053,6 +1127,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv5": {
                     "name": "لیست دوره ها",
@@ -1060,6 +1135,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv6": {
                     "name": "سوالات متداول",
@@ -1067,15 +1143,18 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "welfare_affairs": {
+        }
+
+        modules["welfare_affairs"] = {
             "name": "اموررفاهی",
             "link": "/self",
             "icon_name": "hoghoogh.svg",
             "color": "#0ee2ad",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "سپ کارت",
@@ -1083,6 +1162,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "ارزاق",
@@ -1090,136 +1170,18 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "jazb": {
-            "name": "جذب و استخدام",
-            "link": "/self",
-            "icon_name": "estekhdam.svg",
-            "color": "#9c234b",
-            "coming_soon": False,
-            "micro_modules": {
-                
-                "jazb1": {
-                    "name": "داشبورد سامانه جذب و استخدام",
-                    "link": "https://jazb.karimax2.ir/dashboard",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": False,
-                },
+        }
 
-
-                "reserv": {
-                    "name": "ساخت رزومه جدید",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv1": {
-                    "name": "رزومه های من",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv2": {
-                    "name": "پیشنهادات شغلی",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv3": {
-                    "name": "ایجاد آگهی شغلی",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv4": {
-                    "name": "مدیریت کاربران",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv5": {
-                    "name": "شغل های پیشنهاد شده به کاربر",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv6": {
-                    "name": "مدیریت رزومه ها",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-            },
-        },
-        "quiz": {
-            "name": "آزمون ها",
-            "link": "/self",
-            "icon_name": "taghvimjalasat.svg",
-            "color": "#239c82",
-            "coming_soon": False,
-            "micro_modules": {
-                
-                
-                "quizb1": {
-                    "name": "داشبورد سامانه کوییز",
-                    "link": "https://quiz.karimax2.ir",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": False,
-                },
-                "reserv": {
-                    "name": "آزمون های من",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv1": {
-                    "name": "مدیریت آزمون ها",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv2": {
-                    "name": "ساخت آزمون جدید ",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv3": {
-                    "name": "گزارش گیری",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-                "reserv4": {
-                    "name": "مدیریت کاربران",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                },
-            },
-        },
-        "dept": {
+        modules["dept"] = {
             "name": "صتدوق وام",
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#0b6b28",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "درخواست جدید",
@@ -1227,6 +1189,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "درخواست های من",
@@ -1234,6 +1197,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv2": {
                     "name": "مدیریت درخواست ها",
@@ -1241,6 +1205,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv3": {
                     "name": "گزارش گیری",
@@ -1248,15 +1213,18 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "charity": {
+        }
+
+        modules["charity"] = {
             "name": "نیکوکاری",
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#0c1650",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "خیریه نذر اشتغال",
@@ -1264,6 +1232,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "نذورات",
@@ -1271,6 +1240,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv2": {
                     "name": "قربانی",
@@ -1278,6 +1248,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv3": {
                     "name": "گزارش گیری",
@@ -1285,15 +1256,18 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "insurance": {
+        }
+
+        modules["insurance"] = {
             "name": "بیمه",
             "link": "/self",
             "icon_name": "asnad.svg",
             "color": "#23359c",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "بیمه تکمیلی",
@@ -1301,6 +1275,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "بیماران خاص",
@@ -1308,6 +1283,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv2": {
                     "name": "سامانه نوبت دهی",
@@ -1315,6 +1291,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv3": {
                     "name": "گزارش گیری",
@@ -1322,15 +1299,18 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "exercise": {
+        }
+
+        modules["exercise"] = {
             "name": "تربیت بدنی",
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#5f72e0",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "مسابقات ورزشی",
@@ -1338,6 +1318,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "افتخارات",
@@ -1345,15 +1326,18 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
             },
-        },
-        "clouds_services": {
+        }
+        
+        modules["clouds_services"] = {
             "name": "سامانه های ابری",
             "link": "/clouds",
             "icon_name": "mosharekat.svg",
             "color": "#5f6836",
             "coming_soon": False,
+            "have_permision": True,
             "micro_modules": {
                 "reserv": {
                     "name": "فضای ابری",
@@ -1361,6 +1345,7 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
                 "reserv1": {
                     "name": "سامانه میت",
@@ -1368,16 +1353,139 @@ def landing_page(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
                 },
+            },
+        }
+
+
+
+
+    modules["jazb"] = {
+        "name": "جذب و استخدام",
+        "link": "/self",
+        "icon_name": "estekhdam.svg",
+        "color": "#9c234b",
+        "coming_soon": False,
+        "have_permision": True,
+        "micro_modules": {
+            "jazb1": {
+                "name": "داشبورد سامانه جذب و استخدام",
+                "link": f"https://jazb.{current_host}/dashboard",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": False,
+            },
+            "reserv": {
+                "name": "ساخت رزومه جدید",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv1": {
+                "name": "رزومه های من",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv2": {
+                "name": "پیشنهادات شغلی",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv3": {
+                "name": "ایجاد آگهی شغلی",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv4": {
+                "name": "مدیریت کاربران",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv5": {
+                "name": "شغل های پیشنهاد شده به کاربر",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv6": {
+                "name": "مدیریت رزومه ها",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
             },
         },
     }
 
-    context = {
-        "modules": modules,
+    modules["quiz"] = {
+        "name": "آزمون ها",
+        "link": "/self",
+        "icon_name": "taghvimjalasat.svg",
+        "color": "#239c82",
+        "coming_soon": False,
+        "have_permision": True,
+        "micro_modules": {
+            
+            
+            "quizb1": {
+                "name": "داشبورد سامانه کوییز",
+                "link": f"https://quiz.{current_host}",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": False,
+            },
+            "reserv": {
+                "name": "آزمون های من",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv1": {
+                "name": "مدیریت آزمون ها",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv2": {
+                "name": "ساخت آزمون جدید ",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv3": {
+                "name": "گزارش گیری",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+            "reserv4": {
+                "name": "مدیریت کاربران",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+            },
+        },
     }
 
-    return render(request, "users/landing.html", context)
+
+    return modules
+
 
 
 def contact_us(request):
@@ -1391,6 +1499,8 @@ def contact_us(request):
 
 def logout_view(request):
     """خروج کاربر از سیستم و پاک کردن تاریخچه چت از سشن."""
+
+    request.session.flush()
 
     if "chat_history" in request.session:
         del request.session["chat_history"]
@@ -3378,19 +3488,21 @@ def manage_self_menu(request):
 
     user = request.user
 
+    print(f"role: {role_name}")
+
     has_management_access = role_name in management_roles
     can_access_evaluation_panel = role_name in ["super_admin", "department_manager"]
 
     can_download_other_factories_resers = True
 
     # دسترسی فقط برای مدیر سلف
-    if not Department.objects.filter(
+    if role_name != "department_manager" or not Department.objects.filter(
         # Q(manager=request.user) |
         Q(managers=request.user),
         is_self=True,
     ).exists():
         messages.error(request, "شما دسترسی به مدیریت منوی سلف ندارید.")
-        return redirect("users:management_dashboard")
+        return redirect("users:landing")
 
     # رستوران‌ها
     restaurants = (
@@ -3956,33 +4068,6 @@ def manage_self_menu(request):
     return render(request, "users/manage_self_menu.html", context)
 
 
-# def reporting_panel(request):
-
-#     context = {}
-#     return render(request, "users/reporting_panel.html", context)
-
-# @login_required
-# def managements_reports_dashboard(request):
-#     # بررسی دسترسی مشابه manage_self_menu
-#     if not Department.objects.filter(managers=request.user, is_self=True).exists():
-#         messages.error(request, "شما دسترسی به صفحه گزارش‌گیری ندارید.")
-#         return redirect("users:dashboard")
-
-
-#     total_employees = Employee.objects.filter(is_active=True).count()
-#     total_restaurants = Subdepartment.objects.filter(is_restaurant=True).count()
-#     today_reservations = FoodReservation.objects.filter(
-#         reservation_date=date.today(),
-#         is_canceled=0
-#     ).count()
-
-
-#     context = {
-#         "total_employees": total_employees,
-#         "total_restaurants": total_restaurants,
-#         "today_reservations": today_reservations,
-#     }
-#     return render(request, "users/reporting_panel.html", context)
 
 
 @login_required
@@ -5197,6 +5282,15 @@ def food_reservation_view(request):
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
 
+
+    weeks_count = int(getattr(settings, "WEEKS_COUNT", 1) or 1)
+
+    # weeks_count = settings.WEEKS_COUNT
+
+
+
+
+
     # if not user.unlimit_reservation:
     #     max_factory_quantity = user.factory_limit_reservation
     #     max_free_quantity = user.free_limit_reservation
@@ -5320,56 +5414,23 @@ def food_reservation_view(request):
     )
     # print(f"********** {close_food_res_time_H}")
 
+
+
     days_until_saturday = today_jdate.weekday()
-    week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
-    week_start_date = (
-        week_start_jdate.togregorian()
-    )  # تاریخ میلادی برای جستجوی WeeklyMenu
+    base_week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
 
-    latest_start_dates = (
-        WeeklyMenu.objects.filter(
-            restaurant__department__factory=factory,
-            week_start_date__lte=week_start_date,
-        )
-        .values("restaurant")
-        .annotate(latest_start_date=Max("week_start_date"))
-    )
-
-    # 2. ساخت Q object برای فچ کردن منوهای دقیق (Greatest-N-per-Group)
-    q_objects = Q()
-    if latest_start_dates.exists():
-        for item in latest_start_dates:
-            # ترکیب شناسه رستوران و آخرین تاریخ شروع آن
-            q_objects |= Q(
-                restaurant_id=item["restaurant"],
-                week_start_date=item["latest_start_date"],
-            )
-
-        # فچ کردن منوهای هفتگی که شرایط Q object را دارند
-        weekly_menus = (
-            WeeklyMenu.objects.filter(q_objects)
-            .select_related("restaurant", "restaurant__department")
-            .all()
-        )
-    else:
-        weekly_menus = WeeklyMenu.objects.none()
-
-    if weekly_menus:
-        all_menu_items = (
-            MenuItem.objects.filter(
-                weekly_menu__in=weekly_menus, food__is_management_food=False
-            )
-            .select_related("food", "weekly_menu__restaurant")
-            .all()
-        )
-    else:
-        all_menu_items = MenuItem.objects.none()
+    week_starts_jdate = [
+        base_week_start_jdate + timedelta(days=7 * i)
+        for i in range(weeks_count)
+    ]
+    full_start_date = week_starts_jdate[0].togregorian()
+    full_end_date = (week_starts_jdate[-1] + timedelta(days=6)).togregorian()
 
     existing_reservations = (
         FoodReservation.objects.filter(
             employee=user,
-            reservation_date__gte=week_start_date,
-            reservation_date__lte=week_start_date + timedelta(days=6),
+            reservation_date__gte=full_start_date,
+            reservation_date__lte=full_end_date,
             related_factory=factory,
             is_canceled=False,
             menu_item__food__is_management_food=False,
@@ -5381,106 +5442,303 @@ def food_reservation_view(request):
         .all()
     )
 
+    def get_weekly_menus_for_week(week_start_date):
+        latest_start_dates = (
+            WeeklyMenu.objects.filter(
+                restaurant__department__factory=factory,
+                week_start_date__lte=week_start_date,
+            )
+            .values("restaurant")
+            .annotate(latest_start_date=Max("week_start_date"))
+        )
+
+        if not latest_start_dates.exists():
+            return WeeklyMenu.objects.none()
+
+        q_objects = Q()
+        for item in latest_start_dates:
+            q_objects |= Q(
+                restaurant_id=item["restaurant"],
+                week_start_date=item["latest_start_date"],
+            )
+
+        return (
+            WeeklyMenu.objects.filter(q_objects)
+            .select_related("restaurant", "restaurant__department")
+            .all()
+        )
+    
+    
+
+
     weekly_data = []
     week_days = [code for code, name in PERSIAN_WEEK_DAYS]
 
-    for i, day_code in enumerate(week_days):
-        day_date_j = week_start_jdate + jdatetime.timedelta(days=i)
-        day_date_g = week_start_date + timedelta(days=i)
-        day_name = dict(PERSIAN_WEEK_DAYS)[day_code]
+    for week_index, week_start_jdate in enumerate(week_starts_jdate, start=1):
+        week_start_date = week_start_jdate.togregorian()
+        week_end_date = week_start_date + timedelta(days=6)
 
-        # لیست منوها برای این روز (هر ترکیب غذا + رستوران جداگانه)
-        menus = all_menu_items.filter(day_persian=day_code)
+        weekly_menus = get_weekly_menus_for_week(week_start_date)
 
-        # امکان رزرو: آینده یا امروز قبل از ۱۰ صبح
-        is_reservation_possible = day_date_g >= today_gdate
-
-        tehran_aware_datetime = timezone.localtime(timezone.now())
-        is_reservation_time_passed = False
-        if day_date_g == today_gdate:
-            is_reservation_time_passed = tehran_aware_datetime.time() > time(
-                close_food_res_time_H, close_food_res_time_M
+        if weekly_menus:
+            all_menu_items = (
+                MenuItem.objects.filter(
+                    weekly_menu__in=weekly_menus,
+                    food__is_management_food=False,
+                )
+                .select_related("food", "weekly_menu__restaurant")
+                .all()
             )
+        else:
+            all_menu_items = MenuItem.objects.none()
 
-        is_today_comment_time = (
-            not is_reservation_possible
-            or (day_date_g == today_gdate)
-            and tehran_aware_datetime.time()
-            > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
-        )
+        for i, day_code in enumerate(week_days):
+            day_date_j = week_start_jdate + jdatetime.timedelta(days=i)
+            day_date_g = week_start_date + timedelta(days=i)
+            day_name = dict(PERSIAN_WEEK_DAYS)[day_code]
 
-        # لیست IDهای منوهای موجود (برای چک رزروهای قدیمی)
-        available_menu_ids = list(menus.values_list("id", flat=True))
-        print(f"**************{available_menu_ids}")
+            menus = all_menu_items.filter(day_persian=day_code)
 
-        # رزروهای قبلی برای این روز
-        day_reservations = existing_reservations.filter(reservation_date=day_date_g)
+            is_reservation_possible = day_date_g >= today_gdate
 
-        user_food_ids = day_reservations.values_list("menu_item__id", flat=True)
-
-        users_feedbacks = (
-            FoodReservation.objects.filter(
-                menu_item__id__in=user_food_ids,
-                menu_item__food__is_management_food=False,
-                # ).exclude(employee=user
-            )
-            .exclude(Q(feedback__isnull=True) & Q(rating__isnull=True))
-            .select_related("menu_item__food", "employee")
-        )
-
-        # دیکشنری خروجی نهایی
-        day_food_feedbacks = {}
-        # print(users_feedbacks)
-
-        for item in users_feedbacks:
-            food_id = item.menu_item.id
-            user_can_comment = True if item.employee != user else False
-
-            # print(user_can_comment)
-
-            if food_id not in day_food_feedbacks:
-                day_food_feedbacks[food_id] = {"comments": [], "ratings": []}
-
-            if item.feedback:
-                day_food_feedbacks[food_id]["comments"].append(
-                    {
-                        "text": item.feedback,
-                        "rating": item.rating,
-                        "user": item.employee.full_name,
-                        "date": item.reserved_at,
-                        "user_can_comment": user_can_comment,
-                    }
+            tehran_aware_datetime = timezone.localtime(timezone.now())
+            is_reservation_time_passed = False
+            if day_date_g == today_gdate:
+                is_reservation_time_passed = tehran_aware_datetime.time() > time(
+                    close_food_res_time_H, close_food_res_time_M
                 )
 
-            if item.rating:
-                day_food_feedbacks[food_id]["ratings"].append((item.rating))
+            is_today_comment_time = (
+                not is_reservation_possible
+                or (
+                    day_date_g == today_gdate
+                    and tehran_aware_datetime.time()
+                    > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
+                )
+            )
 
-        day_previous_comments = []
-        day_average_ratings = 3.5
-        user_can_comment = True
-        is_today_comment_time = True
+            available_menu_ids = list(menus.values_list("id", flat=True))
 
-        weekly_data.append(
-            {
-                "day_name": day_name,
-                "jdate_str": day_date_j.strftime("%Y/%m/%d"),
-                "gdate_str": day_date_g.strftime("%Y-%m-%d"),
-                "menus": menus,
-                "is_reservation_possible": is_reservation_possible,
-                "is_reservation_time_passed": is_reservation_time_passed,
-                "available_menu_ids": available_menu_ids,
-                # 'previous_comments': day_previous_comments,
-                "average_ratings": day_average_ratings,
-                "user_can_comment": user_can_comment,
-                "day_reservations": day_reservations,
-                "day_food_feedbacks": day_food_feedbacks,
-                "reservation_time_limit": time(
-                    close_food_res_time_H, close_food_res_time_M
-                ),
-                "is_today_comment_time": is_today_comment_time,
-            }
-        )
-        # print(weekly_data)
+            day_reservations = existing_reservations.filter(reservation_date=day_date_g)
+
+            user_food_ids = day_reservations.values_list("menu_item__id", flat=True)
+
+            users_feedbacks = (
+                FoodReservation.objects.filter(
+                    menu_item__id__in=user_food_ids,
+                    menu_item__food__is_management_food=False,
+                )
+                .exclude(Q(feedback__isnull=True) & Q(rating__isnull=True))
+                .select_related("menu_item__food", "employee")
+            )
+
+            day_food_feedbacks = {}
+
+            for item in users_feedbacks:
+                food_id = item.menu_item.id
+                user_can_comment = True if item.employee != user else False
+
+                if food_id not in day_food_feedbacks:
+                    day_food_feedbacks[food_id] = {"comments": [], "ratings": []}
+
+                if item.feedback:
+                    day_food_feedbacks[food_id]["comments"].append(
+                        {
+                            "text": item.feedback,
+                            "rating": item.rating,
+                            "user": item.employee.full_name,
+                            "date": item.reserved_at,
+                            "user_can_comment": user_can_comment,
+                        }
+                    )
+
+                if item.rating:
+                    day_food_feedbacks[food_id]["ratings"].append(item.rating)
+
+            weekly_data.append(
+                {
+                    "week_index": week_index,
+                    "week_start_date": week_start_date,
+                    "week_end_date": week_end_date,
+                    "day_name": day_name,
+                    "jdate_str": day_date_j.strftime("%Y/%m/%d"),
+                    "gdate_str": day_date_g.strftime("%Y-%m-%d"),
+                    "menus": menus,
+                    "is_reservation_possible": is_reservation_possible,
+                    "is_reservation_time_passed": is_reservation_time_passed,
+                    "available_menu_ids": available_menu_ids,
+                    "average_ratings": 3.5,
+                    "user_can_comment": True,
+                    "day_reservations": day_reservations,
+                    "day_food_feedbacks": day_food_feedbacks,
+                    "reservation_time_limit": time(close_food_res_time_H, close_food_res_time_M),
+                    "is_today_comment_time": is_today_comment_time,
+                }
+            )
+
+
+
+
+    # week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
+    # week_start_date = (
+    #     week_start_jdate.togregorian()
+    # )  # تاریخ میلادی برای جستجوی WeeklyMenu
+
+    # latest_start_dates = (
+    #     WeeklyMenu.objects.filter(
+    #         restaurant__department__factory=factory,
+    #         week_start_date__lte=week_start_date,
+    #     )
+    #     .values("restaurant")
+    #     .annotate(latest_start_date=Max("week_start_date"))
+    # )
+
+    # # 2. ساخت Q object برای فچ کردن منوهای دقیق (Greatest-N-per-Group)
+    # q_objects = Q()
+    # if latest_start_dates.exists():
+    #     for item in latest_start_dates:
+    #         # ترکیب شناسه رستوران و آخرین تاریخ شروع آن
+    #         q_objects |= Q(
+    #             restaurant_id=item["restaurant"],
+    #             week_start_date=item["latest_start_date"],
+    #         )
+
+    #     # فچ کردن منوهای هفتگی که شرایط Q object را دارند
+    #     weekly_menus = (
+    #         WeeklyMenu.objects.filter(q_objects)
+    #         .select_related("restaurant", "restaurant__department")
+    #         .all()
+    #     )
+    # else:
+    #     weekly_menus = WeeklyMenu.objects.none()
+
+    # if weekly_menus:
+    #     all_menu_items = (
+    #         MenuItem.objects.filter(
+    #             weekly_menu__in=weekly_menus, food__is_management_food=False
+    #         )
+    #         .select_related("food", "weekly_menu__restaurant")
+    #         .all()
+    #     )
+    # else:
+    #     all_menu_items = MenuItem.objects.none()
+
+    # existing_reservations = (
+    #     FoodReservation.objects.filter(
+    #         employee=user,
+    #         reservation_date__gte=week_start_date,
+    #         reservation_date__lte=week_start_date + timedelta(days=6),
+    #         related_factory=factory,
+    #         is_canceled=False,
+    #         menu_item__food__is_management_food=False,
+    #     )
+    #     .select_related(
+    #         "menu_item__food", "menu_item__weekly_menu__restaurant__department"
+    #     )
+    #     .order_by("reserved_at")
+    #     .all()
+    # )
+
+    # weekly_data = []
+    # week_days = [code for code, name in PERSIAN_WEEK_DAYS]
+
+    # for i, day_code in enumerate(week_days):
+    #     day_date_j = week_start_jdate + jdatetime.timedelta(days=i)
+    #     day_date_g = week_start_date + timedelta(days=i)
+    #     day_name = dict(PERSIAN_WEEK_DAYS)[day_code]
+
+    #     # لیست منوها برای این روز (هر ترکیب غذا + رستوران جداگانه)
+    #     menus = all_menu_items.filter(day_persian=day_code)
+
+    #     # امکان رزرو: آینده یا امروز قبل از ۱۰ صبح
+    #     is_reservation_possible = day_date_g >= today_gdate
+
+    #     tehran_aware_datetime = timezone.localtime(timezone.now())
+    #     is_reservation_time_passed = False
+    #     if day_date_g == today_gdate:
+    #         is_reservation_time_passed = tehran_aware_datetime.time() > time(
+    #             close_food_res_time_H, close_food_res_time_M
+    #         )
+
+    #     is_today_comment_time = (
+    #         not is_reservation_possible
+    #         or (day_date_g == today_gdate)
+    #         and tehran_aware_datetime.time()
+    #         > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
+    #     )
+
+    #     # لیست IDهای منوهای موجود (برای چک رزروهای قدیمی)
+    #     available_menu_ids = list(menus.values_list("id", flat=True))
+    #     print(f"**************{available_menu_ids}")
+
+    #     # رزروهای قبلی برای این روز
+    #     day_reservations = existing_reservations.filter(reservation_date=day_date_g)
+
+    #     user_food_ids = day_reservations.values_list("menu_item__id", flat=True)
+
+    #     users_feedbacks = (
+    #         FoodReservation.objects.filter(
+    #             menu_item__id__in=user_food_ids,
+    #             menu_item__food__is_management_food=False,
+    #             # ).exclude(employee=user
+    #         )
+    #         .exclude(Q(feedback__isnull=True) & Q(rating__isnull=True))
+    #         .select_related("menu_item__food", "employee")
+    #     )
+
+    #     # دیکشنری خروجی نهایی
+    #     day_food_feedbacks = {}
+    #     # print(users_feedbacks)
+
+    #     for item in users_feedbacks:
+    #         food_id = item.menu_item.id
+    #         user_can_comment = True if item.employee != user else False
+
+    #         # print(user_can_comment)
+
+    #         if food_id not in day_food_feedbacks:
+    #             day_food_feedbacks[food_id] = {"comments": [], "ratings": []}
+
+    #         if item.feedback:
+    #             day_food_feedbacks[food_id]["comments"].append(
+    #                 {
+    #                     "text": item.feedback,
+    #                     "rating": item.rating,
+    #                     "user": item.employee.full_name,
+    #                     "date": item.reserved_at,
+    #                     "user_can_comment": user_can_comment,
+    #                 }
+    #             )
+
+    #         if item.rating:
+    #             day_food_feedbacks[food_id]["ratings"].append((item.rating))
+
+    #     day_previous_comments = []
+    #     day_average_ratings = 3.5
+    #     user_can_comment = True
+    #     is_today_comment_time = True
+
+    #     weekly_data.append(
+    #         {
+    #             "day_name": day_name,
+    #             "jdate_str": day_date_j.strftime("%Y/%m/%d"),
+    #             "gdate_str": day_date_g.strftime("%Y-%m-%d"),
+    #             "menus": menus,
+    #             "is_reservation_possible": is_reservation_possible,
+    #             "is_reservation_time_passed": is_reservation_time_passed,
+    #             "available_menu_ids": available_menu_ids,
+    #             # 'previous_comments': day_previous_comments,
+    #             "average_ratings": day_average_ratings,
+    #             "user_can_comment": user_can_comment,
+    #             "day_reservations": day_reservations,
+    #             "day_food_feedbacks": day_food_feedbacks,
+    #             "reservation_time_limit": time(
+    #                 close_food_res_time_H, close_food_res_time_M
+    #             ),
+    #             "is_today_comment_time": is_today_comment_time,
+    #         }
+    #     )
+    #     # print(weekly_data)
 
     if request.method == "POST" and "submit_reservations" in request.POST:
 
@@ -5711,16 +5969,19 @@ def food_reservation_view(request):
         "can_reserve_management_food": can_reserve_management_food,
     }
 
+    print(f"context : {context}")
+
     return render(request, "users/food_reservation.html", context)
 
 
 @transaction.atomic
 @login_required
 def management_food_reservation_view(request):
-
     role_name = request.session["current_role"]
     holding_id = request.session["current_holding_id"]
     factory_id = request.session["current_factory_id"]
+    department_id = request.session["current_department_id"]
+    subdepartment_id = request.session["current_subdepartment_id"]
     is_committee = request.session["current_is_committee"]
     can_choose_factory = False
     available_factories = Factory.objects.none()
@@ -5733,6 +5994,9 @@ def management_food_reservation_view(request):
 
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
+
+
+    weeks_count = int(getattr(settings, "WEEKS_COUNT", 1) or 1)
 
     if "form_token" not in request.session:
         request.session["form_token"] = get_random_string(32)
@@ -5810,8 +6074,10 @@ def management_food_reservation_view(request):
         else:
             if role_name == "super_admin":
                 factory = Factory.objects.first()
-            else:
+            elif role_name == "holding_manager":
                 factory = Factory.objects.filter(holding_id=holding_id).first()
+            else:
+                factory = Factory.objects.filter(id=factory_id).first()
 
     else:
         if is_committee:
@@ -5823,7 +6089,6 @@ def management_food_reservation_view(request):
         messages.warning(
             request, "کارخانه شما مشخص نشده است. لطفا با بخش هوش مصنوعی تماس بگیرید."
         )
-        # return redirect("users:dashboard")
         return redirect("users:landing")
 
     close_food_res_time_H = (
@@ -5844,58 +6109,22 @@ def management_food_reservation_view(request):
         )
         else default_close_food_res_time_M
     )
-    # print(f"********** {close_food_res_time_H}")
 
     days_until_saturday = today_jdate.weekday()
-    week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
-    week_start_date = (
-        week_start_jdate.togregorian()
-    )  # تاریخ میلادی برای جستجوی WeeklyMenu
+    base_week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
 
-    latest_start_dates = (
-        WeeklyMenu.objects.filter(
-            restaurant__department__factory=factory,
-            week_start_date__lte=week_start_date,
-        )
-        .values("restaurant")
-        .annotate(latest_start_date=Max("week_start_date"))
-    )
-
-    # 2. ساخت Q object برای فچ کردن منوهای دقیق (Greatest-N-per-Group)
-    q_objects = Q()
-    if latest_start_dates.exists():
-        for item in latest_start_dates:
-            # ترکیب شناسه رستوران و آخرین تاریخ شروع آن
-            q_objects |= Q(
-                restaurant_id=item["restaurant"],
-                week_start_date=item["latest_start_date"],
-            )
-
-        # فچ کردن منوهای هفتگی که شرایط Q object را دارند
-        weekly_menus = (
-            WeeklyMenu.objects.filter(q_objects)
-            .select_related("restaurant", "restaurant__department")
-            .all()
-        )
-    else:
-        weekly_menus = WeeklyMenu.objects.none()
-
-    if weekly_menus:
-        all_menu_items = (
-            MenuItem.objects.filter(
-                weekly_menu__in=weekly_menus, food__is_management_food=True
-            )
-            .select_related("food", "weekly_menu__restaurant")
-            .all()
-        )
-    else:
-        all_menu_items = MenuItem.objects.none()
+    week_starts_jdate = [
+        base_week_start_jdate + timedelta(days=7 * i)
+        for i in range(weeks_count)
+    ]
+    full_start_date = week_starts_jdate[0].togregorian()
+    full_end_date = (week_starts_jdate[-1] + timedelta(days=6)).togregorian()
 
     existing_reservations = (
         FoodReservation.objects.filter(
             employee=user,
-            reservation_date__gte=week_start_date,
-            reservation_date__lte=week_start_date + timedelta(days=6),
+            reservation_date__gte=full_start_date,
+            reservation_date__lte=full_end_date,
             related_factory=factory,
             is_canceled=False,
             menu_item__food__is_management_food=True,
@@ -5907,106 +6136,137 @@ def management_food_reservation_view(request):
         .all()
     )
 
+    def get_weekly_menus_for_week(week_start_date):
+        latest_start_dates = (
+            WeeklyMenu.objects.filter(
+                restaurant__department__factory=factory,
+                week_start_date__lte=week_start_date,
+            )
+            .values("restaurant")
+            .annotate(latest_start_date=Max("week_start_date"))
+        )
+
+        if not latest_start_dates.exists():
+            return WeeklyMenu.objects.none()
+
+        q_objects = Q()
+        for item in latest_start_dates:
+            q_objects |= Q(
+                restaurant_id=item["restaurant"],
+                week_start_date=item["latest_start_date"],
+            )
+
+        return (
+            WeeklyMenu.objects.filter(q_objects)
+            .select_related("restaurant", "restaurant__department")
+            .all()
+        )
+
     weekly_data = []
     week_days = [code for code, name in PERSIAN_WEEK_DAYS]
 
-    for i, day_code in enumerate(week_days):
-        day_date_j = week_start_jdate + jdatetime.timedelta(days=i)
-        day_date_g = week_start_date + timedelta(days=i)
-        day_name = dict(PERSIAN_WEEK_DAYS)[day_code]
+    for week_index, week_start_jdate in enumerate(week_starts_jdate, start=1):
+        week_start_date = week_start_jdate.togregorian()
+        week_end_date = week_start_date + timedelta(days=6)
 
-        # لیست منوها برای این روز (هر ترکیب غذا + رستوران جداگانه)
-        menus = all_menu_items.filter(day_persian=day_code)
+        weekly_menus = get_weekly_menus_for_week(week_start_date)
 
-        # امکان رزرو: آینده یا امروز قبل از ۱۰ صبح
-        is_reservation_possible = day_date_g >= today_gdate
-
-        tehran_aware_datetime = timezone.localtime(timezone.now())
-        is_reservation_time_passed = False
-        if day_date_g == today_gdate:
-            is_reservation_time_passed = tehran_aware_datetime.time() > time(
-                close_food_res_time_H, close_food_res_time_M
+        if weekly_menus:
+            all_menu_items = (
+                MenuItem.objects.filter(
+                    weekly_menu__in=weekly_menus,
+                    food__is_management_food=True,
+                )
+                .select_related("food", "weekly_menu__restaurant")
+                .all()
             )
+        else:
+            all_menu_items = MenuItem.objects.none()
 
-        is_today_comment_time = (
-            not is_reservation_possible
-            or (day_date_g == today_gdate)
-            and tehran_aware_datetime.time()
-            > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
-        )
+        for i, day_code in enumerate(week_days):
+            day_date_j = week_start_jdate + jdatetime.timedelta(days=i)
+            day_date_g = week_start_date + timedelta(days=i)
+            day_name = dict(PERSIAN_WEEK_DAYS)[day_code]
 
-        # لیست IDهای منوهای موجود (برای چک رزروهای قدیمی)
-        available_menu_ids = list(menus.values_list("id", flat=True))
-        print(f"**************{available_menu_ids}")
+            menus = all_menu_items.filter(day_persian=day_code)
 
-        # رزروهای قبلی برای این روز
-        day_reservations = existing_reservations.filter(reservation_date=day_date_g)
+            is_reservation_possible = day_date_g >= today_gdate
 
-        user_food_ids = day_reservations.values_list("menu_item__id", flat=True)
-
-        users_feedbacks = (
-            FoodReservation.objects.filter(
-                menu_item__id__in=user_food_ids,
-                menu_item__food__is_management_food=True,
-                # ).exclude(employee=user
-            )
-            .exclude(Q(feedback__isnull=True) & Q(rating__isnull=True))
-            .select_related("menu_item__food", "employee")
-        )
-
-        # دیکشنری خروجی نهایی
-        day_food_feedbacks = {}
-        # print(users_feedbacks)
-
-        for item in users_feedbacks:
-            food_id = item.menu_item.id
-            user_can_comment = True if item.employee != user else False
-
-            # print(user_can_comment)
-
-            if food_id not in day_food_feedbacks:
-                day_food_feedbacks[food_id] = {"comments": [], "ratings": []}
-
-            if item.feedback:
-                day_food_feedbacks[food_id]["comments"].append(
-                    {
-                        "text": item.feedback,
-                        "rating": item.rating,
-                        "user": item.employee.full_name,
-                        "date": item.reserved_at,
-                        "user_can_comment": user_can_comment,
-                    }
+            tehran_aware_datetime = timezone.localtime(timezone.now())
+            is_reservation_time_passed = False
+            if day_date_g == today_gdate:
+                is_reservation_time_passed = tehran_aware_datetime.time() > time(
+                    close_food_res_time_H, close_food_res_time_M
                 )
 
-            if item.rating:
-                day_food_feedbacks[food_id]["ratings"].append((item.rating))
+            is_today_comment_time = (
+                not is_reservation_possible
+                or (
+                    day_date_g == today_gdate
+                    and tehran_aware_datetime.time()
+                    > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
+                )
+            )
 
-        day_previous_comments = []
-        day_average_ratings = 3.5
-        user_can_comment = True
-        is_today_comment_time = True
+            available_menu_ids = list(menus.values_list("id", flat=True))
 
-        weekly_data.append(
-            {
-                "day_name": day_name,
-                "jdate_str": day_date_j.strftime("%Y/%m/%d"),
-                "gdate_str": day_date_g.strftime("%Y-%m-%d"),
-                "menus": menus,
-                "is_reservation_possible": is_reservation_possible,
-                "is_reservation_time_passed": is_reservation_time_passed,
-                "available_menu_ids": available_menu_ids,
-                # 'previous_comments': day_previous_comments,
-                "average_ratings": day_average_ratings,
-                "user_can_comment": user_can_comment,
-                "day_reservations": day_reservations,
-                "day_food_feedbacks": day_food_feedbacks,
-                "reservation_time_limit": time(
-                    close_food_res_time_H, close_food_res_time_M
-                ),
-                "is_today_comment_time": is_today_comment_time,
-            }
-        )
-        # print(weekly_data)
+            day_reservations = existing_reservations.filter(reservation_date=day_date_g)
+
+            user_food_ids = day_reservations.values_list("menu_item__id", flat=True)
+
+            users_feedbacks = (
+                FoodReservation.objects.filter(
+                    menu_item__id__in=user_food_ids,
+                    menu_item__food__is_management_food=True,
+                )
+                .exclude(Q(feedback__isnull=True) & Q(rating__isnull=True))
+                .select_related("menu_item__food", "employee")
+            )
+
+            day_food_feedbacks = {}
+
+            for item in users_feedbacks:
+                food_id = item.menu_item.id
+                user_can_comment = True if item.employee != user else False
+
+                if food_id not in day_food_feedbacks:
+                    day_food_feedbacks[food_id] = {"comments": [], "ratings": []}
+
+                if item.feedback:
+                    day_food_feedbacks[food_id]["comments"].append(
+                        {
+                            "text": item.feedback,
+                            "rating": item.rating,
+                            "user": item.employee.full_name,
+                            "date": item.reserved_at,
+                            "user_can_comment": user_can_comment,
+                        }
+                    )
+
+                if item.rating:
+                    day_food_feedbacks[food_id]["ratings"].append(item.rating)
+
+            weekly_data.append(
+                {
+                    "week_index": week_index,
+                    "week_start_date": week_start_date,
+                    "week_end_date": week_end_date,
+                    "day_name": day_name,
+                    "jdate_str": day_date_j.strftime("%Y/%m/%d"),
+                    "gdate_str": day_date_g.strftime("%Y-%m-%d"),
+                    "menus": menus,
+                    "is_reservation_possible": is_reservation_possible,
+                    "is_reservation_time_passed": is_reservation_time_passed,
+                    "available_menu_ids": available_menu_ids,
+                    "average_ratings": 3.5,
+                    "user_can_comment": True,
+                    "day_reservations": day_reservations,
+                    "day_food_feedbacks": day_food_feedbacks,
+                    "reservation_time_limit": time(close_food_res_time_H, close_food_res_time_M),
+                    "is_today_comment_time": is_today_comment_time,
+                }
+            )
+
 
     if request.method == "POST" and "submit_reservations" in request.POST:
 
@@ -6044,7 +6304,6 @@ def management_food_reservation_view(request):
 
             # یک دیکشنری پیدا کن (یا بساز)
             target_key = f"{date_str}-{index}"
-            # print(f"aaaaaaaaa{parsed_reservations}")
 
             if target_key not in [r.get("key") for r in parsed_reservations]:
                 parsed_reservations.append(
@@ -6056,8 +6315,6 @@ def management_food_reservation_view(request):
                         "price_type": None,
                     }
                 )
-
-            # print(f"bbbbbbbbb{parsed_reservations}")
 
             # دیکشنری مربوطه را بگیر
             target = next(r for r in parsed_reservations if r["key"] == target_key)
@@ -6096,7 +6353,9 @@ def management_food_reservation_view(request):
 
             date_g = datetime.strptime(item["date"], "%Y-%m-%d").date()
 
-            menu_item = MenuItem.objects.filter(id=item["food_choice"]).first()
+            menu_item = MenuItem.objects.filter(
+                id=item["food_choice"], food__is_management_food=True,
+            ).first()
             if not menu_item:
                 continue
 
@@ -6235,7 +6494,11 @@ def management_food_reservation_view(request):
         "can_reserve_management_food": can_reserve_management_food,
     }
 
-    return render(request, "users/management_food_reservation.html", context)
+    print(f"context : {context}")
+
+    return render(request, "users/food_reservation.html", context)
+
+
 
 
 def get_factory_ids(employee):
