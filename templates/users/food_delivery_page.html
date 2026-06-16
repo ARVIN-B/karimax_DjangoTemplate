@@ -69,50 +69,48 @@
 					<table class="table delivery-table">
 						<thead>
 							<tr>
-								<th>نام غذا</th>
-								<th>سهمیه</th>
-								<th>آزاد</th>
-								<th>مهمان</th>
-								<th>مجموع</th>
+								<th>توضیحات غذا</th>
 								<th>اقلام (رزروها)</th>
 							</tr>
 						</thead>
 						<tbody>
 							{% for food_id, info in foods.items %}
+
 							<tr class="food-row">
-								<td
-									data-label="نام غذا"
-									class="fw-bold"
-								>
-									{{ info.food.name }}
+								<td data-label="نام غذا" class="fw-bold food-name-cell">
+									<div class="food-header">
+										<span class="food-name">{{ info.food.name }}</span>
+										
+										<!-- خلاصه اطلاعات به صورت خطی و زیبا -->
+										<div class="food-stats">
+											<span class="stat-item">
+												<small>سهمیه:</small> 
+												<strong class="quota">{{ info.quota }}</strong>
+											</span>
+											<span class="stat-item">
+												<small>آزاد:</small> 
+												<strong class="extra">{{ info.extra }}</strong>
+											</span>
+											<span class="stat-item">
+												<small>مهمان:</small> 
+												<strong class="guest">{{ info.guest }}</strong>
+											</span>
+											<span class="stat-item total">
+												<small>مجموع:</small> 
+												<strong>{{ info.total }}</strong>
+											</span>
+										</div>
+									</div>
 								</td>
-								<td
-									data-label="سهمیه"
-									class="count-cell"
-								>
-									{{ info.quota }}
-								</td>
-								<td
-									data-label="آزاد"
-									class="count-cell"
-								>
-									{{ info.extra }}
-								</td>
-								<td
-									data-label="مهمان"
-									class="count-cell"
-								>
-									{{ info.guest }}
-								</td>
-								<td
-									data-label="مجموع"
-									class="fw-bold count-cell"
-								>
-									{{ info.total }}
-								</td>
+
+
+
+
+
 								<td
 									data-label="اقلام"
 									class="reservations-cell"
+									colspan="5"
 								>
 									{% for r in info.reservations %}
 									<!-- <div class="reservation-row"> -->

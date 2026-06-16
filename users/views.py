@@ -1375,6 +1375,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": False,
+                "have_permision": True,
             },
             "reserv": {
                 "name": "ساخت رزومه جدید",
@@ -1382,6 +1383,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv1": {
                 "name": "رزومه های من",
@@ -1389,6 +1391,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv2": {
                 "name": "پیشنهادات شغلی",
@@ -1396,6 +1399,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv3": {
                 "name": "ایجاد آگهی شغلی",
@@ -1403,6 +1407,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv4": {
                 "name": "مدیریت کاربران",
@@ -1410,6 +1415,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv5": {
                 "name": "شغل های پیشنهاد شده به کاربر",
@@ -1417,6 +1423,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv6": {
                 "name": "مدیریت رزومه ها",
@@ -1424,6 +1431,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
         },
     }
@@ -1444,6 +1452,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": False,
+                "have_permision": True,
             },
             "reserv": {
                 "name": "آزمون های من",
@@ -1451,6 +1460,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv1": {
                 "name": "مدیریت آزمون ها",
@@ -1458,6 +1468,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv2": {
                 "name": "ساخت آزمون جدید ",
@@ -1465,6 +1476,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv3": {
                 "name": "گزارش گیری",
@@ -1472,6 +1484,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
             "reserv4": {
                 "name": "مدیریت کاربران",
@@ -1479,6 +1492,7 @@ def build_modules_for_user(request):
                 "icon_name": "mosharekat.svg",
                 "color": "#8b2650",
                 "coming_soon": True,
+                "have_permision": True,
             },
         },
     }
