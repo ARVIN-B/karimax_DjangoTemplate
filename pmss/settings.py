@@ -30,6 +30,12 @@ elif config("DJANGO_ENV") == "localhost":
 
 WEEKS_COUNT = 2
 
+KARIMAX_RESTRICTED_ALLOWED_VIEWS = [
+    'users:landing',
+    'users:logout',
+    'users:contact_us',
+]
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")
 # DEBUG = config("DEBUG", default=True, cast=bool)

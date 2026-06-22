@@ -79,8 +79,7 @@ class KarimaxPermissionMiddleware:
         # لیست view name هایی که کاربر محدود مجاز به دیدن آن‌هاست
         self.allowed_views = getattr(
             settings,
-            'KARIMAX_RESTRICTED_ALLOWED_VIEWS',
-            ['users:landing', 'users:logout']
+            'KARIMAX_RESTRICTED_ALLOWED_VIEWS'
         )
         self.landing_url = reverse('users:landing')
 
@@ -98,13 +97,19 @@ class KarimaxPermissionMiddleware:
             try:
                 match = resolve(request.path)
                 view_name = match.view_name
+                namespace = match.namespace or ''
             except Resolver404:
                 # اگر مسیر اصلاً تعریف نشده باشد هم ریدایرکت به لندینگ
                 return redirect(self.landing_url)
 
             # اگر view_name در لیست مجاز نباشد، کاربر را به لندینگ بفرستید
-            if view_name not in self.allowed_views:
-                return redirect(self.landing_url)
+            # if view_name not in self.allowed_views:
+            #     return redirect(self.landing_url)
+            
+            if namespace == 'admin' or view_name.startswith('admin:') or request.path.startswith('/admin/') or view_name in self.allowed_views:
+                return self.get_response(request)
+            
+            return redirect(self.landing_url)
 
         # برای سایر کاربران (یا مسیرهای مجاز) درخواست به صورت عادی پردازش شود
         return self.get_response(request)

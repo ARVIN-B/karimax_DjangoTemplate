@@ -5258,6 +5258,7 @@ def restaurant_management_dashboard(request):
                     "is_today": current_day_date == today_gdate,
                     "foods": foods_data,
                     "is_reservation_time": is_reservation_time,
+                    "persian_day_names":persian_day_names[i],
                 }
             )
 

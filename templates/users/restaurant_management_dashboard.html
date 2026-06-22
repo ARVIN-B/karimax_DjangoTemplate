@@ -111,11 +111,11 @@
       data-state="{% if day.is_today %}today {% endif %}{% if day.is_reservation_time %}open {% endif %}{% if day.foods %}filled{% else %}empty{% endif %}"
       data-search="{{ day.jdate_str }} {% if day.is_today %}امروز{% endif %} {% if day.is_reservation_time %}رزرو باز{% endif %} {% if day.foods %}{% for food in day.foods %}{{ food.food_name }} {{ food.total_count|default:0 }} {% endfor %}{% endif %}"
     >
-      <details class="day-disclosure" {% if day.is_today or forloop.first %}open{% endif %}>
+      <details class="day-disclosure" {% if day.is_today %}open{% endif %}>
         <summary class="day-summary">
           <div class="day-summary__main">
-            <span class="day-date">{{ day.jdate_str }}</span>
-            <strong class="day-title">{% if day.is_today %}امروز{% else %}گزارش روز{% endif %}</strong>
+            <strong class="day-title">{% if day.is_today %}امروز{% else %}گزارش روز {{day.persian_day_names}} {% endif %}</strong>
+            <span class="day-date">{{ day.jdate_only }}</span>
             <span class="day-subtitle">
               {% if day.is_reservation_time %}
               رزرو باز است
