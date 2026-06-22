@@ -748,21 +748,6 @@ def build_modules_for_user(request):
         )
         return logout_view(request)
 
-
-
-
-    # role_name = request.session["current_role"]
-    # holding_id = request.session["current_holding_id"]
-    # factory_id = request.session["current_factory_id"]
-    # department_id = request.session["current_department_id"]
-    # subdepartment_id = request.session["current_subdepartment_id"]
-    # user = request.user
-    # management_tree = request.session.get("management_tree", [])
-    # is_committee = request.session["current_is_committee"]
-    # real_role_name = request.GET.get("current_real_role")
-
-    # role_name = request.GET.get("current_role")
-
     management_access = role_name in {"super_admin","holding_manager","factory_manager","department_manager",}
 
 
@@ -1127,7 +1112,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#239c47",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1210,7 +1195,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "morakhasi.svg",
             "color": "#9c2378",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1277,7 +1262,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "arzyabiamalkard.svg",
             "color": "#909c23",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1296,7 +1281,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "amoozesh.svg",
             "color": "#9c6c23",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1363,7 +1348,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "hoghoogh.svg",
             "color": "#0ee2ad",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1390,7 +1375,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#0b6b28",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1433,7 +1418,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#0c1650",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1476,7 +1461,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "asnad.svg",
             "color": "#23359c",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1519,7 +1504,7 @@ def build_modules_for_user(request):
             "link": "/self",
             "icon_name": "mosharekat.svg",
             "color": "#5f72e0",
-            "coming_soon": False,
+            "coming_soon": True,
             "have_permision": True,
             "micro_modules": {
                 "reserv": {
@@ -1546,7 +1531,7 @@ def build_modules_for_user(request):
                 "link": "/clouds",
                 "icon_name": "mosharekat.svg",
                 "color": "#5f6836",
-                "coming_soon": False,
+                "coming_soon": True,
                 "have_permision": True,
                 "micro_modules": {
                     "reserv": {
@@ -1567,17 +1552,6 @@ def build_modules_for_user(request):
                     },
                 },
             }
-
-
-
-
-
-
-
-
-
-
-
 
     return modules
 

@@ -738,12 +738,19 @@
 
 	<div class="services-grid">
 		{% for key, module in modules.items %}
-			<a
+			<!-- <a
 				href="{% if module.coming_soon or not module.have_permision %}#{% else %}{{ module.link }}{% endif %}"
 				class="service-item module-trigger{% if module.coming_soon or not module.have_permision %} is-coming-soon{% endif %}"
 				data-module="{{ key }}"
 				data-has-children="{% if module.micro_modules %}true{% else %}false{% endif %}"
 				data-coming-soon="{% if module.coming_soon or not module.have_permision %}true{% else %}false{% endif %}"
+			> -->
+			<a
+				href="{% if not module.have_permision %}#{% else %}{{ module.link }}{% endif %}"
+				class="service-item module-trigger{% if not module.have_permision %} is-coming-soon{% endif %}"
+				data-module="{{ key }}"
+				data-has-children="{% if module.micro_modules %}true{% else %}false{% endif %}"
+				data-coming-soon="{% if not module.have_permision %}true{% else %}false{% endif %}"
 			>
 				<div class="service-badge{% if module.coming_soon or not module.have_permision %} is-coming-soon{% endif %}" style="background: {{ module.color }}">
 					{% if module.coming_soon %}
