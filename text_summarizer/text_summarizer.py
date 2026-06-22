@@ -5,6 +5,7 @@ from autogen_agentchat.messages import TextMessage
 import asyncio
 from autogen_agentchat.ui import Console
 from autogen_core import CancellationToken
+from django.conf import settings
 
 model_client = OpenAIChatCompletionClient(
     base_url="https://openrouter.ai/api/v1",
@@ -12,9 +13,9 @@ model_client = OpenAIChatCompletionClient(
     # model="alibaba/tongyi-deepresearch-30b-a3b:free",
     # model="google/gemini-2.0-flash-exp:free",
     # model="microsoft/mai-ds-r1:free",
-    model="meta-llama/llama-3.3-70b-instruct:free",
+    model="openai/gpt-oss-120b:free",
     # model="x-ai/grok-4-fast",
-    api_key="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",
+    api_key=settings.API_KEY,
     temperature=0.5,
     model_info=ModelInfo(
         vision=True,

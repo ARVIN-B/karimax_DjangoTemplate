@@ -19,7 +19,7 @@ db.sqlite3-journal
 media/
 
 # Environment variables
-# .env
+.env
 # .env.local
 # .env.*.local
 
