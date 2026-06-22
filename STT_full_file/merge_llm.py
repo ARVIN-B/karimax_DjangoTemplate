@@ -4,11 +4,12 @@ from autogen_core.models import ModelInfo
 from autogen_agentchat.messages import TextMessage
 from autogen_core import CancellationToken
 import asyncio
+from django.conf import settings
 
 model_client = OpenAIChatCompletionClient(
     base_url="https://openrouter.ai/api/v1",
-    model="tngtech/deepseek-r1t2-chimera:free",
-    api_key="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",
+    model="openai/gpt-oss-120b:free",
+    api_key=settings.API_KEY,
     temperature=0.5,
     model_info=ModelInfo(
         vision=True,

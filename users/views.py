@@ -8412,7 +8412,6 @@ def process_participation(request, participation_id):
                     temp_wav_path = file_path.rsplit(".", 1)[0] + "_temp.wav"
                     text = STT_full_file(file_path, temp_wav_path, 10)
 
-                    print("11111111111111111")
 
                     participation.text_content = text
                     participation.orginal_content = text
@@ -8571,6 +8570,9 @@ def process_participation(request, participation_id):
                 participation.status = "approved"  # مدیر کل مستقیم تأیید می‌کنه
             participation.save()
             messages.success(request, "مشارکت تایید نهایی شد، با تشکر از همکاری شما.")
+
+            return redirect("users:dashboard")
+
 
         elif (
             action == "summarized_text"
