@@ -14,6 +14,11 @@ def user_role_context(request):
     متغیرهای نقش و مکان کاربر را از session خوانده و به context سراسری اضافه می‌کند.
     """
     # بررسی کنید که آیا کاربر لاگین کرده است و نقش در session وجود دارد
+
+    current_host = settings.BASE_URL
+    current_host = "mymoghadam.ir"
+
+
     if not request.user.is_authenticated or 'current_role' not in request.session:
         return {}  # اگر لاگین نکرده یا نقش تنظیم نشده، context خالی برمی‌گرداند
 
@@ -34,6 +39,8 @@ def user_role_context(request):
         'current_holding_id': request.session.get('current_holding_id'),
         'current_factory_id': request.session.get('current_factory_id'),
         'current_department_id': request.session.get('current_department_id'),
+
+        'current_host':current_host,
     }
 
     return context

@@ -298,7 +298,29 @@ def perform_login(request, user):
 
     _login_user_and_initialize_session(request, user)
 
-    role_name = request.session["current_role"]
+    try:
+        role_name = request.session["current_role"]
+
+    except Exception as e:
+        messages.error(
+            request,
+            f"برای شما محل فعالیت و نقش تعریف نشده است ، لطفا با پشتیبانی تماس حاصل فرمایید. شماره تماس پشتیبانی : {settings.CONTACT_PHONE_NUMBER}",
+        )
+        return logout_view(request)
+    
+
+
+
+    if not role_name or role_name == "" :
+
+        messages.error(
+            request,
+            f"برای شما محل فعالیت و نقش تعریف نشده است ، لطفا با پشتیبانی تماس حاصل فرمایید. شماره تماس پشتیبانی : {settings.CONTACT_PHONE_NUMBER}",
+        )
+        return logout_view(request)
+    
+
+
 
     if role_name in {
         "super_admin",
@@ -705,16 +727,41 @@ def landing_page(request):
     return render(request, "users/landing.html", context)
 
 
+@login_required
 def build_modules_for_user(request):
-    role_name = request.session["current_role"]
-    holding_id = request.session["current_holding_id"]
-    factory_id = request.session["current_factory_id"]
-    department_id = request.session["current_department_id"]
-    subdepartment_id = request.session["current_subdepartment_id"]
-    user = request.user
-    management_tree = request.session.get("management_tree", [])
-    is_committee = request.session["current_is_committee"]
-    real_role_name = request.GET.get("current_real_role")
+
+
+    try:
+        role_name = request.session["current_role"]
+        holding_id = request.session["current_holding_id"]
+        factory_id = request.session["current_factory_id"]
+        department_id = request.session["current_department_id"]
+        subdepartment_id = request.session["current_subdepartment_id"]
+        user = request.user
+        management_tree = request.session.get("management_tree", [])
+        is_committee = request.session["current_is_committee"]
+        real_role_name = request.GET.get("current_real_role")
+    except Exception as e:
+        messages.error(
+            request,
+            "متاسفانه در سامانه برای شما نقش و قسمت تعریف نشده است ، لطفا با واحد هوش مصنوعی تماس حاصل بفرمایید. 09136304789",
+        )
+        return logout_view(request)
+
+
+
+
+    # role_name = request.session["current_role"]
+    # holding_id = request.session["current_holding_id"]
+    # factory_id = request.session["current_factory_id"]
+    # department_id = request.session["current_department_id"]
+    # subdepartment_id = request.session["current_subdepartment_id"]
+    # user = request.user
+    # management_tree = request.session.get("management_tree", [])
+    # is_committee = request.session["current_is_committee"]
+    # real_role_name = request.GET.get("current_real_role")
+
+    # role_name = request.GET.get("current_role")
 
     management_access = role_name in {"super_admin","holding_manager","factory_manager","department_manager",}
 
@@ -885,6 +932,196 @@ def build_modules_for_user(request):
             },
         }
 
+        modules["HR"] = {
+            "name": "نیروی انسانی",
+            "link": "/HR",
+            "icon_name": "estekhdam.svg",
+            "color": "#79B0D4",
+            "coming_soon": False,
+            "have_permision": True,
+            "micro_modules": {
+                "user_management": {
+                    "name": "مدیریت پرسنل",
+                    "link": "users:user_management",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                    "have_permision": user.manage_sub_employees,
+                },
+            },
+        }
+
+
+
+    # poblic modules
+
+    modules["jazb"] = {
+        "name": "جذب و استخدام",
+        "link": "/self",
+        "icon_name": "estekhdam.svg",
+        "color": "#9c234b",
+        "coming_soon": False,
+        "have_permision": True,
+        "micro_modules": {
+            "jazb1": {
+                "name": "داشبورد سامانه جذب و استخدام",
+                "link": f"https://jazb.{current_host}/dashboard",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": False,
+                "have_permision": True,
+            },
+            "reserv": {
+                "name": "ساخت رزومه جدید",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv1": {
+                "name": "رزومه های من",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv2": {
+                "name": "پیشنهادات شغلی",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv3": {
+                "name": "ایجاد آگهی شغلی",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv4": {
+                "name": "مدیریت کاربران",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv5": {
+                "name": "شغل های پیشنهاد شده به کاربر",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv6": {
+                "name": "مدیریت رزومه ها",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+        },
+    }
+
+    modules["quiz"] = {
+        "name": "آزمون ها",
+        "link": "/self",
+        "icon_name": "taghvimjalasat.svg",
+        "color": "#239c82",
+        "coming_soon": False,
+        "have_permision": True,
+        "micro_modules": {
+            
+            
+            "quizb1": {
+                "name": "داشبورد سامانه کوییز",
+                "link": f"https://quiz.{current_host}",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": False,
+                "have_permision": True,
+            },
+            "reserv": {
+                "name": "آزمون های من",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv1": {
+                "name": "مدیریت آزمون ها",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv2": {
+                "name": "ساخت آزمون جدید ",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv3": {
+                "name": "گزارش گیری",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+            "reserv4": {
+                "name": "مدیریت کاربران",
+                "link": "#",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": True,
+                "have_permision": True,
+            },
+        },
+    }
+
+    modules["Support"] = {
+        "name": "پشتیبانی",
+        "link": "/self",
+        "icon_name": "shekayat.svg",
+        "color": "#238a9c",
+        "coming_soon": False,
+        "have_permision": True,
+        "micro_modules": {
+            "reserv": {
+                "name": "پشتیبانی",
+                "link": "users:contact_us",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": False,
+                "have_permision": True,
+            },
+            "reserv1": {
+                "name": "تغییر رمز",
+                "link": "users:change_password",
+                "icon_name": "mosharekat.svg",
+                "color": "#8b2650",
+                "coming_soon": False,
+                "have_permision": True,
+            },
+        },
+    }
+
+
+    # inprocess modules
+    if user.karimax_permision:
+            
         modules["edari"] = {
             "name": "امور اداری",
             "link": "/self",
@@ -1049,33 +1286,6 @@ def build_modules_for_user(request):
                     "icon_name": "mosharekat.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
-                    "have_permision": True,
-                },
-            },
-        }
-
-        modules["Support"] = {
-            "name": "پشتیبانی",
-            "link": "/self",
-            "icon_name": "shekayat.svg",
-            "color": "#238a9c",
-            "coming_soon": False,
-            "have_permision": True,
-            "micro_modules": {
-                "reserv": {
-                    "name": "تماس",
-                    "link": "users:contact_us",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": False,
-                    "have_permision": True,
-                },
-                "reserv1": {
-                    "name": "تغییر رمز",
-                    "link": "users:change_password",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": False,
                     "have_permision": True,
                 },
             },
@@ -1332,170 +1542,41 @@ def build_modules_for_user(request):
         }
         
         modules["clouds_services"] = {
-            "name": "سامانه های ابری",
-            "link": "/clouds",
-            "icon_name": "mosharekat.svg",
-            "color": "#5f6836",
-            "coming_soon": False,
-            "have_permision": True,
-            "micro_modules": {
-                "reserv": {
-                    "name": "فضای ابری",
-                    "link": "https://cloud.karimax.ir/",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                    "have_permision": True,
-                },
-                "reserv1": {
-                    "name": "سامانه میت",
-                    "link": "#",
-                    "icon_name": "mosharekat.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                    "have_permision": True,
-                },
-            },
-        }
-
-
-
-
-    modules["jazb"] = {
-        "name": "جذب و استخدام",
-        "link": "/self",
-        "icon_name": "estekhdam.svg",
-        "color": "#9c234b",
-        "coming_soon": False,
-        "have_permision": True,
-        "micro_modules": {
-            "jazb1": {
-                "name": "داشبورد سامانه جذب و استخدام",
-                "link": f"https://jazb.{current_host}/dashboard",
+                "name": "سامانه های ابری",
+                "link": "/clouds",
                 "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
+                "color": "#5f6836",
                 "coming_soon": False,
                 "have_permision": True,
-            },
-            "reserv": {
-                "name": "ساخت رزومه جدید",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv1": {
-                "name": "رزومه های من",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv2": {
-                "name": "پیشنهادات شغلی",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv3": {
-                "name": "ایجاد آگهی شغلی",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv4": {
-                "name": "مدیریت کاربران",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv5": {
-                "name": "شغل های پیشنهاد شده به کاربر",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv6": {
-                "name": "مدیریت رزومه ها",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-        },
-    }
+                "micro_modules": {
+                    "reserv": {
+                        "name": "فضای ابری",
+                        "link": "https://cloud.karimax.ir/",
+                        "icon_name": "mosharekat.svg",
+                        "color": "#8b2650",
+                        "coming_soon": True,
+                        "have_permision": True,
+                    },
+                    "reserv1": {
+                        "name": "سامانه میت",
+                        "link": "#",
+                        "icon_name": "mosharekat.svg",
+                        "color": "#8b2650",
+                        "coming_soon": True,
+                        "have_permision": True,
+                    },
+                },
+            }
 
-    modules["quiz"] = {
-        "name": "آزمون ها",
-        "link": "/self",
-        "icon_name": "taghvimjalasat.svg",
-        "color": "#239c82",
-        "coming_soon": False,
-        "have_permision": True,
-        "micro_modules": {
-            
-            
-            "quizb1": {
-                "name": "داشبورد سامانه کوییز",
-                "link": f"https://quiz.{current_host}",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": False,
-                "have_permision": True,
-            },
-            "reserv": {
-                "name": "آزمون های من",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv1": {
-                "name": "مدیریت آزمون ها",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv2": {
-                "name": "ساخت آزمون جدید ",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv3": {
-                "name": "گزارش گیری",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-            "reserv4": {
-                "name": "مدیریت کاربران",
-                "link": "#",
-                "icon_name": "mosharekat.svg",
-                "color": "#8b2650",
-                "coming_soon": True,
-                "have_permision": True,
-            },
-        },
-    }
+
+
+
+
+
+
+
+
+
 
 
     return modules
@@ -2351,7 +2432,7 @@ def switch_role(request):
     }:
         # messages.success(
         #     request,
-        #     # "جهت ارتقای سازمان دانش‌محور، تجربیات ارزش‌آفرین خود را هفتگی در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
+        #     # "جهت ارتقای سازمان دانش‌محور، تجربیات ارزش‌آفرین خود را هفتگی در سیستم مقدم من ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
         # )
         msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
             «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
@@ -2361,7 +2442,7 @@ def switch_role(request):
     elif role_name == "supervisor":
         # messages.success(
         #     request,
-        #     # "سرپرستان و کارشناسان محترم، آموزه‌ها و تجربیات شغلی مفید خود را هفتگی در کاریمکس ثبت نمایید (حداقل یک دانش در هفته). گزارش‌گیری ماهانه.",
+        #     # "سرپرستان و کارشناسان محترم، آموزه‌ها و تجربیات شغلی مفید خود را هفتگی در مقدم من ثبت نمایید (حداقل یک دانش در هفته). گزارش‌گیری ماهانه.",
         # )
         msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
             «انتظار می‌رود حداقل یک مورد دانش جدید در هر هفته ثبت گردد»
@@ -2371,7 +2452,7 @@ def switch_role(request):
     elif role_name == "employee":
         # messages.success(
         #     request,
-        #     # "اپراتورها و کارگران عزیز، تجربیات کاری ارزشمند خود را ماهیانه در سیستم کاریمکس ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
+        #     # "اپراتورها و کارگران عزیز، تجربیات کاری ارزشمند خود را ماهیانه در سیستم مقدم من ثبت کنید (حداقل یک دانش). گزارش‌گیری ماهانه انجام می‌شود.",
         # )
         msg = """آموزه‌ها و تجربیات شغلی ارزشمند خود را در این سامانه ثبت و جایزه دریافت نمایید.
             «انتظار می‌رود حداقل یک مورد دانش جدید در هر ماه ثبت گردد»
@@ -5983,7 +6064,7 @@ def food_reservation_view(request):
         "can_reserve_management_food": can_reserve_management_food,
     }
 
-    print(f"context : {context}")
+    # print(f"context : {context}")
 
     return render(request, "users/food_reservation.html", context)
 
@@ -7463,6 +7544,11 @@ def user_management(request):
             "متاسفانه در سامانه برای شما نقش و قسمت تعریف نشده است ، لطفا با واحد هوش مصنوعی تماس حاصل بفرمایید. 09136304789",
         )
         return logout_view(request)
+    
+
+
+    INITIAL_LOAD_COUNT = settings.USER_MANAGEMENT_INITIAL_LOAD_COUNT
+    LOAD_MORE_COUNT = settings.USER_MANAGEMENT_LOAD_MORE_COUNT
 
     employee_fields = [f.name for f in Employee._meta.get_fields()]
 
@@ -7499,11 +7585,39 @@ def user_management(request):
             | Q(
                 assigned_subdepartments__department__factory__holding__in=user.hr_accessible_holdings.all()
             )
+            | Q(managed_holdings_m2m__in=user.hr_accessible_holdings.all())
+            | Q(managed_factories_m2m__in=user.hr_accessible_factories.all())
+            | Q(managed_departments_m2m__in=user.hr_accessible_departments.all())
+            | Q(
+                supervised_subdepartments_m2m__in=user.hr_accessible_subdepartments.all()
+            )
         )
         .exclude(id=user.id)  # اگر نمی‌خوای خود مدیر داخل لیست باشه
         .distinct()
         .order_by("id")
     )
+
+    
+
+    holdings = user.hr_accessible_holdings.all()
+    factories = (
+        user.hr_accessible_factories.all()
+        | Factory.objects.filter(holding__in=holdings)
+    ).distinct()
+    departments = (
+        user.hr_accessible_departments.all()
+        | Department.objects.filter(factory__in=factories)
+    ).distinct()
+    subdepartments = (
+        user.hr_accessible_subdepartments.all()
+        | Subdepartment.objects.filter(department__in=departments)
+    ).distinct()
+
+
+
+
+
+    
 
     # اضافه کردن فیلتر holding فقط برای super_admin
     if "super_admin" in user_role:
@@ -7832,36 +7946,31 @@ def user_management(request):
                     {"status": "created", "message": "کاربر جدید با موفقیت ایجاد شد."}
                 )
 
-    employees = (
-        Employee.objects.filter(
-            # Q(id__in=user.hr_accessible_employees.values_list("id", flat=True)) |
-            # employees
-            Q(assigned_subdepartments__in=user.hr_accessible_subdepartments.all())
-            | Q(managed_holdings_m2m__in=user.hr_accessible_holdings.all())
-            | Q(managed_factories_m2m__in=user.hr_accessible_factories.all())
-            | Q(managed_departments_m2m__in=user.hr_accessible_departments.all())
-            | Q(
-                supervised_subdepartments_m2m__in=user.hr_accessible_subdepartments.all()
-            )
-        )
-        .exclude(id=user.id)  # اگر نمی‌خوای خود مدیر داخل لیست باشه
-        .distinct()
-        .order_by("id")
-    )
+    
 
-    holdings = user.hr_accessible_holdings.all()
-    factories = (
-        user.hr_accessible_factories.all()
-        | Factory.objects.filter(holding__in=holdings)
-    ).distinct()
-    departments = (
-        user.hr_accessible_departments.all()
-        | Department.objects.filter(factory__in=factories)
-    ).distinct()
-    subdepartments = (
-        user.hr_accessible_subdepartments.all()
-        | Subdepartment.objects.filter(department__in=departments)
-    ).distinct()
+
+    # total_count = employees.count()
+
+
+    # if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+    #     offset = int(request.GET.get("offset", 0))
+
+    #     employees_page = employees[offset:offset + LOAD_MORE_COUNT]
+
+    #     context = {
+    #         "employees": employees_page,
+    #         "offset": offset,
+    #     }
+
+    #     return render(
+    #         request,
+    #         "users/user_management.html",
+    #         context
+    #     )
+
+    # employees = employees[:INITIAL_LOAD_COUNT]
+
+
 
     # departments = user.hr_accessible_departments.all()
     # subdepartments = user.hr_accessible_subdepartments.all()
@@ -7875,6 +7984,9 @@ def user_management(request):
         "factories": factories,
         "departments": departments,
         "subdepartments": subdepartments,
+        # "initial_load_count": INITIAL_LOAD_COUNT,
+        # "load_more_count": LOAD_MORE_COUNT,
+        # "total_count": employees.count(),
     }
 
     return render(request, "users/user_management.html", context)

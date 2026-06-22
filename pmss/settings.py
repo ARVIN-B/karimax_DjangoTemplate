@@ -9,15 +9,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CONTACT_PHONE_NUMBER = "09924876377"
 
+USER_MANAGEMENT_INITIAL_LOAD_COUNT = 10
+USER_MANAGEMENT_LOAD_MORE_COUNT = 5
+
 if config("DJANGO_ENV") == "production":
-    SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+    # SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+    BASE_URL = f"{config("PRODUCT_BASE_URL")}"
+    SESSION_COOKIE_DOMAIN = F".{BASE_URL}"
     SESSION_COOKIE_NAME = "sessionid"
     DEBUG = False
 elif config("DJANGO_ENV") == "development":
-    SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+    # SESSION_COOKIE_DOMAIN = ".karimax2.ir"
+    BASE_URL = f"{config("DEVELOP_BASE_URL")}"
+    SESSION_COOKIE_DOMAIN = F".{BASE_URL}"
     SESSION_COOKIE_NAME = "sessionid"
     DEBUG = True
 elif config("DJANGO_ENV") == "localhost":
+    BASE_URL="127.0.0.1"
     DEBUG = True
 
 WEEKS_COUNT = 2
@@ -26,7 +34,8 @@ WEEKS_COUNT = 2
 SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")
 # DEBUG = config("DEBUG", default=True, cast=bool)
 
-
+# DEBUG = False
+DEBUG = True
 
 AXES_ENABLED = False
 
@@ -41,6 +50,10 @@ ALLOWED_HOSTS = [
     "dev.karimax2.ir",
     "karimax2.ir",
     "www.karimax2.ir",
+    f"{BASE_URL}",
+    f"www.{BASE_URL}",
+    # "www.mymoghadam.ir",
+    # "mymoghadam.ir",
 ]
 
 # Application definition
@@ -307,6 +320,10 @@ if DEBUG:
         "https://www.karimax2.ir",
         "http://www.dev.karimax2.ir",
         "http://dev.karimax2.ir",
+        f"https://{BASE_URL}",
+        f"https://www.{BASE_URL}",
+        # "https://www.mymoghadam.ir",
+        # "https://mymoghada.mir",
         # "*"
     ]
     CORS_ALLOW_CREDENTIALS = True
@@ -320,6 +337,10 @@ else:
         "https://www.karimax.ir",
         "https://karimax2.ir",
         "https://www.karimax2.ir",
+        f"https://{BASE_URL}",
+        f"https://www.{BASE_URL}",
+        # "https://www.mymoghadam.ir",
+        # "https://mymoghadam.ir",
         # دامنه نهایی فرانت‌اندت
     ]
 
@@ -337,6 +358,10 @@ else:
         "http://dev.karimax2.ir",
         "https://www.dev.karimax2.ir",
         "https://dev.karimax2.ir",
+        f"https://{BASE_URL}",
+        f"https://www.{BASE_URL}",
+        # "https://www.mymoghadam.ir",
+        # "https://mymoghadam.ir",
     ]
 
 # CORS_ALLOW_CREDENTIALS = True

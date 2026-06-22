@@ -36,12 +36,12 @@
 
 			{% endif %} {% if personnel_management_access %}
 
-			<a
+			<!-- <a
 				class="quick-action-item"
 				href="{% url 'users:user_management' %}"
 			>
 				<i class="fas fa-user-cog me-1"></i>مدیریت کاربران
-			</a>
+			</a> -->
 
 			{% endif %} {% if has_management_access %}
 			<!-- <a
@@ -60,8 +60,8 @@
 					name="action"
 					value="update_food_prices"
 				/>
-				<button class="quick-action-item quick-action-btn"><i class="fas fa-sync-alt"></i> اپدیت رزرو ها</button> -->
-			</form>
+				<button class="quick-action-item quick-action-btn"><i class="fas fa-sync-alt"></i> اپدیت رزرو ها</button>
+			</form> -->
 			{% endif %} {% if can_report %}
 			<!-- <a
 				href="{% url 'users:managements_reports_dashboard' %}"
