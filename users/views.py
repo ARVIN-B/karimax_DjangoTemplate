@@ -933,6 +933,14 @@ def build_modules_for_user(request):
                     "coming_soon": False,
                     "have_permision": user.manage_sub_employees,
                 },
+                "import_employees": {
+                    "name": "ورود پرسنل (اکسل)",
+                    "link": "users:import_employees",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": False,
+                    "have_permision": user.manage_sub_employees,
+                },
             },
         }
 
