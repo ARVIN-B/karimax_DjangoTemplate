@@ -3510,18 +3510,31 @@ def management_dashboard(request):
 
 def search_employees(request):
     q = request.GET.get("q", "").strip()
-    print(q)
     if len(q) < 2:
         return JsonResponse([], safe=False)
 
-    employees = Employee.objects.filter(is_active=True).filter(
-        Q(first_name__icontains=q)
-        | Q(last_name__icontains=q)
-        | Q(national_id__icontains=q)
-        | Q(personnel_code__icontains=q)
-    )[
-        :20
-    ]  # حداکثر 20 نتیجه
+    words = q.split()
+
+    if len(words) == 1:
+        # جستجوی تک کلمه‌ای (رفتار قبلی + بهبود)
+        word = words[0]
+        query &= (
+            Q(first_name__icontains=word) |
+            Q(last_name__icontains=word) |
+            Q(full_name__icontains=word) |           # اگر full_name دارید
+            Q(national_id__icontains=word) |
+            Q(personnel_code__icontains=word)
+        )
+    else:
+        # جستجوی چند کلمه‌ای (مثل "نیما م")
+        for word in words:
+            query &= (
+                Q(first_name__icontains=word) |
+                Q(last_name__icontains=word) |
+                Q(full_name__icontains=word)
+            )
+
+    employees = Employee.objects.filter(query)[:20]
 
     results = []
     for emp in employees:
@@ -8788,14 +8801,14 @@ def search_org_units(request):
         .distinct()[:10]
     )
 
-    print(employees)
+    print(f"employee : {employees}")
 
     for e in employees:
         # گرفتن اولین زیربخش برای نمایش (اگر چند تا باشه)
         subdept = e.assigned_subdepartments.first()
+        subdept_name = subdept.name if subdept else "نامشخص"
         dept_name = subdept.department.name if subdept else "نامشخص"
         factory_name = subdept.department.factory.name if subdept else "نامشخص"
-        subdept_name = subdept.name if subdept else "نامشخص"
 
         manager_name = e.get_full_name()
         results.append(
@@ -8812,6 +8825,9 @@ def search_org_units(request):
                 "manager_search": manager_name.lower(),
             }
         )
+
+
+
 
     super_admin_role = Role.objects.filter(name="super_admin").first()
     if super_admin_role:
