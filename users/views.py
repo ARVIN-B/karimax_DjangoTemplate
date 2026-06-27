@@ -354,6 +354,11 @@ def authenticate_user(request):
     password = request.POST.get("password")  # ممکن است خالی باشد
     otp_code = request.POST.get("otp_code")  # ممکن است خالی باشد
 
+    u = Employee.objects.filter(national_id=national_id).first()
+
+    if not u.is_active :
+        return None, f"حساب کاربری شما غیرفعال است، لطفا با واحد هوش مصنوعی تماس حاصل فرمایید. شماره تماس پشتیبانی : {settings.CONTACT_PHONE_NUMBER}"
+
     if otp_code:
         # ورود با OTP
         # user, error_msg = _verify_otp(request, national_id, otp_code)
@@ -3514,49 +3519,6 @@ def management_dashboard(request):
             # "can_manage_bimeh": can_manage_bimeh,
         },
     )
-
-
-# def search_employees(request):
-#     q = request.GET.get("q", "").strip()
-#     if len(q) < 2:
-#         return JsonResponse([], safe=False)
-
-#     words = q.split()
-
-#     if len(words) == 1:
-#         # جستجوی تک کلمه‌ای (رفتار قبلی + بهبود)
-#         word = words[0]
-#         query &= (
-#             Q(first_name__icontains=word) |
-#             Q(last_name__icontains=word) |
-#             Q(full_name__icontains=word) |           # اگر full_name دارید
-#             Q(national_id__icontains=word) |
-#             Q(personnel_code__icontains=word)
-#         )
-#     else:
-#         # جستجوی چند کلمه‌ای (مثل "نیما م")
-#         for word in words:
-#             query &= (
-#                 Q(first_name__icontains=word) |
-#                 Q(last_name__icontains=word) |
-#                 Q(full_name__icontains=word)
-#             )
-
-#     employees = Employee.objects.filter(query)[:20]
-
-#     results = []
-#     for emp in employees:
-#         results.append(
-#             {
-#                 "id": emp.id,
-#                 "text": emp.full_name,
-#                 "national_id": emp.national_id,
-#                 "personnel_code": emp.personnel_code or "ندارد",
-#             }
-#         )
-
-#     return JsonResponse(results, safe=False)
-
 
 
 def search_employees(request):
