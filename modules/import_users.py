@@ -12,21 +12,22 @@ logger = logging.getLogger(__name__)
 # ستون‌های مورد نیاز در فایل اکسل
 REQUIRED_COLUMNS = [
     "national_id",
+]
+# REQUIRED_COLUMNS = [
+#     'national_id', 'personnel_code'
+# ]
+OPTIONAL_COLUMNS = [
     "first_name",
     "last_name",
     "phone_number",
     "subdepartments_list",
     "roles_list",
     "password",
-]
-# REQUIRED_COLUMNS = [
-#     'national_id', 'personnel_code'
-# ]
-OPTIONAL_COLUMNS = [
     "personnel_code",
-    "subdepartments_list",
-    "roles_list",
     "center_of_charge",
+    "Position_Job_history",
+    "Place_of_service_recruitment_order",
+    "is_active",
 ]
 
 
@@ -96,6 +97,8 @@ def import_employees_from_excel(excel_file):
 
     # پردازش سطرها
     with transaction.atomic():
+        exist_count = 0
+        new_count = 0
         # numb = 0
         for row_index, row in enumerate(sheet.iter_rows(min_row=2), start=2):
             data = {}
@@ -107,13 +110,18 @@ def import_employees_from_excel(excel_file):
                 data[col_name] = str(value).strip() if value is not None else ""
 
             # اعتبارسنجی فیلدهای ضروری
-            if not data["national_id"]:
+            national_id = data.get("national_id", "").strip()
+            if not national_id or national_id == "":
                 row_errors.append("کد ملی نمی‌تواند خالی باشد.")
                 continue
 
             employee = Employee.objects.filter(national_id=data["national_id"]).first()
 
+            
+
             if employee or employee != None:
+                # exist_count += 1
+                # continue
 
                 subdept_objs = []
                 if "subdepartments_list" in data and data["subdepartments_list"]:
@@ -156,47 +164,75 @@ def import_employees_from_excel(excel_file):
 
                 data["personnel_code"] = data.get("personnel_code", "")
 
-                if data["first_name"] or not str(
-                    data["first_name"]
+                first_name = data.get("first_name", "").strip()
+                if first_name or not str(
+                    first_name
                 ).strip().lower() in ["none", "nan", "null", ""]:
-                    employee.first_name = data["first_name"]
+                    employee.first_name = first_name
 
-                if data["last_name"] or not str(data["last_name"]).strip().lower() in [
+                last_name = data.get("last_name", "").strip()
+                if last_name or not str(last_name).strip().lower() in [
                     "none",
                     "nan",
                     "null",
                     "",
                 ]:
-                    employee.last_name = data["last_name"]
+                    employee.last_name = last_name
 
-                if data["phone_number"] or not str(
-                    data["phone_number"]
+                phone_number = data.get("phone_number", "").strip()
+                if phone_number or not str(
+                    phone_number
                 ).strip().lower() in ["none", "nan", "null", ""]:
-                    employee.phone_number = data["phone_number"]
+                    employee.phone_number = phone_number
 
-                if data["personnel_code"] or not str(
-                    data["personnel_code"]
+                personnel_code = data.get("personnel_code", "").strip()
+                if personnel_code or not str(
+                    personnel_code
                 ).strip().lower() in ["none", "nan", "null", ""]:
-                    employee.personnel_code = data["personnel_code"]
+                    employee.personnel_code = personnel_code
 
-                if data["password"] or not str(data["password"]).strip().lower() in [
+                password = data.get("password", "").strip()
+                if password or not str(password).strip().lower() in [
                     "none",
                     "nan",
                     "null",
                     "",
                 ]:
                     # هش کردن رمز عبور
-                    hashed_password = make_password(data["password"])
+                    hashed_password = make_password(password)
                     employee.password = hashed_password
 
-                if data["center_of_charge"] or not str(
-                    data["center_of_charge"]
+                center_of_charge = data.get("center_of_charge", "").strip()
+                if center_of_charge or not str(
+                    center_of_charge
                 ).strip().lower() in ["none", "nan", "null", ""]:
-                    employee.center_of_charge = data["center_of_charge"]
+                    employee.center_of_charge = center_of_charge
+
+                Position_Job_history = data.get("Position_Job_history", "").strip()
+                if Position_Job_history or not str(
+                    Position_Job_history
+                ).strip().lower() in ["none", "nan", "null", ""]:
+                    employee.Position_Job_history = Position_Job_history
+                
+                Place_of_service_recruitment_order = data.get("Place_of_service_recruitment_order", "").strip()
+                if Place_of_service_recruitment_order or not str(
+                    Place_of_service_recruitment_order
+                ).strip().lower() in ["none", "nan", "null", ""]:
+                    employee.Place_of_service_recruitment_order = Place_of_service_recruitment_order
+
+                is_active = data.get("is_active", "").strip()
+                if is_active or not str(
+                    is_active
+                ).strip().lower() in ["none", "nan", "null", ""]:
+                    if is_active == "فعال":
+                        employee.is_active = True
+                    elif is_active == "غیر فعال":
+                        employee.is_active = False
 
                 employee.save()
 
-                if data["subdepartments_list"] or not data["subdepartments_list"] in [
+                subdepartments_list = data.get("subdepartments_list", "").strip()
+                if subdepartments_list or not subdepartments_list in [
                     "none",
                     "nan",
                     "null",
@@ -204,7 +240,8 @@ def import_employees_from_excel(excel_file):
                 ]:
                     employee.assigned_subdepartments.set(subdept_objs)
 
-                if data["subdepartments_list"] or not data["subdepartments_list"] in [
+                roles_list = data.get("roles_list", "").strip()
+                if roles_list or not roles_list in [
                     "none",
                     "nan",
                     "null",
@@ -214,27 +251,42 @@ def import_employees_from_excel(excel_file):
 
                 imported_count += 1
 
-                # numb += 1
-
-                # print(numb)
-
             else:
+
+                # is_active = data.get("is_active", "").strip()
+                # if is_active or not str(
+                #     is_active
+                # ).strip().lower() in ["none", "nan", "null", ""]:
+                #     if is_active != "غیر فعال":
+                #         new_count += 1
+                # continue
+
+                is_active = data.get("is_active", "").strip()
+                if is_active or not str(
+                    is_active
+                ).strip().lower() in ["none", "nan", "null", ""]:
+                    if is_active != "غیر فعال":
+                        skipped_count += 1
+                        continue
 
                 if not data["first_name"] or not data["last_name"]:
                     row_errors.append("نام یا نام خانوادگی نمی‌تواند خالی باشد.")
 
-                if not data["password"] or str(data["password"]).strip().lower() in [
+
+                password = data.get("password", "").strip()
+                if not password or str(password).strip().lower() in [
                     "none",
                     "nan",
                     "null",
                     "",
                 ]:
-                    row_errors.append("رمز عبور نمی‌تواند خالی یا نامعتبر باشد.")
-                    errors.append(
-                        f"ردیف {row_index}: رمز عبور نمی‌تواند خالی یا نامعتبر باشد."
-                    )
-                    skipped_count += 1
-                    continue  # بدون این continue ورکر می‌میرد!
+                    password = "123456"
+                    # row_errors.append("رمز عبور نمی‌تواند خالی یا نامعتبر باشد.")
+                    # errors.append(
+                    #     f"ردیف {row_index}: رمز عبور نمی‌تواند خالی یا نامعتبر باشد."
+                    # )
+                    # skipped_count += 1
+                    # continue  # بدون این continue ورکر می‌میرد!
 
                 if row_errors:
                     errors.append(f"ردیف {row_index}: {' | '.join(row_errors)}")
@@ -283,7 +335,7 @@ def import_employees_from_excel(excel_file):
 
                 data["personnel_code"] = data.get("personnel_code", "")
                 # هش کردن رمز عبور
-                hashed_password = make_password(data["password"])
+                hashed_password = make_password(password)
 
                 try:
                     # ایجاد یا به‌روزرسانی بر اساس national_id
@@ -324,3 +376,5 @@ def import_employees_from_excel(excel_file):
                     skipped_count += 1
 
     return {"success": imported_count, "skipped": skipped_count, "errors": errors}
+    # print(f"new: {new_count}, exist: {exist_count}")
+    # return {"success": new_count, "skipped": exist_count, "errors": ""}

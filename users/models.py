@@ -595,6 +595,15 @@ class Employee(AbstractUser):
         max_length=200, null=True, blank=True, verbose_name="مرکز هزینه"
     )
 
+    Position_Job_history = models.CharField(
+        max_length=200, null=True, blank=True, verbose_name="سمت سوابق شغلی"
+    )
+
+    Place_of_service_recruitment_order = models.CharField(
+        max_length=200, null=True, blank=True, verbose_name="محل خدمت حکم کارگزین"
+    )
+
+
     # reporting system
     # can_reserve_for_others_choices = (
     #     (0, "اجازه ندارد"),

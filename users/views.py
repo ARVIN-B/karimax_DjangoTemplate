@@ -3516,33 +3516,64 @@ def management_dashboard(request):
     )
 
 
+# def search_employees(request):
+#     q = request.GET.get("q", "").strip()
+#     if len(q) < 2:
+#         return JsonResponse([], safe=False)
+
+#     words = q.split()
+
+#     if len(words) == 1:
+#         # جستجوی تک کلمه‌ای (رفتار قبلی + بهبود)
+#         word = words[0]
+#         query &= (
+#             Q(first_name__icontains=word) |
+#             Q(last_name__icontains=word) |
+#             Q(full_name__icontains=word) |           # اگر full_name دارید
+#             Q(national_id__icontains=word) |
+#             Q(personnel_code__icontains=word)
+#         )
+#     else:
+#         # جستجوی چند کلمه‌ای (مثل "نیما م")
+#         for word in words:
+#             query &= (
+#                 Q(first_name__icontains=word) |
+#                 Q(last_name__icontains=word) |
+#                 Q(full_name__icontains=word)
+#             )
+
+#     employees = Employee.objects.filter(query)[:20]
+
+#     results = []
+#     for emp in employees:
+#         results.append(
+#             {
+#                 "id": emp.id,
+#                 "text": emp.full_name,
+#                 "national_id": emp.national_id,
+#                 "personnel_code": emp.personnel_code or "ندارد",
+#             }
+#         )
+
+#     return JsonResponse(results, safe=False)
+
+
+
 def search_employees(request):
     q = request.GET.get("q", "").strip()
+    print(q)
     if len(q) < 2:
         return JsonResponse([], safe=False)
 
-    words = q.split()
-
-    if len(words) == 1:
-        # جستجوی تک کلمه‌ای (رفتار قبلی + بهبود)
-        word = words[0]
-        query &= (
-            Q(first_name__icontains=word) |
-            Q(last_name__icontains=word) |
-            Q(full_name__icontains=word) |           # اگر full_name دارید
-            Q(national_id__icontains=word) |
-            Q(personnel_code__icontains=word)
-        )
-    else:
-        # جستجوی چند کلمه‌ای (مثل "نیما م")
-        for word in words:
-            query &= (
-                Q(first_name__icontains=word) |
-                Q(last_name__icontains=word) |
-                Q(full_name__icontains=word)
-            )
-
-    employees = Employee.objects.filter(query)[:20]
+    employees = Employee.objects.filter(is_active=True).filter(
+        Q(first_name__icontains=q)
+        | Q(last_name__icontains=q)
+        | Q(full_name__icontains=q)
+        | Q(national_id__icontains=q)
+        | Q(personnel_code__icontains=q)
+    )[
+        :20
+    ]  # حداکثر 20 نتیجه
 
     results = []
     for emp in employees:
@@ -4266,6 +4297,8 @@ def managements_reports_dashboard(request):
         rows_total_debt_raw = []  # عدد خام
         rows_total_debt_formatted = []  # با کاما و ریال
         rows_center_of_charge = []
+        Position_Job_history = []
+        Place_of_service_recruitment_order = []
         rows_factory_names = []
 
         rows_total_factory_qty = []
@@ -4343,6 +4376,8 @@ def managements_reports_dashboard(request):
             )
 
             rows_center_of_charge.append(emp.center_of_charge or "نامشخص")
+            Position_Job_history.append(emp.Position_Job_history or "نامشخص")
+            Place_of_service_recruitment_order.append(emp.Place_of_service_recruitment_order or "نامشخص")
 
             factory_names_set = set()
             for reservation in reservations:
@@ -4369,6 +4404,8 @@ def managements_reports_dashboard(request):
                     rows_total_guest_qty,
                     rows_total_debt_formatted,
                     rows_center_of_charge,
+                    Position_Job_history,
+                    Place_of_service_recruitment_order,
                     rows_factory_names,
                     *[restaurant_columns[restaurant.id] for restaurant in restaurants],
                 )
@@ -4392,10 +4429,12 @@ def managements_reports_dashboard(request):
             rows_total_guest_qty = sorted_data[7]
             rows_total_debt_formatted = sorted_data[8]
             rows_center_of_charge = sorted_data[9]
-            rows_factory_names = sorted_data[10]
+            Position_Job_history = sorted_data[10]
+            Place_of_service_recruitment_order = sorted_data[11]
+            rows_factory_names = sorted_data[12]
 
             restaurant_sorted_columns = {}
-            for i, restaurant in enumerate(restaurants, start=11):
+            for i, restaurant in enumerate(restaurants, start=13):
                 restaurant_sorted_columns[restaurant.id] = sorted_data[i]
 
             # ستون‌های نهایی
@@ -4409,6 +4448,8 @@ def managements_reports_dashboard(request):
                 ("تعداد سفارشات مهمان", rows_total_guest_qty),
                 ("مبلغ بدهی", list(rows_total_debt_formatted)),
                 ("مرکز هزینه", list(rows_center_of_charge)),
+                ("سمت سوابق شغلی", list(Position_Job_history)),
+                ("محل خدمت حکم کارگزین", list(Place_of_service_recruitment_order)),
                 ("کارخانه‌های دارای رزرو", list(rows_factory_names)),
             ]
 
@@ -4434,7 +4475,7 @@ def managements_reports_dashboard(request):
                 report_title=report_title,
                 restaurant_stats=restaurant_stats,
                 summary_row=summary_row,
-                summary_start_col=11,
+                summary_start_col=13,
             )
         except Exception as e:
             messages.error(request, f"در این بازه زمانی اطلاعاتی در دسترس نیست!!! {e}")
