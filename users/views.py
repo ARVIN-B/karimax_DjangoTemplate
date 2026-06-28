@@ -3530,7 +3530,7 @@ def search_employees(request):
     employees = Employee.objects.filter(is_active=True).filter(
         Q(first_name__icontains=q)
         | Q(last_name__icontains=q)
-        | Q(full_name__icontains=q)
+        # | Q(full_name__icontains=q)
         | Q(national_id__icontains=q)
         | Q(personnel_code__icontains=q)
     )[

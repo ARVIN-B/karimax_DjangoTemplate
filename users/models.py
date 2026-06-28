@@ -767,6 +767,7 @@ class Participation(models.Model):
         ("meeting_minutes", "صورت جلسات"),
         ("suggestions", "پیشنهادات"),
         ("critiques", "انتقادات"),
+        ("learning", "آموزش"),
     )
     STATUS_CHOICES = (
         ("pending", "در انتظار"),
