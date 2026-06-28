@@ -21,10 +21,10 @@ from datetime import date, time, datetime, timedelta
 from django.apps import AppConfig
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
+
 # from simple_history.models import HistoricalRecords
 
 from jdatetime import date as jdate
-
 
 default_close_food_res_time_H = 10
 default_close_food_res_time_M = 00
@@ -375,7 +375,9 @@ class Employee(AbstractUser):
     personnel_code = models.CharField(
         max_length=15, null=True, blank=True, verbose_name="کد پرسنلی"
     )
-    roles = models.ManyToManyField(Role, related_name="employees", verbose_name="نقش‌ها")
+    roles = models.ManyToManyField(
+        Role, related_name="employees", verbose_name="نقش‌ها"
+    )
     assigned_subdepartments = models.ManyToManyField(
         Subdepartment,
         related_name="assigned_employees",
@@ -603,7 +605,6 @@ class Employee(AbstractUser):
         max_length=200, null=True, blank=True, verbose_name="محل خدمت حکم کارگزین"
     )
 
-
     # reporting system
     # can_reserve_for_others_choices = (
     #     (0, "اجازه ندارد"),
@@ -657,7 +658,9 @@ class Employee(AbstractUser):
                     "لطفاً کارخانه مرتبط با تحویل‌گیرنده را انتخاب کنید."
                 )
             if self.food_receiver_holding:
-                raise ValidationError("تحویل‌گیرنده کارخانه نمی‌تواند هلدینگ داشته باشد.")
+                raise ValidationError(
+                    "تحویل‌گیرنده کارخانه نمی‌تواند هلدینگ داشته باشد."
+                )
 
         # اگر نقش = تحویل گیرنده هلدینگ → فقط هلدینگ باید انتخاب شود
         if self.food_receiver_role == 2:
@@ -666,7 +669,9 @@ class Employee(AbstractUser):
                     "لطفاً هلدینگ مرتبط با تحویل‌گیرنده را انتخاب کنید."
                 )
             if self.food_receiver_factory:
-                raise ValidationError("تحویل‌گیرنده هلدینگ نمی‌تواند کارخانه داشته باشد.")
+                raise ValidationError(
+                    "تحویل‌گیرنده هلدینگ نمی‌تواند کارخانه داشته باشد."
+                )
 
     def _sync_hr_access_from_hierarchy(self):
         if not self.pk:
@@ -733,9 +738,7 @@ class Employee(AbstractUser):
 
 class UserPasskey(models.Model):
     user = models.ForeignKey(
-        Employee,
-        on_delete=models.CASCADE,
-        related_name="passkeys"
+        Employee, on_delete=models.CASCADE, related_name="passkeys"
     )
 
     credential_id = models.TextField(unique=True)
@@ -744,25 +747,18 @@ class UserPasskey(models.Model):
 
     sign_count = models.IntegerField(default=0)
 
-    device_name = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True
-    )
+    device_name = models.CharField(max_length=255, blank=True, null=True)
 
     transports = models.JSONField(default=list)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    last_used_at = models.DateTimeField(
-        blank=True,
-        null=True
-    )
+    last_used_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         verbose_name = "Passkey"
         verbose_name_plural = "Passkeys"
-        
+
 
 class Participation(models.Model):
     ITEM_TYPES = (
@@ -1560,6 +1556,13 @@ class FoodReservation(models.Model):
             super().save(*args, **kwargs)
 
 
+
+
+
+
+
+
+
 class OrgUnit(models.Model):
     UNIT_TYPE_CHOICES = (
         ("holding", "هلدینگ"),
@@ -1711,6 +1714,13 @@ class ReferralStep(models.Model):
 
     def __str__(self):
         return f"Step {self.order} of Referral #{self.referral_id}"
+
+
+
+
+
+
+
 
 
 class Notification(models.Model):

@@ -156,15 +156,17 @@ def assetlinks(request):
 
     return JsonResponse(data, safe=False)
 
+
 def csrf_failure(request, reason=""):
     """مدیریت ساده ارور CSRF - بدون تمپلیت جدید"""
-    
+
     # اگر درخواست از صفحه لاگین باشد
     if "login" in request.path.lower():
         return redirect("users:landing")
-    
+
     # برای صفحات دیگر، رفتار پیش‌فرض Django
     from django.views.csrf import csrf_failure as default_csrf_failure
+
     return default_csrf_failure(request, reason)
 
 
@@ -307,20 +309,14 @@ def perform_login(request, user):
             f"برای شما محل فعالیت و نقش تعریف نشده است ، لطفا با پشتیبانی تماس حاصل فرمایید. شماره تماس پشتیبانی : {settings.CONTACT_PHONE_NUMBER}",
         )
         return logout_view(request)
-    
 
-
-
-    if not role_name or role_name == "" :
+    if not role_name or role_name == "":
 
         messages.error(
             request,
             f"برای شما محل فعالیت و نقش تعریف نشده است ، لطفا با پشتیبانی تماس حاصل فرمایید. شماره تماس پشتیبانی : {settings.CONTACT_PHONE_NUMBER}",
         )
         return logout_view(request)
-    
-
-
 
     if role_name in {
         "super_admin",
@@ -356,8 +352,11 @@ def authenticate_user(request):
 
     u = Employee.objects.filter(national_id=national_id).first()
 
-    if not u.is_active :
-        return None, f"حساب کاربری شما غیرفعال است، لطفا با واحد هوش مصنوعی تماس حاصل فرمایید. شماره تماس پشتیبانی : {settings.CONTACT_PHONE_NUMBER}"
+    if not u.is_active:
+        return (
+            None,
+            f"حساب کاربری شما غیرفعال است، لطفا با واحد هوش مصنوعی تماس حاصل فرمایید. شماره تماس پشتیبانی : {settings.CONTACT_PHONE_NUMBER}",
+        )
 
     if otp_code:
         # ورود با OTP
@@ -434,7 +433,6 @@ def authenticate_user(request):
 #     })
 
 
-
 # import base64
 
 # @csrf_exempt
@@ -501,9 +499,6 @@ def authenticate_user(request):
 #         return JsonResponse({"success": False, "error": str(e)})
 
 
-
-
-
 def login_view(request):
     national_id = request.POST.get("national_id")
     password = request.POST.get("password")  # ممکن است خالی باشد
@@ -517,31 +512,31 @@ def login_view(request):
         if request.user.is_authenticated:
             return redirect("users:landing")
 
-
         user, error_msg = authenticate_user(request)
 
         if user is not None:
 
             perform_login(request, user)
 
-
             # has_passkey = user.passkeys.exists()
-    
+
             # return render(request, "users/login.html", {
             #     "has_passkey": has_passkey,
             #     "national_id": national_id,   # برای پیش‌فرض کردن فیلد
             # })
 
-
             return redirect("users:landing")
-        
 
         messages.error(request, error_msg or "خطا در ورود.")
 
     # return render(request, "users/login.html")
-    return render(request, "users/login.html", {
-        "next": request.GET.get("next", ""),
-    })
+    return render(
+        request,
+        "users/login.html",
+        {
+            "next": request.GET.get("next", ""),
+        },
+    )
 
 
 def register_view(request):
@@ -720,11 +715,11 @@ def _verify_otp(request, national_id, otp_code):
 
 @login_required
 def landing_page(request):
-    
+
     user = request.user
 
     modules = build_modules_for_user(request)
-    
+
     context = {
         "modules": modules,
     }
@@ -734,7 +729,6 @@ def landing_page(request):
 
 @login_required
 def build_modules_for_user(request):
-
 
     try:
         role_name = request.session["current_role"]
@@ -753,8 +747,12 @@ def build_modules_for_user(request):
         )
         return logout_view(request)
 
-    management_access = role_name in {"super_admin","holding_manager","factory_manager","department_manager",}
-
+    management_access = role_name in {
+        "super_admin",
+        "holding_manager",
+        "factory_manager",
+        "department_manager",
+    }
 
     user = request.user
     current_host = request.get_host()
@@ -834,7 +832,11 @@ def build_modules_for_user(request):
                     "icon_name": "self/مدیریت منوی سلف.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
-                    "have_permision": role_name == "department_manager" and Department.objects.filter(Q(managers=request.user),is_self=True,).exists()
+                    "have_permision": role_name == "department_manager"
+                    and Department.objects.filter(
+                        Q(managers=request.user),
+                        is_self=True,
+                    ).exists(),
                 },
                 "restaurant_management_dashboard": {
                     "name": "مدیریت رستوران",
@@ -842,7 +844,11 @@ def build_modules_for_user(request):
                     "icon_name": "self/مدیریت منوی سلف.svg",
                     "color": "#8b2650",
                     "coming_soon": False,
-                    "have_permision": role_name == "supervisor" and Subdepartment.objects.filter(Q(supervisors=request.user),is_restaurant=True,).exists(),
+                    "have_permision": role_name == "supervisor"
+                    and Subdepartment.objects.filter(
+                        Q(supervisors=request.user),
+                        is_restaurant=True,
+                    ).exists(),
                 },
                 "managements_reports_dashboard": {
                     "name": "گزارش گیری مدیریتی",
@@ -949,8 +955,6 @@ def build_modules_for_user(request):
             },
         }
 
-
-
     # poblic modules
 
     modules["jazb"] = {
@@ -1036,8 +1040,6 @@ def build_modules_for_user(request):
         "coming_soon": False,
         "have_permision": True,
         "micro_modules": {
-            
-            
             "quizb1": {
                 "name": "داشبورد سامانه کوییز",
                 "link": f"https://quiz.{current_host}",
@@ -1116,10 +1118,9 @@ def build_modules_for_user(request):
         },
     }
 
-
     # inprocess modules
     if user.karimax_permision:
-            
+
         modules["edari"] = {
             "name": "امور اداری",
             "link": "/self",
@@ -1202,7 +1203,7 @@ def build_modules_for_user(request):
                 },
             },
         }
-        
+
         modules["trip"] = {
             "name": "سفر",
             "link": "/self",
@@ -1538,36 +1539,35 @@ def build_modules_for_user(request):
                 },
             },
         }
-        
+
         modules["clouds_services"] = {
-                "name": "سامانه های ابری",
-                "link": "/clouds",
-                "icon_name": "mosharekat.svg",
-                "color": "#5f6836",
-                "coming_soon": True,
-                "have_permision": True,
-                "micro_modules": {
-                    "reserv": {
-                        "name": "فضای ابری",
-                        "link": "https://cloud.karimax.ir/",
-                        "icon_name": "mosharekat.svg",
-                        "color": "#8b2650",
-                        "coming_soon": True,
-                        "have_permision": True,
-                    },
-                    "reserv1": {
-                        "name": "سامانه میت",
-                        "link": "#",
-                        "icon_name": "mosharekat.svg",
-                        "color": "#8b2650",
-                        "coming_soon": True,
-                        "have_permision": True,
-                    },
+            "name": "سامانه های ابری",
+            "link": "/clouds",
+            "icon_name": "mosharekat.svg",
+            "color": "#5f6836",
+            "coming_soon": True,
+            "have_permision": True,
+            "micro_modules": {
+                "reserv": {
+                    "name": "فضای ابری",
+                    "link": "https://cloud.karimax.ir/",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                    "have_permision": True,
                 },
-            }
+                "reserv1": {
+                    "name": "سامانه میت",
+                    "link": "#",
+                    "icon_name": "mosharekat.svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                    "have_permision": True,
+                },
+            },
+        }
 
     return modules
-
 
 
 def contact_us(request):
@@ -3579,11 +3579,14 @@ def manage_self_menu(request):
     can_download_other_factories_resers = True
 
     # دسترسی فقط برای مدیر سلف
-    if role_name != "department_manager" or not Department.objects.filter(
-        # Q(manager=request.user) |
-        Q(managers=request.user),
-        is_self=True,
-    ).exists():
+    if (
+        role_name != "department_manager"
+        or not Department.objects.filter(
+            # Q(manager=request.user) |
+            Q(managers=request.user),
+            is_self=True,
+        ).exists()
+    ):
         messages.error(request, "شما دسترسی به مدیریت منوی سلف ندارید.")
         return redirect("users:landing")
 
@@ -4151,8 +4154,6 @@ def manage_self_menu(request):
     return render(request, "users/manage_self_menu.html", context)
 
 
-
-
 @login_required
 def managements_reports_dashboard(request):
     user = request.user
@@ -4339,7 +4340,9 @@ def managements_reports_dashboard(request):
 
             rows_center_of_charge.append(emp.center_of_charge or "نامشخص")
             Position_Job_history.append(emp.Position_Job_history or "نامشخص")
-            Place_of_service_recruitment_order.append(emp.Place_of_service_recruitment_order or "نامشخص")
+            Place_of_service_recruitment_order.append(
+                emp.Place_of_service_recruitment_order or "نامشخص"
+            )
 
             factory_names_set = set()
             for reservation in reservations:
@@ -5087,7 +5090,11 @@ def restaurant_management_dashboard(request):
                 reservation_date__range=(from_gdate, to_gdate),
                 is_canceled=False,
             )
-            .values("reservation_date", "menu_item__food__name", "menu_item__food__free_price")
+            .values(
+                "reservation_date",
+                "menu_item__food__name",
+                "menu_item__food__free_price",
+            )
             .annotate(
                 quota_count=Sum("factory_quantity"),
                 extra_count=Sum("free_quantity"),
@@ -5097,7 +5104,14 @@ def restaurant_management_dashboard(request):
         )
 
         col_days, col_dates, col_foods = [], [], []
-        col_quota, col_extra, col_guest, col_total, col_food_price, col_total_dept = [], [], [], [], [], []
+        col_quota, col_extra, col_guest, col_total, col_food_price, col_total_dept = (
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
 
         for row in range_rows:
             gdate = row["reservation_date"]
@@ -5114,7 +5128,10 @@ def restaurant_management_dashboard(request):
             col_guest.append(guest_count)
             col_total.append(quota_count + extra_count + guest_count)
             col_food_price.append((row.get("menu_item__food__free_price")))
-            col_total_dept.append((quota_count + extra_count + guest_count) * (int(row.get("menu_item__food__free_price"))))
+            col_total_dept.append(
+                (quota_count + extra_count + guest_count)
+                * (int(row.get("menu_item__food__free_price")))
+            )
 
         data_columns = [
             ("روز هفته", col_days),
@@ -5125,7 +5142,7 @@ def restaurant_management_dashboard(request):
             ("تعداد مهمان", col_guest),
             ("مجموع کل", col_total),
             ("هزینه هر پرس", col_food_price),
-            ("هزینه کل", col_total_dept)
+            ("هزینه کل", col_total_dept),
         ]
 
         filename = f"گزارش_کارخانه_{factory_name}_در بازه زمانی_{from_date_str.replace('/', '-')}_تا_{to_date_str.replace('/', '-')}"
@@ -5256,7 +5273,7 @@ def restaurant_management_dashboard(request):
                     "is_today": current_day_date == today_gdate,
                     "foods": foods_data,
                     "is_reservation_time": is_reservation_time,
-                    "persian_day_names":persian_day_names[i],
+                    "persian_day_names": persian_day_names[i],
                 }
             )
 
@@ -5376,14 +5393,9 @@ def food_reservation_view(request):
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
 
-
     weeks_count = int(getattr(settings, "WEEKS_COUNT", 1) or 1)
 
     # weeks_count = settings.WEEKS_COUNT
-
-
-
-
 
     # if not user.unlimit_reservation:
     #     max_factory_quantity = user.factory_limit_reservation
@@ -5508,14 +5520,11 @@ def food_reservation_view(request):
     )
     # print(f"********** {close_food_res_time_H}")
 
-
-
     days_until_saturday = today_jdate.weekday()
     base_week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
 
     week_starts_jdate = [
-        base_week_start_jdate + timedelta(days=7 * i)
-        for i in range(weeks_count)
+        base_week_start_jdate + timedelta(days=7 * i) for i in range(weeks_count)
     ]
     full_start_date = week_starts_jdate[0].togregorian()
     full_end_date = (week_starts_jdate[-1] + timedelta(days=6)).togregorian()
@@ -5561,9 +5570,6 @@ def food_reservation_view(request):
             .select_related("restaurant", "restaurant__department")
             .all()
         )
-    
-    
-
 
     weekly_data = []
     week_days = [code for code, name in PERSIAN_WEEK_DAYS]
@@ -5602,13 +5608,10 @@ def food_reservation_view(request):
                     close_food_res_time_H, close_food_res_time_M
                 )
 
-            is_today_comment_time = (
-                not is_reservation_possible
-                or (
-                    day_date_g == today_gdate
-                    and tehran_aware_datetime.time()
-                    > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
-                )
+            is_today_comment_time = not is_reservation_possible or (
+                day_date_g == today_gdate
+                and tehran_aware_datetime.time()
+                > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
             )
 
             available_menu_ids = list(menus.values_list("id", flat=True))
@@ -5665,13 +5668,12 @@ def food_reservation_view(request):
                     "user_can_comment": True,
                     "day_reservations": day_reservations,
                     "day_food_feedbacks": day_food_feedbacks,
-                    "reservation_time_limit": time(close_food_res_time_H, close_food_res_time_M),
+                    "reservation_time_limit": time(
+                        close_food_res_time_H, close_food_res_time_M
+                    ),
                     "is_today_comment_time": is_today_comment_time,
                 }
             )
-
-
-
 
     # week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
     # week_start_date = (
@@ -6089,7 +6091,6 @@ def management_food_reservation_view(request):
     today_gdate = date.today()
     today_jdate = jdatetime.date.today()
 
-
     weeks_count = int(getattr(settings, "WEEKS_COUNT", 1) or 1)
 
     if "form_token" not in request.session:
@@ -6208,8 +6209,7 @@ def management_food_reservation_view(request):
     base_week_start_jdate = today_jdate - timedelta(days=days_until_saturday)
 
     week_starts_jdate = [
-        base_week_start_jdate + timedelta(days=7 * i)
-        for i in range(weeks_count)
+        base_week_start_jdate + timedelta(days=7 * i) for i in range(weeks_count)
     ]
     full_start_date = week_starts_jdate[0].togregorian()
     full_end_date = (week_starts_jdate[-1] + timedelta(days=6)).togregorian()
@@ -6293,13 +6293,10 @@ def management_food_reservation_view(request):
                     close_food_res_time_H, close_food_res_time_M
                 )
 
-            is_today_comment_time = (
-                not is_reservation_possible
-                or (
-                    day_date_g == today_gdate
-                    and tehran_aware_datetime.time()
-                    > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
-                )
+            is_today_comment_time = not is_reservation_possible or (
+                day_date_g == today_gdate
+                and tehran_aware_datetime.time()
+                > time(start_today_food_comment_time_H, start_today_food_comment_time_M)
             )
 
             available_menu_ids = list(menus.values_list("id", flat=True))
@@ -6356,11 +6353,12 @@ def management_food_reservation_view(request):
                     "user_can_comment": True,
                     "day_reservations": day_reservations,
                     "day_food_feedbacks": day_food_feedbacks,
-                    "reservation_time_limit": time(close_food_res_time_H, close_food_res_time_M),
+                    "reservation_time_limit": time(
+                        close_food_res_time_H, close_food_res_time_M
+                    ),
                     "is_today_comment_time": is_today_comment_time,
                 }
             )
-
 
     if request.method == "POST" and "submit_reservations" in request.POST:
 
@@ -6448,7 +6446,8 @@ def management_food_reservation_view(request):
             date_g = datetime.strptime(item["date"], "%Y-%m-%d").date()
 
             menu_item = MenuItem.objects.filter(
-                id=item["food_choice"], food__is_management_food=True,
+                id=item["food_choice"],
+                food__is_management_food=True,
             ).first()
             if not menu_item:
                 continue
@@ -6591,8 +6590,6 @@ def management_food_reservation_view(request):
     print(f"context : {context}")
 
     return render(request, "users/food_reservation.html", context)
-
-
 
 
 def get_factory_ids(employee):
@@ -7543,8 +7540,6 @@ def user_management(request):
             "متاسفانه در سامانه برای شما نقش و قسمت تعریف نشده است ، لطفا با واحد هوش مصنوعی تماس حاصل بفرمایید. 09136304789",
         )
         return logout_view(request)
-    
-
 
     INITIAL_LOAD_COUNT = settings.USER_MANAGEMENT_INITIAL_LOAD_COUNT
     LOAD_MORE_COUNT = settings.USER_MANAGEMENT_LOAD_MORE_COUNT
@@ -7596,8 +7591,6 @@ def user_management(request):
         .order_by("id")
     )
 
-    
-
     holdings = user.hr_accessible_holdings.all()
     factories = (
         user.hr_accessible_factories.all()
@@ -7611,12 +7604,6 @@ def user_management(request):
         user.hr_accessible_subdepartments.all()
         | Subdepartment.objects.filter(department__in=departments)
     ).distinct()
-
-
-
-
-
-    
 
     # اضافه کردن فیلتر holding فقط برای super_admin
     if "super_admin" in user_role:
@@ -7945,11 +7932,7 @@ def user_management(request):
                     {"status": "created", "message": "کاربر جدید با موفقیت ایجاد شد."}
                 )
 
-    
-
-
     # total_count = employees.count()
-
 
     # if request.headers.get("X-Requested-With") == "XMLHttpRequest":
     #     offset = int(request.GET.get("offset", 0))
@@ -7968,8 +7951,6 @@ def user_management(request):
     #     )
 
     # employees = employees[:INITIAL_LOAD_COUNT]
-
-
 
     # departments = user.hr_accessible_departments.all()
     # subdepartments = user.hr_accessible_subdepartments.all()
@@ -8410,7 +8391,6 @@ def process_participation(request, participation_id):
                     temp_wav_path = file_path.rsplit(".", 1)[0] + "_temp.wav"
                     text = STT_full_file(file_path, temp_wav_path, 10)
 
-
                     participation.text_content = text
                     participation.orginal_content = text
                     user_role = request.user.roles.values_list("name", flat=True)
@@ -8570,7 +8550,6 @@ def process_participation(request, participation_id):
             messages.success(request, "مشارکت تایید نهایی شد، با تشکر از همکاری شما.")
 
             return redirect("users:dashboard")
-
 
         elif (
             action == "summarized_text"
@@ -8837,9 +8816,6 @@ def search_org_units(request):
             }
         )
 
-
-
-
     super_admin_role = Role.objects.filter(name="super_admin").first()
     if super_admin_role:
         admins = Employee.objects.filter(
@@ -8995,6 +8971,7 @@ def referral_create(request, participation_id):
     if request.method == "POST":
         title = request.POST.get("title", "").strip()
         comment = request.POST.get("comment", "").strip()
+        
         target_object_id = request.POST.get("target_object_id")
         target_content_type_id = request.POST.get("target_content_type")
 
