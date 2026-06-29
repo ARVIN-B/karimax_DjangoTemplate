@@ -6587,7 +6587,7 @@ def management_food_reservation_view(request):
         "can_reserve_management_food": can_reserve_management_food,
     }
 
-    print(f"context : {context}")
+    # print(f"context : {context}")
 
     return render(request, "users/food_reservation.html", context)
 
