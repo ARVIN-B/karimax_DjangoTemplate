@@ -1637,10 +1637,32 @@
 							></i>
 							<span>تماس با پشتیبانی</span>
 						</a>
+
+
+						<form
+							method="post"
+							action="{% url 'users:logout' %}"
+							class="app-mobile-menu__logout"
+						>
+							{% csrf_token %}
+							<button
+								type="submit"
+								class="app-mobile-menu__item app-mobile-menu__logout-btn"
+							>
+								<i
+									class="fas fa-right-from-bracket"
+									aria-hidden="true"
+								></i>
+								<span>خروج</span>
+							</button>
+						</form>
+
+						
 					</section>
 					<section class="app-mobile-menu__section">
 						<p class="app-mobile-menu__section-title">مسیرهای اصلی</p>
-						<a
+
+						<!-- <a
 							class="app-mobile-menu__item"
 							href="{% url 'users:landing' %}"
 						>
@@ -1649,9 +1671,9 @@
 								aria-hidden="true"
 							></i>
 							<span>لندینگ</span>
-						</a>
+						</a> -->
 						{% if user.karimax_permision %}
-						<a
+						<!-- <a
 							class="app-mobile-menu__item"
 							href="{% url 'users:food_reservation' %}"
 						>
@@ -1660,9 +1682,9 @@
 								aria-hidden="true"
 							></i>
 							<span>رزرو غذا</span>
-						</a>
+						</a> -->
 						{% endif %} {% if has_management_access and user.karimax_permision %}
-						<a
+						<!-- <a
 							class="app-mobile-menu__item"
 							href="{% url 'users:management_dashboard' %}"
 						>
@@ -1671,7 +1693,7 @@
 								aria-hidden="true"
 							></i>
 							<span>داشبورد مدیریت</span>
-						</a>
+						</a> -->
 						{% endif %} {% if is_super_admin %}
 						<a
 							class="app-mobile-menu__item"
@@ -1700,8 +1722,9 @@
 					</section>
 					<section class="app-mobile-menu__section">
 						<p class="app-mobile-menu__section-title">دسترسی سریع</p>
+
 						{% if user.karimax_permision %}
-						<a
+						<!-- <a
 							class="app-mobile-menu__item"
 							href="{% url 'users:submit_participation' %}"
 						>
@@ -1710,7 +1733,7 @@
 								aria-hidden="true"
 							></i>
 							<span>ثبت مشارکت</span>
-						</a>
+						</a> -->
 						{% endif %}
 						<a
 							class="app-mobile-menu__item"
@@ -1784,23 +1807,7 @@
 								></button>
 							</div>
 						</div>
-						<form
-							method="post"
-							action="{% url 'users:logout' %}"
-							class="app-mobile-menu__logout"
-						>
-							{% csrf_token %}
-							<button
-								type="submit"
-								class="app-mobile-menu__item app-mobile-menu__logout-btn"
-							>
-								<i
-									class="fas fa-right-from-bracket"
-									aria-hidden="true"
-								></i>
-								<span>خروج</span>
-							</button>
-						</form>
+						
 					</section>
 					{% if management_tree %}
 					<section class="app-mobile-menu__section">
