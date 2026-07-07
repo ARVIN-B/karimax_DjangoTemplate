@@ -64,4 +64,12 @@ async def agent_run(prev_text: str, new_text: str):
 
 
 def merge_with_llm(prev_text: str, new_text: str) -> str:
-    return asyncio.run(agent_run(prev_text, new_text))
+    try:
+        return asyncio.run(agent_run(prev_text, new_text))
+
+    except Exception as e:
+        print(f"#################################")
+        print(f"llm hase erorr : {e}")
+        print(f"#################################")
+        response = f"{prev_text} {new_text}"
+        return response

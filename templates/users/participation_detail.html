@@ -66,6 +66,15 @@
 			تبدیل به متن
 		</button>
 
+		<button
+			type="submit"
+			name="action"
+			value="continue_without_converting"
+			class="btn btn-warning"
+		>
+			ادامه بدون تبدیل ویس به متن
+		</button>
+
 		{% if can_delete %} {% csrf_token %}
 		<button
 			type="submit"

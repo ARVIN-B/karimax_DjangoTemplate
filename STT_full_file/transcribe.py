@@ -58,7 +58,11 @@ def transcribe_long_audio_with_merge(
 
                 start_time = time.time()
                 ####################
-                new_text = recognizer.recognize_google(audio_data, language=language)
+
+                try:
+                    new_text = recognizer.recognize_google(audio_data, language=language)
+                except Exception as e:
+                    pass
 
                 percent = percent + per
 

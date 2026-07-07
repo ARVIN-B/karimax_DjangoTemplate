@@ -107,6 +107,7 @@ import json
 from autogen_agentchat.messages import TextMessage
 from collections import defaultdict
 import re
+from users.exceptions import STTError, STTConnectionError
 
 if sys.platform == "win32":
     os.system("chcp 65001 >nul")  # تغییر کدپیج کنسول به UTF-8
@@ -8568,24 +8569,8 @@ def process_participation(request, participation_id):
 
                     participation.text_content = text
                     participation.orginal_content = text
-                    user_role = request.user.roles.values_list("name", flat=True)
 
                     participation.status = "user_review"
-
-                    # if "employee" in user_role:
-                    #     participation.status = "user_review"
-                    # elif "supervisor" in user_role:
-                    #     participation.status = "user_review"  # سرپرست خودش تأیید می‌کنه
-                    # elif "department_manager" in user_role:
-                    #     participation.status = (
-                    #         "user_review"  # مدیر بخش خودش تأیید می‌کنه
-                    #     )
-                    # elif "factory_manager" in user_role:
-                    #     participation.status = (
-                    #         "user_review"  # مدیر کارخانه خودش تأیید می‌کنه
-                    #     )
-                    # elif "super_admin" in user_role:
-                    #     participation.status = "user_review"  # مدیر کل خودش تأیید می‌کنه
 
                     participation.save()
                     messages.success(request, "متن با موفقیت استخراج شد.")
@@ -8608,8 +8593,48 @@ def process_participation(request, participation_id):
                 participation.save()
                 return redirect("users:process_participation", participation.id)
 
+
+
+
+
+            except STTConnectionError as e:
+                messages.error(request, str(e))
+
+                participation.text_content = participation.description
+                participation.status = "user_review"
+                participation.save()
+
+                return redirect("users:process_participation", participation.id)
+
+            except STTError as e:
+                messages.error(request, str(e))
+
+
             except Exception as e:
-                messages.error(request, f"خطا در پردازش: {str(e)}")
+                messages.error(request, f"خطا در پردازش")
+
+        elif (
+            action == "continue_without_converting"
+            and participation.status == "pending"
+            and not participation.text_content
+        ):
+
+            participation.text_content = participation.description
+            participation.status = "user_review"
+            participation.save()
+            return redirect("users:process_participation", participation.id)
+
+
+
+
+
+
+
+
+
+
+
+
 
         elif (
             action == "delete"

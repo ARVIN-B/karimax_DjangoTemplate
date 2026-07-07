@@ -979,6 +979,9 @@
     font-weight:600;
     opacity:.95;
 }
+.hero-v3__title.app-page-heading {
+    color: #fff !important;
+}
 .hero-v3__desc{
     margin-top:12px;
     color:rgba(255,255,255,.92);
@@ -1435,16 +1438,16 @@ html[data-bs-theme="dark"] .hero-v3__badge{
 						<p class="hero-v3__desc">
 							کیفیت از طراحی تا اجرا در تمام فرآیندهای سازمان جریان دارد و هدف ما ایجاد تجربه‌ای سریع، دقیق و قابل اعتماد برای کارکنان است.
 						</p>
-						<a href="#" class="hero-v3__button">
+						<a href="{% url 'users:submit_participation' %}" class="hero-v3__button">
 							<span>ثبت مشارکت</span>
-							<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+							<!-- <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
 								<path
 									d="M8 5L16 12L8 19"
 									stroke="currentColor"
 									stroke-width="2"
 									stroke-linecap="round"
 									stroke-linejoin="round"/>
-							</svg>
+							</svg> -->
 						</a>
 					</div>
 					<div class="hero-v3__illustration">
@@ -1465,7 +1468,7 @@ html[data-bs-theme="dark"] .hero-v3__badge{
 					<div class="hero-v3__glow"></div>
 					<div class="hero-v3__content">
 						<div class="hero-v3__badge">
-							<img src="{% static 'icons/self.svg' %}" alt="">
+							<img src="{% static 'icons/amoozesh.svg' %}" alt="">
 							<span>سامانه آموزش</span>
 						</div>
 						<h2 class="hero-v3__title">
@@ -1476,15 +1479,15 @@ html[data-bs-theme="dark"] .hero-v3__badge{
 							آموزش مستمر مسیر توسعه فردی و سازمانی را هموار می‌کند و بستری برای رشد توانمندی‌های کارکنان فراهم می‌سازد.
 						</p>
 						<a href="#" class="hero-v3__button">
-							<span>بیشتر ببین</span>
-							<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+							<span> به زودی</span>
+							<!-- <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
 								<path
 									d="M8 5L16 12L8 19"
 									stroke="currentColor"
 									stroke-width="2"
 									stroke-linecap="round"
 									stroke-linejoin="round"/>
-							</svg>
+							</svg> -->
 						</a>
 					</div>
 					<div class="hero-v3__illustration">
@@ -1492,7 +1495,7 @@ html[data-bs-theme="dark"] .hero-v3__badge{
 						<div class="hero-v3__blob hero-v3__blob--2"></div>
 						<div class="hero-v3__grid"></div>
 						<img
-							src="{% static 'icons/self.svg' %}"
+							src="{% static 'icons/amoozesh.svg' %}"
 							class="hero-v3__icon"
 							alt=""
 						>
