@@ -466,6 +466,16 @@
         button.classList.toggle("is-active", nextOpen);
       });
 
+      if (nextOpen) {
+        drawer.querySelectorAll(".app-mobile-menu__role-tree .tree-sub.show").forEach(function (subTree) {
+          subTree.classList.remove("show");
+        });
+        drawer.querySelectorAll(".app-mobile-menu__role-tree .tree-toggle").forEach(function (toggle) {
+          toggle.classList.add("collapsed");
+          toggle.setAttribute("aria-expanded", "false");
+        });
+      }
+
       if (!nextOpen) {
         closeTimer = win.setTimeout(function () {
           drawer.hidden = true;

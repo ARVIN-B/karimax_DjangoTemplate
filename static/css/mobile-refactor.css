@@ -716,9 +716,11 @@ textarea::placeholder {
   align-items: flex-end;
   justify-content: center;
   padding: 12px;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0) 34%),
+    rgba(15, 23, 42, 0.44);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -744,15 +746,21 @@ textarea::placeholder {
   max-height: calc(100dvh - (var(--nav-height) + env(safe-area-inset-bottom, 0px) + 24px));
   margin-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 12px);
   overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--app-surface-strong) 96%, transparent);
-  box-shadow: var(--app-shadow-lg);
-  transform: translateY(24px) scale(0.98);
+  border: 1px solid color-mix(in srgb, var(--app-border) 72%, rgba(255,255,255,.28));
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--app-primary) 16%, transparent) 0%, transparent 32%),
+    linear-gradient(180deg, color-mix(in srgb, var(--app-surface-strong) 92%, rgba(255,255,255,.18)), color-mix(in srgb, var(--app-surface) 96%, rgba(255,255,255,.08)));
+  box-shadow:
+    0 28px 70px rgba(15, 23, 42, 0.24),
+    inset 0 1px 0 rgba(255,255,255,.45);
+  transform: translateY(18px) scale(0.985);
   opacity: 0;
   transition:
     transform 180ms ease,
     opacity 180ms ease;
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
 }
 
 .app-mobile-menu.is-open .app-mobile-menu__panel {
@@ -765,8 +773,21 @@ textarea::placeholder {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid var(--app-border);
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--app-border) 72%, rgba(255,255,255,.24));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--app-primary) 12%, transparent), transparent 42%),
+    transparent;
+  position: relative;
+}
+
+.app-mobile-menu__header::after {
+  content: "";
+  position: absolute;
+  inset: auto 18px -1px 18px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--app-primary) 32%, transparent), transparent);
+  opacity: 0.6;
 }
 
 .app-mobile-menu__brand {
@@ -777,12 +798,15 @@ textarea::placeholder {
 }
 
 .app-mobile-menu__brand img {
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
-  border-radius: 14px;
-  background: var(--app-surface-soft);
-  box-shadow: var(--app-shadow-sm);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--app-surface-soft) 82%, rgba(255,255,255,.18));
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255,255,255,.55);
+  border: 1px solid color-mix(in srgb, var(--app-border) 66%, rgba(255,255,255,.24));
 }
 
 .app-mobile-menu__brand strong {
@@ -801,19 +825,23 @@ textarea::placeholder {
 
 .app-mobile-menu__close {
   display: inline-grid;
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   place-items: center;
-  border: 1px solid var(--app-border);
-  border-radius: 14px !important;
-  background: var(--app-surface-soft);
+  border: 1px solid color-mix(in srgb, var(--app-border) 70%, rgba(255,255,255,.26));
+  border-radius: 16px !important;
+  background: rgba(255,255,255,.14);
   color: var(--app-text);
-  box-shadow: none !important;
+  box-shadow:
+    0 12px 24px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255,255,255,.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .app-mobile-menu__content {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   padding: 16px;
   overflow: auto;
   max-height: calc(100dvh - (var(--nav-height) + env(safe-area-inset-bottom, 0px) + 88px));
@@ -821,54 +849,87 @@ textarea::placeholder {
 
 .app-mobile-menu__section {
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  padding: 2px 0;
 }
 
 .app-mobile-menu__section-title {
   margin: 0;
   color: var(--app-muted);
   font-size: var(--step--1);
-  font-weight: 800;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  padding-inline: 2px;
 }
 
 .app-mobile-menu__item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  min-height: 52px;
-  padding: 0 14px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--radius-xs) !important;
-  background: var(--app-surface);
+  min-height: 58px;
+  padding: 0 14px 0 16px;
+  border: 1px solid color-mix(in srgb, var(--app-border) 72%, rgba(255,255,255,.22));
+  border-radius: 18px !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--app-surface) 88%, rgba(255,255,255,.12)), color-mix(in srgb, var(--app-surface-strong) 96%, rgba(255,255,255,.1))),
+    var(--app-surface);
   color: var(--app-text);
   text-decoration: none;
-  box-shadow: var(--app-shadow-sm);
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255,255,255,.55);
+  transition:
+    transform 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .app-mobile-menu__item i {
-  width: 20px;
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
   font-size: 1rem;
   color: var(--app-primary-strong);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--app-primary) 14%, var(--app-surface-strong));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    0 10px 20px rgba(15, 23, 42, 0.08);
 }
 
 .app-mobile-menu__item span {
   flex: 1;
   text-align: right;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 0.96rem;
+  letter-spacing: -0.01em;
 }
 
 .app-mobile-menu__item:hover,
 .app-mobile-menu__item:focus,
 .app-mobile-menu__item:active {
-  background: color-mix(in srgb, var(--app-primary) 12%, var(--app-surface-strong));
+  background: color-mix(in srgb, var(--app-primary) 10%, var(--app-surface-strong));
   color: var(--app-primary-strong);
+  transform: translateY(-1px);
+  box-shadow:
+    0 16px 34px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255,255,255,.65);
+  border-color: color-mix(in srgb, var(--app-primary) 18%, var(--app-border));
 }
 
 .app-mobile-menu__item--support {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--app-primary) 16%, var(--app-surface-strong)), var(--app-surface));
-  border-color: color-mix(in srgb, var(--app-primary) 24%, var(--app-border));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--app-primary) 18%, transparent), transparent 38%),
+    linear-gradient(135deg, color-mix(in srgb, var(--app-primary) 14%, var(--app-surface-strong)), var(--app-surface));
+  border-color: color-mix(in srgb, var(--app-primary) 26%, var(--app-border));
 }
 
 .app-mobile-menu__item--support i {
@@ -877,26 +938,61 @@ textarea::placeholder {
 
 .app-mobile-menu__item.is-active {
   border-color: color-mix(in srgb, var(--app-primary) 30%, var(--app-border));
-  background: color-mix(in srgb, var(--app-primary) 15%, var(--app-surface-strong));
+  background: color-mix(in srgb, var(--app-primary) 14%, var(--app-surface-strong));
   color: var(--app-primary-strong);
 }
 
 .app-mobile-menu__badge {
   display: inline-flex;
-  min-width: 26px;
-  height: 26px;
+  min-width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   padding: 0 8px;
   border-radius: 999px;
-  background: var(--app-danger);
+  background: linear-gradient(135deg, #ef4444, #f97316);
   color: #fff;
   font-size: var(--step--1);
   font-weight: 800;
+  box-shadow: 0 10px 18px rgba(239, 68, 68, 0.22);
 }
 
 .app-mobile-menu__theme {
-  border: 1px solid var(--app-border);
+  border: 1px solid color-mix(in srgb, var(--app-border) 72%, rgba(255,255,255,.22));
+  cursor: pointer;
+}
+
+.app-mobile-menu__theme i {
+  color: var(--app-primary-strong);
+}
+
+.app-mobile-menu__themes {
+  padding-top: 4px;
+}
+
+.app-mobile-menu__section-subtitle {
+  margin: 0 0 10px;
+  color: var(--app-muted);
+  font-size: var(--step--2);
+  font-weight: 800;
+}
+
+.app-mobile-menu__theme-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.theme-btn {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255,255,255,.65);
+  box-shadow:
+    0 10px 18px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255,255,255,.38);
+}
+
+.app-mobile-menu__logout-btn {
   cursor: pointer;
 }
 
@@ -987,65 +1083,7 @@ textarea::placeholder {
   min-width: 0;
   text-align: right;
   white-space: normal;
-}
-
-body.app-mobile-menu-open {
-  overflow: hidden;
-}
-
-@media (max-width: 991.98px) {
-  #mainNavbar {
-    display: none !important;
-  }
-
-  .main-container {
-    padding-top: 1rem !important;
-  }
-}
-
-.app-mode-picker-container {
-  cursor: default;
-}
-
-.app-mode-picker-label {
-  color: var(--app-muted);
-  font-size: var(--step--1);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.app-mode-switch {
-  display: inline-grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--radius-xs);
-  background: var(--app-surface-soft);
-}
-
-.app-mode-switch button {
-  min-height: 36px;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: 6px !important;
-  background: transparent;
-  color: var(--app-muted);
-  font-size: var(--step--1);
-  font-weight: 750;
-}
-
-.app-mode-switch button.is-active {
-  background: var(--app-surface-strong);
-  color: var(--app-primary-strong);
-  box-shadow: var(--app-shadow-sm);
-}
-
-.app-theme-toggle {
-  position: fixed;
-  right: 16px;
-  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
-  z-index: 1044;
+index: 1044;
   width: 56px;
   height: 56px;
   min-height: 56px;
@@ -1532,6 +1570,617 @@ body.is-offline .app-network-banner {
   }
 }
 
+/* Mobile menu final overrides */
+.app-mobile-menu__themes {
+  display: grid;
+  gap: 10px;
+}
+
+.app-mobile-menu__section-subtitle {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: var(--step--2);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.app-mobile-menu__theme-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--app-border) 72%, rgba(255,255,255,.22));
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.55), rgba(255,255,255,.12)),
+    var(--app-surface-soft);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+.app-mobile-menu__theme-palette .theme-btn {
+  width: 34px;
+  height: 34px;
+  min-height: 34px !important;
+  border-radius: 12px;
+  padding: 0 !important;
+}
+
+.app-mobile-menu__role-tree {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-mobile-menu__role-tree .tree-item {
+  margin: 0;
+  padding: 0;
+}
+
+.app-mobile-menu__role-tree .tree-root {
+  padding-top: 2px;
+}
+
+.app-mobile-menu__role-tree .system-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding-inline: 2px;
+  color: var(--app-muted);
+  font-size: var(--step--2);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.app-mobile-menu__role-tree .system-role-link,
+.app-mobile-menu__role-tree .tree-toggle,
+.app-mobile-menu__role-tree .tree-role-link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--app-border) 72%, rgba(255,255,255,.24));
+  border-radius: 18px !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--app-surface) 88%, rgba(255,255,255,.12)), color-mix(in srgb, var(--app-surface-strong) 96%, rgba(255,255,255,.08))),
+    var(--app-surface);
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255,255,255,.55);
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.app-mobile-menu__role-tree .system-role-link {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--app-primary) 16%, transparent), transparent 36%),
+    linear-gradient(135deg, color-mix(in srgb, var(--app-primary) 12%, var(--app-surface-strong)), var(--app-surface));
+  border-color: color-mix(in srgb, var(--app-primary) 24%, var(--app-border));
+}
+
+.app-mobile-menu__role-tree .tree-toggle::before,
+.app-mobile-menu__role-tree .tree-role-link::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,0) 44%);
+  pointer-events: none;
+}
+
+.app-mobile-menu__role-tree .tree-toggle:hover,
+.app-mobile-menu__role-tree .tree-toggle:focus,
+.app-mobile-menu__role-tree .tree-role-link:hover,
+.app-mobile-menu__role-tree .tree-role-link:focus {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--app-primary) 18%, var(--app-border));
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255,255,255,.65);
+}
+
+.app-mobile-menu__role-tree .tree-toggle {
+  cursor: pointer;
+}
+
+.app-mobile-menu__role-tree .tree-role-link {
+  text-decoration: none;
+}
+
+.app-mobile-menu__role-tree .tree-sub {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 0 0 0;
+  list-style: none;
+  margin-inline-start: 14px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid color-mix(in srgb, var(--app-primary) 18%, var(--app-border));
+}
+
+.app-mobile-menu__role-tree .tree-node-label {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  white-space: normal;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.app-mobile-menu__role-tree .tree-chevron {
+  color: var(--app-primary-strong);
+  font-size: 0.8rem;
+  transition: transform 180ms ease;
+  flex: 0 0 auto;
+}
+
+.app-mobile-menu__role-tree .tree-toggle[aria-expanded="true"] .tree-chevron {
+  transform: rotate(-90deg);
+}
+
+.app-mobile-menu__role-tree .tree-toggle.collapsed .tree-chevron {
+  transform: rotate(0deg);
+}
+
+.app-mobile-menu__role-tree .tree-toggle > i,
+.app-mobile-menu__role-tree .tree-role-link > i,
+.app-mobile-menu__role-tree .system-role-link > i {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--app-primary) 12%, var(--app-surface-strong));
+  color: var(--app-primary-strong);
+  flex: 0 0 auto;
+}
+
+.app-mobile-menu__role-tree .tree-toggle > span,
+.app-mobile-menu__role-tree .tree-role-link > span,
+.app-mobile-menu__role-tree .system-role-link {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-mobile-menu__role-tree .tree-sub .tree-toggle,
+.app-mobile-menu__role-tree .tree-sub .tree-role-link {
+  min-height: 48px;
+  border-radius: 16px !important;
+}
+
+.app-mobile-menu__role-tree .tree-sub .tree-sub {
+  margin-inline-start: 10px;
+  padding-inline-start: 10px;
+}
+
+.app-mobile-menu__role-tree .tree-sub .tree-node-label {
+  font-size: 0.92rem;
+  font-weight: 760;
+}
+
+.app-mobile-menu__role-tree .tree-sub.collapse:not(.show) {
+  display: none;
+}
+
+.app-mobile-menu__role-tree .tree-sub.collapse.show {
+  display: grid;
+}
+
+.app-mobile-menu__role-tree .tree-role-link.is-active,
+.app-mobile-menu__role-tree .tree-toggle[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--app-primary) 14%, var(--app-surface-strong));
+}
+
+.app-mobile-menu__role-tree .tree-role-link {
+  color: var(--app-text);
+}
+
+.app-mobile-menu__role-tree .tree-role-link:hover,
+.app-mobile-menu__role-tree .tree-role-link:focus {
+  color: var(--app-primary-strong);
+}
+
+.app-mobile-menu__role-tree .system-role-link,
+.app-mobile-menu__role-tree .tree-toggle,
+.app-mobile-menu__role-tree .tree-role-link {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding-inline-start: 58px;
+  padding-inline-end: 58px;
+  min-height: 56px;
+}
+
+.app-mobile-menu__role-tree .system-role-link > span,
+  .app-mobile-menu__role-tree .tree-toggle > span,
+  .app-mobile-menu__role-tree .tree-role-link > span,
+  .app-mobile-menu__role-tree .tree-node-label {
+    position: absolute;
+    inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  margin: 0;
+    width: 100%;
+    padding-inline: 64px;
+    line-height: 1.2;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+.app-mobile-menu__role-tree .tree-toggle > i,
+.app-mobile-menu__role-tree .tree-role-link > i,
+.app-mobile-menu__role-tree .system-role-link > i {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.app-mobile-menu__role-tree .tree-chevron {
+  position: absolute;
+  inset-inline-end: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+/* Final role-tree layout override */
+.app-mobile-menu__role-tree .tree-root {
+  display: grid;
+  gap: 8px;
+  justify-items: stretch;
+  padding-top: 2px;
+}
+
+.app-mobile-menu__role-tree .system-label {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-primary) 10%, var(--app-surface-strong));
+  color: var(--app-primary-strong);
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.app-mobile-menu__role-tree .system-role-link,
+.app-mobile-menu__role-tree .tree-toggle,
+.app-mobile-menu__role-tree .tree-role-link {
+  direction: ltr;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 14px !important;
+}
+
+.app-mobile-menu__role-tree .system-role-link {
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+
+.app-mobile-menu__role-tree .tree-sub .tree-toggle,
+.app-mobile-menu__role-tree .tree-sub .tree-role-link {
+  min-height: 50px;
+  padding-inline: 12px !important;
+}
+
+.app-mobile-menu__role-tree .system-role-link > i,
+.app-mobile-menu__role-tree .tree-toggle > i,
+.app-mobile-menu__role-tree .tree-role-link > i {
+  position: static !important;
+  grid-column: 1;
+  inset: auto !important;
+  transform: none !important;
+  justify-self: center;
+}
+
+.app-mobile-menu__role-tree .system-role-link > span,
+.app-mobile-menu__role-tree .tree-toggle > span,
+.app-mobile-menu__role-tree .tree-role-link > span {
+  position: static !important;
+  grid-column: 2;
+  inset: auto !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: none;
+  direction: rtl;
+  text-align: center;
+  line-height: 1.25;
+  z-index: 1;
+}
+
+.app-mobile-menu__role-tree .tree-toggle > span {
+  justify-content: center;
+}
+
+.app-mobile-menu__role-tree .tree-chevron {
+  position: static !important;
+  grid-column: 3;
+  inset: auto !important;
+  transform: none !important;
+  justify-self: center;
+  align-self: center;
+  z-index: 2;
+}
+
+.app-mobile-menu__role-tree .tree-toggle[aria-expanded="true"] .tree-chevron {
+  transform: rotate(-90deg) !important;
+}
+
+.app-mobile-menu__role-tree .tree-toggle.collapsed .tree-chevron {
+  transform: rotate(0deg) !important;
+}
+
+.app-mobile-menu__role-tree .tree-sub {
+  margin-inline-start: 12px;
+  padding-inline-start: 12px;
+}
+
+@media (max-width: 575.98px) {
+  .app-mobile-menu__role-tree .system-label {
+    min-height: 38px;
+    font-size: 0.84rem;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link,
+  .app-mobile-menu__role-tree .tree-toggle,
+  .app-mobile-menu__role-tree .tree-role-link {
+    min-height: 58px;
+    grid-template-columns: 32px minmax(0, 1fr) 22px;
+    padding: 0 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .app-mobile-menu__role-tree .tree-sub .tree-toggle,
+  .app-mobile-menu__role-tree .tree-sub .tree-role-link {
+    min-height: 52px;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link > span,
+  .app-mobile-menu__role-tree .tree-toggle > span,
+  .app-mobile-menu__role-tree .tree-role-link > span {
+    font-size: 0.94rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .app-mobile-menu {
+    padding: 8px;
+  }
+
+  .app-mobile-menu__panel {
+    width: 100%;
+    max-height: calc(100dvh - (var(--nav-height) + env(safe-area-inset-bottom, 0px) + 10px));
+    margin-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 6px);
+    border-radius: 26px 26px 18px 18px;
+    transform: translateY(20px) scale(0.99);
+  }
+
+  .app-mobile-menu__header {
+    padding: 14px 14px 12px;
+    gap: 10px;
+  }
+
+  .app-mobile-menu__brand {
+    gap: 10px;
+  }
+
+  .app-mobile-menu__brand img {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+  }
+
+  .app-mobile-menu__brand strong {
+    font-size: 1.04rem;
+    line-height: 1.25;
+  }
+
+  .app-mobile-menu__brand span {
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .app-mobile-menu__close {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px !important;
+  }
+
+  .app-mobile-menu__content {
+    padding: 12px;
+    gap: 12px;
+    max-height: calc(100dvh - (var(--nav-height) + env(safe-area-inset-bottom, 0px) + 84px));
+  }
+
+  .app-mobile-menu__section {
+    gap: 8px;
+  }
+
+  .app-mobile-menu__section-title {
+    font-size: 0.9rem;
+  }
+
+  .app-mobile-menu__item {
+    min-height: 54px;
+    padding: 0 12px 0 14px;
+    border-radius: 16px !important;
+  }
+
+  .app-mobile-menu__item i {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+
+  .app-mobile-menu__item span {
+    font-size: 0.96rem;
+  }
+
+  .app-mobile-menu__badge {
+    min-width: 26px;
+    height: 26px;
+  }
+
+  .app-mobile-menu__theme-palette {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .theme-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .app-mobile-menu__role-tree {
+    gap: 8px;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link,
+  .app-mobile-menu__role-tree .tree-toggle,
+  .app-mobile-menu__role-tree .tree-role-link {
+    min-height: 56px;
+    padding-inline-start: 56px;
+    padding-inline-end: 56px;
+    border-radius: 16px !important;
+  }
+
+  .app-mobile-menu__role-tree .tree-toggle > i,
+  .app-mobile-menu__role-tree .tree-role-link > i,
+  .app-mobile-menu__role-tree .system-role-link > i {
+    inset-inline-start: 12px;
+  }
+
+  .app-mobile-menu__role-tree .tree-chevron {
+    inset-inline-end: 12px;
+  }
+
+  .app-mobile-menu__role-tree .tree-sub {
+    margin-inline-start: 10px;
+    padding-inline-start: 10px;
+    gap: 6px;
+  }
+
+  .app-mobile-menu__role-tree .tree-sub .tree-toggle,
+  .app-mobile-menu__role-tree .tree-sub .tree-role-link {
+    min-height: 50px;
+  }
+
+  .app-mobile-menu__role-tree .tree-node-label {
+    font-size: 0.98rem;
+    line-height: 1.3;
+  }
+}
+
+@media (max-width: 390px) {
+  .app-mobile-menu {
+    padding: 6px;
+  }
+
+  .app-mobile-menu__panel {
+    border-radius: 22px 22px 16px 16px;
+    margin-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 4px);
+  }
+
+  .app-mobile-menu__header {
+    padding: 12px;
+  }
+
+  .app-mobile-menu__brand img {
+    width: 48px;
+    height: 48px;
+  }
+
+  .app-mobile-menu__brand strong {
+    font-size: 0.98rem;
+  }
+
+  .app-mobile-menu__brand span {
+    font-size: 0.74rem;
+  }
+
+  .app-mobile-menu__close {
+    width: 44px;
+    height: 44px;
+  }
+
+  .app-mobile-menu__content {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .app-mobile-menu__section-title {
+    font-size: 0.84rem;
+  }
+
+  .app-mobile-menu__item {
+    min-height: 52px;
+    padding-inline: 12px;
+  }
+
+  .app-mobile-menu__item i {
+    width: 34px;
+    height: 34px;
+  }
+
+  .app-mobile-menu__item span {
+    font-size: 0.92rem;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link,
+  .app-mobile-menu__role-tree .tree-toggle,
+  .app-mobile-menu__role-tree .tree-role-link {
+    min-height: 54px;
+    padding-inline-start: 52px;
+    padding-inline-end: 52px;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link > span,
+  .app-mobile-menu__role-tree .tree-toggle > span,
+  .app-mobile-menu__role-tree .tree-role-link > span,
+  .app-mobile-menu__role-tree .tree-node-label {
+    padding-inline: 54px;
+  }
+
+  .app-mobile-menu__role-tree .tree-sub .tree-toggle,
+  .app-mobile-menu__role-tree .tree-sub .tree-role-link {
+    min-height: 48px;
+  }
+
+  .app-mobile-menu__role-tree .tree-node-label {
+    font-size: 0.94rem;
+  }
+}
+
 @media print {
   .app-bottom-nav,
   .app-fab,
@@ -1540,5 +2189,169 @@ body.is-offline .app-network-banner {
   .app-network-banner,
   .app-toast-stack {
     display: none !important;
+  }
+}
+
+/* Final role-tree hard reset */
+.app-mobile-menu__role-tree .tree-root {
+  display: grid !important;
+  gap: 8px !important;
+  justify-items: stretch !important;
+  padding-top: 2px !important;
+}
+
+.app-mobile-menu__role-tree .system-label {
+  position: static !important;
+  inset: auto !important;
+  order: 2;
+  grid-column: 1 / -1 !important;
+  width: auto !important;
+  min-height: 30px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--app-primary) 10%, var(--app-surface-strong)) !important;
+  color: var(--app-primary-strong) !important;
+  text-align: center !important;
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.03em !important;
+  line-height: 1.2 !important;
+}
+
+.app-mobile-menu__role-tree .system-role-link,
+.app-mobile-menu__role-tree .tree-toggle,
+.app-mobile-menu__role-tree .tree-role-link {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) 24px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 56px !important;
+  padding: 0 14px !important;
+  text-align: center !important;
+}
+
+.app-mobile-menu__role-tree .system-role-link {
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+}
+
+.app-mobile-menu__role-tree .tree-sub .tree-toggle,
+.app-mobile-menu__role-tree .tree-sub .tree-role-link {
+  min-height: 50px !important;
+  padding-inline: 12px !important;
+}
+
+.app-mobile-menu__role-tree .system-role-link > i,
+.app-mobile-menu__role-tree .tree-toggle > i,
+.app-mobile-menu__role-tree .tree-role-link > i {
+  position: static !important;
+  inset: auto !important;
+  grid-column: 1 !important;
+  align-self: center !important;
+  justify-self: center !important;
+  transform: none !important;
+}
+
+.app-mobile-menu__role-tree .system-role-link > span,
+.app-mobile-menu__role-tree .tree-toggle > span,
+.app-mobile-menu__role-tree .tree-role-link > span,
+.app-mobile-menu__role-tree .tree-node-label {
+  position: static !important;
+  inset: auto !important;
+  grid-column: 2 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  direction: rtl !important;
+  text-align: center !important;
+  line-height: 1.25 !important;
+}
+
+.app-mobile-menu__role-tree .tree-toggle > span {
+  justify-content: center !important;
+}
+
+.app-mobile-menu__role-tree .tree-chevron {
+  position: static !important;
+  inset: auto !important;
+  grid-column: 3 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
+  justify-self: center !important;
+  margin: 0 !important;
+  transform: none !important;
+  line-height: 1 !important;
+}
+
+.app-mobile-menu__role-tree .tree-toggle[aria-expanded="true"] .tree-chevron {
+  transform: rotate(-90deg) !important;
+}
+
+.app-mobile-menu__role-tree .tree-toggle.collapsed .tree-chevron {
+  transform: rotate(0deg) !important;
+}
+
+.app-mobile-menu__role-tree .tree-sub {
+  margin-inline-start: 12px !important;
+  padding-inline-start: 12px !important;
+}
+
+@media (max-width: 575.98px) {
+  .app-mobile-menu__role-tree .system-label {
+    min-height: 32px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link,
+  .app-mobile-menu__role-tree .tree-toggle,
+  .app-mobile-menu__role-tree .tree-role-link {
+    min-height: 58px !important;
+    grid-template-columns: 32px minmax(0, 1fr) 22px !important;
+    padding: 0 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link {
+    grid-template-columns: 32px minmax(0, 1fr) !important;
+  }
+
+  .app-mobile-menu__role-tree .tree-sub .tree-toggle,
+  .app-mobile-menu__role-tree .tree-sub .tree-role-link {
+    min-height: 52px !important;
+  }
+
+  .app-mobile-menu__role-tree .tree-node-label {
+    font-size: 0.95rem !important;
+    line-height: 1.28 !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .app-mobile-menu__role-tree .system-role-link,
+  .app-mobile-menu__role-tree .tree-toggle,
+  .app-mobile-menu__role-tree .tree-role-link {
+    min-height: 54px !important;
+    padding: 0 10px !important;
+  }
+
+  .app-mobile-menu__role-tree .system-role-link > span,
+  .app-mobile-menu__role-tree .tree-toggle > span,
+  .app-mobile-menu__role-tree .tree-role-link > span,
+  .app-mobile-menu__role-tree .tree-node-label {
+    padding-inline: 0 !important;
+    font-size: 0.92rem !important;
+  }
+
+  .app-mobile-menu__role-tree .tree-chevron {
+    font-size: 0.76rem !important;
   }
 }

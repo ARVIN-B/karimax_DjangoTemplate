@@ -397,9 +397,8 @@ class Employee(AbstractUser):
         default=False, verbose_name="مجوز رزرو نامحدود"
     )
     is_contractor = models.BooleanField(default=False, verbose_name="آیا پیمانکار است؟")
-    # can_reserve_for_others = models.BooleanField(
-    #     default=False, verbose_name="مجوز رزرو برای دیگران"
-    # )
+
+    can_create_notification = models.BooleanField(default=False, verbose_name="مجوز ساخت اعلان")
 
     reporting_permision = models.PositiveSmallIntegerField(
         default=0,
@@ -1725,6 +1724,23 @@ class ReferralStep(models.Model):
 
 
 class Notification(models.Model):
+    PRIORITY_CHOICES = [
+        ('critical', 'حیاتی'),
+        ('high', 'بالا'),
+        ('medium', 'متوسط'),
+        ('low', 'پایین'),
+    ]
+    CATEGORY_CHOICES = [
+        ('work',        'عملیاتی'),
+        ('production',  'تولید'),
+        ('maintenance', 'نگهداری و تعمیرات'),
+        ('quality',     'کنترل کیفیت'),
+        ('cultural',    'فرهنگی / اطلاع‌رسانی'),
+        ('celebration', 'تبریک و مناسبت'),
+        ('safety',      'ایمنی'),
+        ('hr',          'منابع انسانی'),
+        ('general',     'عمومی'),
+    ]
 
     title = models.CharField(max_length=200, verbose_name="عنوان اعلان")
     description = models.TextField(verbose_name="توضیحات اعلان")
@@ -1734,6 +1750,28 @@ class Notification(models.Model):
         related_name="created_notifications",
         verbose_name="ایجادکننده",
     )
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default='medium',
+        verbose_name='اولویت'
+    )
+
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default='general',
+        verbose_name='دسته‌بندی'
+    )
+
+    
+
+
+
+
+
+
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
     expires_at = models.DateTimeField(
         null=True, blank=True, verbose_name="تاریخ انقضا (اختیاری)"
@@ -1907,7 +1945,7 @@ class NotificationRead(models.Model):
         Notification, on_delete=models.CASCADE, related_name="reads"
     )
     employee = models.ForeignKey(
-        Employee, on_delete=models.CASCADE, related_name="read_notifications"
+        Employee, on_delete=models.CASCADE, related_name="notification_reads"
     )
     read_at = models.DateTimeField(auto_now_add=True)
 
@@ -1915,6 +1953,11 @@ class NotificationRead(models.Model):
         unique_together = ("notification", "employee")
         verbose_name = "خواندن اعلان"
         verbose_name_plural = "خواندن اعلانات"
+
+
+
+
+
 
 
 class Gender(models.Model):

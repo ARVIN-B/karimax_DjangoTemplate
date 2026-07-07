@@ -31,7 +31,7 @@ from django.http import (
     Http404,
     HttpResponseBadRequest,
 )
-from django.db.models import Max, Q, Sum, Avg, Count
+from django.db.models import Max, Q, Sum, Avg, Count, Exists, OuterRef
 from django.core.exceptions import (
     PermissionDenied,
     SuspiciousOperation,
@@ -352,7 +352,12 @@ def authenticate_user(request):
 
     u = Employee.objects.filter(national_id=national_id).first()
 
-    if not u.is_active:
+    if not u:
+        return (
+            None,
+            f"حساب کاربری با این کد ملی یافت نشد.",
+        )
+    elif not u.is_active:
         return (
             None,
             f"حساب کاربری شما غیرفعال است، لطفا با واحد هوش مصنوعی تماس حاصل فرمایید. شماره تماس پشتیبانی : {settings.CONTACT_PHONE_NUMBER}",
@@ -758,9 +763,7 @@ def build_modules_for_user(request):
     current_host = request.get_host()
 
     modules = {}
-
     if user.karimax_permision:
-
         modules["self"] = {
             "name": "سلف",
             "link": "/self",
@@ -871,7 +874,7 @@ def build_modules_for_user(request):
 
         modules["participation"] = {
             "name": "مدیریت دانش",
-            "link": "/self",
+            "link": "/participation",
             "icon_name": "mosharekat.svg",
             "color": "#9c3b23",
             "coming_soon": False,
@@ -923,6 +926,33 @@ def build_modules_for_user(request):
                     "icon_name": "add_participation/refere.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
+                    "have_permision": True,
+                },
+            },
+        }
+        
+        modules["mailbox"] = {
+            "name": "صندوق پستی",
+            "link": "/mailbox",
+            "icon_name": "mosharekat.svg",
+            "color": "#918e07",
+            "coming_soon": False,
+            "have_permision": True,
+            "micro_modules": {
+                "notification_create": {
+                    "name": "ایجاد اعلان",
+                    "link": "users:notification_create",
+                    "icon_name": "add_participation/add.svg",
+                    "color": "#918e07",
+                    "coming_soon": False,
+                    "have_permision": user.can_create_notification,
+                },
+                "referrals_inbox": {
+                    "name": "صندوق ارجاعات دریافتی",
+                    "link": "users:referrals_inbox",
+                    "icon_name": "add_participation/my_particip.svg",
+                    "color": "#918e07",
+                    "coming_soon": False,
                     "have_permision": True,
                 },
             },
@@ -2729,19 +2759,11 @@ def notification_create(request):
     subdepartment_id = request.session["current_subdepartment_id"]
     user = request.user
 
-    # فقط کاربران مدیریتی اجازه دارند اعلان بسازند
-    management_roles = [
-        "super_admin",
-        "holding_manager",
-        "factory_manager",
-        "department_manager",
-        "supervisor",
-    ]
+    
     current_role = request.session.get("current_role")
 
-    if current_role not in management_roles:
+    if not user.can_create_notification:
         messages.error(request, "شما اجازه ایجاد اعلان ندارید.")
-        # return redirect("users:dashboard")
         return redirect("users:landing")
 
     if request.method == "POST":
@@ -2873,102 +2895,270 @@ def notification_create(request):
 
         return render(request, "users/notification_create.html", context)
 
+# @login_required
+# def notifications_view(request):
 
-@login_required
-def notifications_view(request):
+#     role_name = request.session["current_role"]
+#     holding_id = request.session["current_holding_id"]
+#     factory_id = request.session["current_factory_id"]
+#     department_id = request.session["current_department_id"]
+#     subdepartment_id = request.session["current_subdepartment_id"]
+#     user = request.user
 
+#     if request.method == "POST" and request.POST.get("action") == "seen_notification":
+
+#         notification_id = request.POST.get("seen_notification_id")
+
+#         notification = get_object_or_404(Notification, id=notification_id)
+#         NotificationRead.objects.get_or_create(
+#             notification=notification,
+#             employee=request.user,
+#         )
+
+#     if role_name == "employee":
+#         notifications = Notification.objects.filter(Q(employee_subdepartments__id=subdepartment_id)).distinct()
+#     elif role_name == "supervisor":
+#         notifications = Notification.objects.filter(Q(target_subdepartments__id=subdepartment_id)).distinct()
+#     elif role_name == "department_manager":
+#         notifications = Notification.objects.filter(Q(target_departments__id=department_id)).distinct()
+#     elif role_name == "factory_manager":
+#         notifications = Notification.objects.filter(Q(target_factories__id=factory_id)).distinct()
+#     elif role_name == "holding_manager":
+#         notifications = Notification.objects.filter(Q(target_holdings__id=holding_id)).distinct()
+#     else:
+#         notifications = Notification.objects.all().distinct()
+
+#     now = timezone.now()
+
+
+#     read_check = NotificationRead.objects.filter(notification=OuterRef('pk'), employee=user)
+
+#     active_notifications = notifications.filter(is_active=True).filter(
+#         Q(expires_at__isnull=True) | Q(expires_at__gte=now)
+#     ).annotate(is_read=Exists(read_check)).order_by('is_read', '-created_at') # خوانده نشده‌ها بالاترند
+
+#     expired_notifications = notifications.filter(
+#         expires_at__isnull=False,
+#         expires_at__lt=now,
+#     ).annotate(is_read=Exists(read_check))
+
+#     active_unseen_notifications = active_notifications.filter(is_read=False)
+#     number_of_unseen_critical = active_unseen_notifications.filter(priority="critical").count()
+#     number_of_unseen_high = active_unseen_notifications.filter(priority="high").count()
+#     number_of_unseen_medium = active_unseen_notifications.filter(priority="medium").count()
+#     number_of_unseen_low = active_unseen_notifications.filter(priority="low").count()
+
+#     if number_of_unseen_critical:
+#         badge_count, badge_level = number_of_unseen_critical, "critical"
+#     elif number_of_unseen_high:
+#         badge_count, badge_level = number_of_unseen_high, "high"
+#     elif number_of_unseen_medium:
+#         badge_count, badge_level = number_of_unseen_medium, "medium"
+#     else:
+#         badge_count, badge_level = number_of_unseen_low, ("low" if number_of_unseen_low else None)
+
+
+#     context = {
+#         "active_notifications": active_notifications,
+#         "expired_notifications": expired_notifications,
+#         "notification_badge_count": badge_count,
+#         "notification_badge_level": badge_level,
+#     }
+#     return render(request, "users/notifications.html", context)
+
+
+
+
+#     # active_seen_notifications = active_notifications.filter(
+#     #     reads__employee=user
+#     # ).distinct()
+
+#     # active_unseen_notifications = active_notifications.exclude(
+#     #     reads__employee=user
+#     # ).distinct()
+
+
+#     # number_of_unseen_critical_priority_notifications = active_unseen_notifications.filter(
+#     #     Q(priority="critical")
+#     # ).count()
+
+#     # number_of_unseen_high_priority_notifications = active_unseen_notifications.filter(
+#     #     Q(priority="high")
+#     # ).count()
+
+#     # number_of_unseen_medium_priority_notifications = active_unseen_notifications.filter(
+#     #     Q(priority="medium")
+#     # ).count()
+
+#     # number_of_unseen_low_priority_notifications = active_unseen_notifications.filter(
+#     #     Q(priority="low")
+#     # ).count()
+
+
+#     # if number_of_unseen_critical_priority_notifications:
+#     #     badge_count = number_of_unseen_critical_priority_notifications
+#     #     badge_level = "critical"
+#     # elif number_of_unseen_high_priority_notifications:
+#     #     badge_count = number_of_unseen_high_priority_notifications
+#     #     badge_level = "high"
+#     # elif number_of_unseen_medium_priority_notifications:
+#     #     badge_count = number_of_unseen_medium_priority_notifications
+#     #     badge_level = "medium"
+#     # else:
+#     #     badge_count = number_of_unseen_low_priority_notifications
+#     #     badge_level = "low" if badge_count else None
+
+
+#     # context = {
+#     #     "notifications": notifications,
+#     #     "notification_badge_count": badge_count,
+#     #     "notification_badge_level": badge_level,
+
+#     #     "active_seen_notifications": active_seen_notifications,
+#     #     "active_unseen_notifications": active_unseen_notifications,
+#     #     "expired_notifications": expired_notifications,
+#     # }
+
+#     # return render(request, "users/notifications.html", context)
+
+
+
+# views.py
+from django.contrib.auth.decorators import login_required
+from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from .models import Notification, NotificationRead
+
+
+def get_user_notifications_queryset(request):
     role_name = request.session["current_role"]
     holding_id = request.session["current_holding_id"]
     factory_id = request.session["current_factory_id"]
     department_id = request.session["current_department_id"]
     subdepartment_id = request.session["current_subdepartment_id"]
-    user = request.user
 
-    notification_ids = []
-
-    if role_name in [
-        "holding_manager",
-        "factory_manager",
-        "department_manager",
-        "supervisor",
-        "employee",
-    ]:
-
-        if role_name in [
-            "factory_manager",
-            "department_manager",
-            "supervisor",
-            "employee",
-        ]:
-
-            if role_name in ["department_manager", "supervisor", "employee"]:
-
-                if role_name in ["supervisor", "employee"]:
-
-                    if role_name in ["employee"]:
-                        notifications = Notification.objects.filter(
-                            Q(employee_subdepartments__id=subdepartment_id)
-                        ).distinct()
-                    else:
-                        notifications = Notification.objects.filter(
-                            Q(target_subdepartments__id=subdepartment_id)
-                        ).distinct()
-                else:
-                    notifications = Notification.objects.filter(
-                        Q(target_departments__id=subdepartment_id)
-                    ).distinct()
-            else:
-                notifications = Notification.objects.filter(
-                    Q(target_factories__id=subdepartment_id)
-                ).distinct()
-        else:
-            notifications = Notification.objects.filter(
-                Q(target_holdings__id=subdepartment_id)
-            ).distinct()
+    if role_name == "employee":
+        qs = Notification.objects.filter(Q(employee_subdepartments__id=subdepartment_id))
+    elif role_name == "supervisor":
+        qs = Notification.objects.filter(Q(target_subdepartments__id=subdepartment_id))
+    elif role_name == "department_manager":
+        qs = Notification.objects.filter(Q(target_departments__id=department_id))
+    elif role_name == "factory_manager":
+        qs = Notification.objects.filter(Q(target_factories__id=factory_id))
+    elif role_name == "holding_manager":
+        qs = Notification.objects.filter(Q(target_holdings__id=holding_id))
     else:
-        # todo : super_admin
-        pass
+        qs = Notification.objects.all()
 
-    # print(notifications)
+    return qs.distinct()
+
+
+def annotate_notifications_for_user(qs, user):
+    read_check = NotificationRead.objects.filter(
+        notification=OuterRef("pk"),
+        employee=user,
+    )
+
+    priority_rank = Case(
+        When(priority="critical", then=Value(0)),
+        When(priority="high", then=Value(1)),
+        When(priority="medium", then=Value(2)),
+        When(priority="low", then=Value(3)),
+        default=Value(99),
+        output_field=IntegerField(),
+    )
+
+    return qs.annotate(
+        is_read=Exists(read_check),
+        priority_rank=priority_rank,
+    )
+
+
+@login_required
+def notifications_view(request):
+    notifications = get_user_notifications_queryset(request)
+    now = timezone.now()
+
+    active_notifications = (
+        annotate_notifications_for_user(
+            notifications.filter(
+                is_active=True,
+            ).filter(
+                Q(expires_at__isnull=True) | Q(expires_at__gte=now)
+            ),
+            request.user,
+        )
+        .order_by("is_read", "priority_rank", "-created_at")
+    )
+
+    expired_notifications = (
+        annotate_notifications_for_user(
+            notifications.filter(
+                expires_at__isnull=False,
+                expires_at__lt=now,
+            ),
+            request.user,
+        )
+        .order_by("-created_at")
+    )
+
+    active_unseen_notifications = active_notifications.filter(is_read=False)
+
+    number_of_unseen_critical = active_unseen_notifications.filter(priority="critical").count()
+    number_of_unseen_high = active_unseen_notifications.filter(priority="high").count()
+    number_of_unseen_medium = active_unseen_notifications.filter(priority="medium").count()
+    number_of_unseen_low = active_unseen_notifications.filter(priority="low").count()
+
+    if number_of_unseen_critical:
+        badge_count, badge_level = number_of_unseen_critical, "critical"
+    elif number_of_unseen_high:
+        badge_count, badge_level = number_of_unseen_high, "high"
+    elif number_of_unseen_medium:
+        badge_count, badge_level = number_of_unseen_medium, "medium"
+    else:
+        badge_count, badge_level = number_of_unseen_low, ("low" if number_of_unseen_low else None)
 
     context = {
-        # # اعلانات نمونه برای تب "موجود"
-        # 'active_notifications': [
-        #     {
-        #         'id': 1,
-        #         'title': 'یادآوری ارزیابی عملکرد',
-        #         'message': 'مهلت ارزیابی ماهانه تا ۳ روز دیگر به پایان می‌رسد.',
-        #         'date': '۱۴۰۴/۰۹/۲۵',
-        #         'is_read': False,
-        #     },
-        #     {
-        #         'id': 2,
-        #         'title': 'رزرو غذا تأیید شد',
-        #         'message': 'رزرو غذای شما برای فردا با موفقیت ثبت شد.',
-        #         'date': '۱۴۰۴/۰۹/۲۴',
-        #         'is_read': True,
-        #     },
-        # ],
-        # # اعلانات نمونه برای تب "منقضی شده"
-        # 'expired_notifications': [
-        #     {
-        #         'id': 3,
-        #         'title': 'مهلت ارزیابی گذشته است',
-        #         'message': 'ارزیابی عملکرد ماه آبان به پایان رسیده و قابل ثبت نیست.',
-        #         'date': '۱۴۰۴/۰۹/۱۰',
-        #     },
-        #     {
-        #         'id': 4,
-        #         'title': 'تغییر شیفت (منقضی)',
-        #         'message': 'درخواست تغییر شیفت شما بررسی و رد شد.',
-        #         'date': '۱۴۰۴/۰۸/۱۵',
-        #     },
-        # ],
-        # # برای بج تعداد اعلان خوانده نشده (فعلاً ثابت)
-        # 'unread_notifications_count': 1,
+        "active_notifications": active_notifications,
+        "expired_notifications": expired_notifications,
+        "notification_badge_count": badge_count,
+        "notification_badge_level": badge_level,
     }
-
     return render(request, "users/notifications.html", context)
+
+
+@require_POST
+@login_required
+def notification_mark_read(request, pk):
+    notifications = get_user_notifications_queryset(request)
+    notification = get_object_or_404(notifications, pk=pk)
+
+    NotificationRead.objects.get_or_create(
+        notification=notification,
+        employee=request.user,
+    )
+
+    # next_url = request.POST.get("next") or reverse("notifications")
+    # return redirect(next_url)
+
+    return JsonResponse({
+        "success": True
+    })
+
+
+
+
+
+
+
+
+
+
+
 
 
 @login_required
@@ -8971,7 +9161,7 @@ def referral_create(request, participation_id):
     if request.method == "POST":
         title = request.POST.get("title", "").strip()
         comment = request.POST.get("comment", "").strip()
-        
+
         target_object_id = request.POST.get("target_object_id")
         target_content_type_id = request.POST.get("target_content_type")
 

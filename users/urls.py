@@ -82,10 +82,7 @@ urlpatterns = [
     path("ajax/search-org-units/", views.search_org_units, name="search_org_units"),
     path("referrals/inbox/", views.referrals_inbox, name="referrals_inbox"),
     path("referral/<int:referral_id>/", views.referral_detail, name="referral_detail"),
-    path(
-        "notifications/create/", views.notification_create, name="notification_create"
-    ),
-    path("notifications/", views.notifications_view, name="notifications"),
+    
     path("family/", views.family_management, name="family_management"),
     path("family/add/", views.add_dependent, name="add_dependent"),
     path("insurance_info/", views.insurance_info, name="insurance_info"),
@@ -130,6 +127,17 @@ urlpatterns = [
         name="contact_us",
     ),
     path("register/", views.register_view, name="register"),
+
+
+    path(
+        "notifications/create/", views.notification_create, name="notification_create"
+    ),
+    path("notifications/", views.notifications_view, name="notifications"),
+    path(
+        "notifications/read/<int:pk>/",
+        views.notification_mark_read,
+        name="notification_mark_read",
+    ),
 
 
 

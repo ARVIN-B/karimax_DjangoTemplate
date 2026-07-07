@@ -164,6 +164,7 @@ TEMPLATES = [
                 "django.template.context_processors.csrf",
                 "users.context_processors.user_role_context",
                 "users.context_processors.global_banner",
+                "users.context_processors.notification_context",
             ],
         },
     },
