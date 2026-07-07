@@ -763,6 +763,7 @@ def build_modules_for_user(request):
     current_host = request.get_host()
 
     modules = {}
+
     if user.karimax_permision:
         modules["self"] = {
             "name": "سلف",
@@ -789,14 +790,6 @@ def build_modules_for_user(request):
                     "have_permision": True,
                     "have_permision": True,
                 },
-                "health": {
-                    "name": "سلامت فردی",
-                    "link": "#",
-                    "icon_name": "self/سلامت فردی .svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                    "have_permision": True,
-                },
                 "food_delivery": {
                     "name": "تحویل غذا",
                     "link": "users:food_delivery_page",
@@ -804,14 +797,6 @@ def build_modules_for_user(request):
                     "color": "#8b2650",
                     "coming_soon": False,
                     "have_permision": user.food_receiver_role > 0,
-                },
-                "comments": {
-                    "name": "نظر دهی",
-                    "link": "#",
-                    "icon_name": "self/نظر دهی.svg",
-                    "color": "#8b2650",
-                    "coming_soon": True,
-                    "have_permision": True,
                 },
                 "food_reservation_for_others": {
                     "name": "رزرو غذا برای دیگران",
@@ -865,6 +850,22 @@ def build_modules_for_user(request):
                     "name": "رزرو غذای میهمان ",
                     "link": "#",
                     "icon_name": "self/رزرو غذای مهمان .svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                    "have_permision": True,
+                },
+                "health": {
+                    "name": "سلامت فردی",
+                    "link": "#",
+                    "icon_name": "self/سلامت فردی .svg",
+                    "color": "#8b2650",
+                    "coming_soon": True,
+                    "have_permision": True,
+                },
+                "comments": {
+                    "name": "نظر دهی",
+                    "link": "#",
+                    "icon_name": "self/نظر دهی.svg",
                     "color": "#8b2650",
                     "coming_soon": True,
                     "have_permision": True,
@@ -930,7 +931,7 @@ def build_modules_for_user(request):
                 },
             },
         }
-        
+
         modules["mailbox"] = {
             "name": "صندوق پستی",
             "link": "/mailbox",
@@ -2759,7 +2760,6 @@ def notification_create(request):
     subdepartment_id = request.session["current_subdepartment_id"]
     user = request.user
 
-    
     current_role = request.session.get("current_role")
 
     if not user.can_create_notification:
@@ -2895,6 +2895,7 @@ def notification_create(request):
 
         return render(request, "users/notification_create.html", context)
 
+
 # @login_required
 # def notifications_view(request):
 
@@ -2967,8 +2968,6 @@ def notification_create(request):
 #     return render(request, "users/notifications.html", context)
 
 
-
-
 #     # active_seen_notifications = active_notifications.filter(
 #     #     reads__employee=user
 #     # ).distinct()
@@ -3022,7 +3021,6 @@ def notification_create(request):
 #     # return render(request, "users/notifications.html", context)
 
 
-
 # views.py
 from django.contrib.auth.decorators import login_required
 from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
@@ -3042,7 +3040,9 @@ def get_user_notifications_queryset(request):
     subdepartment_id = request.session["current_subdepartment_id"]
 
     if role_name == "employee":
-        qs = Notification.objects.filter(Q(employee_subdepartments__id=subdepartment_id))
+        qs = Notification.objects.filter(
+            Q(employee_subdepartments__id=subdepartment_id)
+        )
     elif role_name == "supervisor":
         qs = Notification.objects.filter(Q(target_subdepartments__id=subdepartment_id))
     elif role_name == "department_manager":
@@ -3083,34 +3083,30 @@ def notifications_view(request):
     notifications = get_user_notifications_queryset(request)
     now = timezone.now()
 
-    active_notifications = (
-        annotate_notifications_for_user(
-            notifications.filter(
-                is_active=True,
-            ).filter(
-                Q(expires_at__isnull=True) | Q(expires_at__gte=now)
-            ),
-            request.user,
-        )
-        .order_by("is_read", "priority_rank", "-created_at")
-    )
+    active_notifications = annotate_notifications_for_user(
+        notifications.filter(
+            is_active=True,
+        ).filter(Q(expires_at__isnull=True) | Q(expires_at__gte=now)),
+        request.user,
+    ).order_by("is_read", "priority_rank", "-created_at")
 
-    expired_notifications = (
-        annotate_notifications_for_user(
-            notifications.filter(
-                expires_at__isnull=False,
-                expires_at__lt=now,
-            ),
-            request.user,
-        )
-        .order_by("-created_at")
-    )
+    expired_notifications = annotate_notifications_for_user(
+        notifications.filter(
+            expires_at__isnull=False,
+            expires_at__lt=now,
+        ),
+        request.user,
+    ).order_by("-created_at")
 
     active_unseen_notifications = active_notifications.filter(is_read=False)
 
-    number_of_unseen_critical = active_unseen_notifications.filter(priority="critical").count()
+    number_of_unseen_critical = active_unseen_notifications.filter(
+        priority="critical"
+    ).count()
     number_of_unseen_high = active_unseen_notifications.filter(priority="high").count()
-    number_of_unseen_medium = active_unseen_notifications.filter(priority="medium").count()
+    number_of_unseen_medium = active_unseen_notifications.filter(
+        priority="medium"
+    ).count()
     number_of_unseen_low = active_unseen_notifications.filter(priority="low").count()
 
     if number_of_unseen_critical:
@@ -3120,7 +3116,9 @@ def notifications_view(request):
     elif number_of_unseen_medium:
         badge_count, badge_level = number_of_unseen_medium, "medium"
     else:
-        badge_count, badge_level = number_of_unseen_low, ("low" if number_of_unseen_low else None)
+        badge_count, badge_level = number_of_unseen_low, (
+            "low" if number_of_unseen_low else None
+        )
 
     context = {
         "active_notifications": active_notifications,
@@ -3145,20 +3143,7 @@ def notification_mark_read(request, pk):
     # next_url = request.POST.get("next") or reverse("notifications")
     # return redirect(next_url)
 
-    return JsonResponse({
-        "success": True
-    })
-
-
-
-
-
-
-
-
-
-
-
+    return JsonResponse({"success": True})
 
 
 @login_required
