@@ -498,17 +498,29 @@
 			const totalSum = factorySum + freeSum + guestSum;
 
 			// به‌روزرسانی سلول‌های تعداد با data-label مشخص
-			const factoryCell = tr.querySelector('td[data-label="سهمیه"]');
-			if (factoryCell) factoryCell.textContent = factorySum;
+			// const factoryCell = tr.querySelector('td[data-label="سهمیه"]');
+			// if (factoryCell) factoryCell.textContent = factorySum;
 
-			const freeCell = tr.querySelector('td[data-label="آزاد"]');
-			if (freeCell) freeCell.textContent = freeSum;
+			// const freeCell = tr.querySelector('td[data-label="آزاد"]');
+			// if (freeCell) freeCell.textContent = freeSum;
 
-			const guestCell = tr.querySelector('td[data-label="مهمان"]');
-			if (guestCell) guestCell.textContent = guestSum;
+			// const guestCell = tr.querySelector('td[data-label="مهمان"]');
+			// if (guestCell) guestCell.textContent = guestSum;
 
-			const totalCell = tr.querySelector('td[data-label="مجموع"]');
-			if (totalCell) totalCell.textContent = totalSum;
+			// const totalCell = tr.querySelector('td[data-label="مجموع"]');
+			// if (totalCell) totalCell.textContent = totalSum;
+
+
+
+			const quotaEl = tr.querySelector(".quota");
+			const extraEl = tr.querySelector(".extra");
+			const guestEl = tr.querySelector(".guest");
+			const totalEl = tr.querySelector(".stat-item.total strong");
+
+			if (quotaEl) quotaEl.textContent = factorySum;
+			if (extraEl) extraEl.textContent = freeSum;
+			if (guestEl) guestEl.textContent = guestSum;
+			if (totalEl) totalEl.textContent = totalSum;
 		});
 
 		// مدیریت پیام "یافت نشد"
