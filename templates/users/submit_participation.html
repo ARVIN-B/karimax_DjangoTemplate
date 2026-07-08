@@ -151,13 +151,11 @@
         const recognition = new SpeechRecognition();
 
         recognition.lang = 'fa-IR';
-        recognition.interimResults = true;
-        recognition.continuous = true;           // ← مهم: حالا مداوم گوش می‌ده
+        recognition.continuous = false;
+        recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
-        // تنظیمات خیلی مهم برای جلوگیری از قطع سریع
-        recognition.continuous = true;
-        recognition.interimResults = true;
+
 
         let finalTranscript = '';
         let currentInput = null;
@@ -193,26 +191,37 @@
 
                 recognition.start();
 
-                recognition.onresult = (event) => {
-                    let interimTranscript = '';
+                // recognition.onresult = (event) => {
+                //     let interimTranscript = '';
 
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        const transcript = event.results[i][0].transcript;
+                //     for (let i = event.resultIndex; i < event.results.length; i++) {
+                //         const transcript = event.results[i][0].transcript;
 
-                        if (event.results[i].isFinal) {
-                            finalTranscript += transcript + ' ';  // همیشه یه فاصله بعد از جمله نهایی
-                        } else {
-                            interimTranscript += transcript;
-                        }
+                //         if (event.results[i].isFinal) {
+                //             finalTranscript += transcript + ' ';  // همیشه یه فاصله بعد از جمله نهایی
+                //         } else {
+                //             interimTranscript += transcript;
+                //         }
+                //     }
+
+                //     // نمایش: متن نهایی + متن موقت
+                //     currentInput.value = finalTranscript + interimTranscript;
+
+                //     // کرسر رو ببر آخر متن
+                //     currentInput.focus();
+                //     currentInput.setSelectionRange(currentInput.value.length, currentInput.value.length);
+                // };
+                recognition.onresult = (event)=>{
+
+                    const text = event.results[0][0].transcript.trim();
+
+                    if(currentInput.value.trim().length){
+                        currentInput.value += ' ';
                     }
 
-                    // نمایش: متن نهایی + متن موقت
-                    currentInput.value = finalTranscript + interimTranscript;
+                    currentInput.value += text;
 
-                    // کرسر رو ببر آخر متن
-                    currentInput.focus();
-                    currentInput.setSelectionRange(currentInput.value.length, currentInput.value.length);
-                };
+                }
 
                 recognition.onerror = (e) => {
                     console.error('خطا در تشخیص صدا:', e.error);
@@ -222,17 +231,28 @@
                     stopRecording();
                 };
 
-                recognition.onend = () => {
-                    // فقط اگه کاربر دستی قطع نکرده باشه، دوباره شروع کن!
-                    if (isRecording) {
-                        // دوباره شروع کن تا قطع نشه (مثل گوگل!)
-                        try {
-                            recognition.start();
-                        } catch (e) {
-                            // گاهی خطا می‌ده، ولی دفعه بعد درست می‌شه
-                        }
-                    }
-                };
+                // recognition.onend = () => {
+                //     // فقط اگه کاربر دستی قطع نکرده باشه، دوباره شروع کن!
+                //     if (isRecording) {
+                //         // دوباره شروع کن تا قطع نشه (مثل گوگل!)
+                //         try {
+                //             recognition.start();
+                //         } catch (e) {
+                //             // گاهی خطا می‌ده، ولی دفعه بعد درست می‌شه
+                //         }
+                //     }
+                // };
+
+                recognition.onend = ()=>{
+
+                    if(!isRecording)
+                        return;
+
+                    setTimeout(()=>{
+                        recognition.start();
+                    },250);
+
+                }
 
                 function stopRecording() {
                     isRecording = false;
