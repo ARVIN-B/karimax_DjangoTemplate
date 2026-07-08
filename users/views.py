@@ -940,6 +940,7 @@ def build_modules_for_user(request):
             "color": "#918e07",
             "coming_soon": False,
             "have_permision": True,
+            "is_mail_box": True,
             "micro_modules": {
                 "notification_create": {
                     "name": "ایجاد اعلان",
@@ -948,6 +949,15 @@ def build_modules_for_user(request):
                     "color": "#918e07",
                     "coming_soon": False,
                     "have_permision": user.can_create_notification,
+                },
+                "notifications": {
+                    "name": "اعلانات",
+                    "link": "users:notifications",
+                    "icon_name": "add_participation/my_particip.svg",
+                    "color": "#918e07",
+                    "coming_soon": False,
+                    "have_permision": user.can_create_notification,
+                    "is_mail_box": True,
                 },
                 "referrals_inbox": {
                     "name": "صندوق ارجاعات دریافتی",
@@ -2897,8 +2907,6 @@ def notification_create(request):
         return render(request, "users/notification_create.html", context)
 
 
-# @login_required
-# def notifications_view(request):
 
 #     role_name = request.session["current_role"]
 #     holding_id = request.session["current_holding_id"]

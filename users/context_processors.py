@@ -191,12 +191,6 @@ def notification_context(request):
 
     context = {
         "notifications": notifications,
-        # "number_of_critical_priority_notifications": number_of_critical_priority_notifications,
-        # "number_of_low_priority_notifications": number_of_low_priority_notifications,
-        # "number_of_unseen_critical_priority_notifications": number_of_unseen_critical_priority_notifications,
-        # "number_of_unseen_high_priority_notifications": number_of_unseen_high_priority_notifications,
-        # "number_of_unseen_medium_priority_notifications": number_of_unseen_medium_priority_notifications,
-        # "number_of_unseen_low_priority_notifications": number_of_unseen_low_priority_notifications,
         "notification_badge_count": badge_count,
         "notification_badge_level": badge_level,
         "active_seen_notifications": active_seen_notifications,
