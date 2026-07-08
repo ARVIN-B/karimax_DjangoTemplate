@@ -31,7 +31,7 @@ from django.http import (
     Http404,
     HttpResponseBadRequest,
 )
-from django.db.models import Max, Q, Sum, Avg, Count, Exists, OuterRef
+from django.db.models import Max, Q, Sum, Avg, Count, Exists, OuterRef, F, IntegerField, ExpressionWrapper
 from django.core.exceptions import (
     PermissionDenied,
     SuspiciousOperation,
@@ -3727,6 +3727,135 @@ def search_employees(request):
     return JsonResponse(results, safe=False)
 
 
+
+
+
+
+
+
+def search_subdepartments(request):
+    q = request.GET.get("q", "").strip()
+
+    if len(q) < 2:
+        return JsonResponse([], safe=False)
+
+    queryset = (
+        Subdepartment.objects
+        .select_related("department", "department__factory", "department__factory__holding")
+    )
+
+    # --------------------
+    # Filters
+    # --------------------
+
+    # holding_id = request.GET.get("holding")
+    # if holding_id:
+    #     queryset = queryset.filter(
+    #         department__factory__holding_id=holding_id
+    #     )
+
+    holding_ids = request.GET.get("holding")
+
+    # print(f"holding_ids : {holding_ids}")
+    if holding_ids:
+        holding_ids = [
+            int(x)
+            for x in holding_ids.split(",")
+            if x.strip()
+        ]
+
+        queryset = queryset.filter(
+            department__factory__holding_id__in=holding_ids
+        )
+
+    # factory_id = request.GET.get("factory")
+    # if factory_id:
+    #     queryset = queryset.filter(
+    #         department__factory_id=factory_id
+    #     )
+    factory_ids = request.GET.get("factory")
+
+    # print(f"factory_ids : {factory_ids}")
+    if factory_ids:
+        factory_ids = [
+            int(x)
+            for x in factory_ids.split(",")
+            if x.strip()
+        ]
+
+        queryset = queryset.filter(
+            department__factory_id__in=factory_ids
+        )
+
+
+
+
+
+
+    # department_id = request.GET.get("department")
+    # if department_id:
+    #     queryset = queryset.filter(
+    #         department_id=department_id
+    #     )
+    department_ids = request.GET.get("department")
+
+    # print(f"department_ids : {department_ids}")
+    if department_ids:
+        department_ids = [
+            int(x)
+            for x in department_ids.split(",")
+            if x.strip()
+        ]
+
+        queryset = queryset.filter(
+            department_id__in=department_ids
+        )
+
+
+
+    is_restaurant = request.GET.get("is_restaurant")
+    if is_restaurant is not None:
+        queryset = queryset.filter(
+            is_restaurant=is_restaurant.lower() == is_restaurant
+        )
+
+    is_committee = request.GET.get("is_committee")
+    if is_committee is not None:
+        queryset = queryset.filter(
+            is_committee=is_committee.lower() == is_committee
+        )
+
+    # --------------------
+    # Search
+    # --------------------
+
+    queryset = queryset.filter(
+        Q(name__icontains=q)
+        | Q(department__name__icontains=q)
+        | Q(department__factory__name__icontains=q)
+        | Q(department__factory__holding__name__icontains=q)
+    ).order_by("name")[:20]
+
+    results = []
+
+    for item in queryset:
+        results.append({
+            "id": item.id,
+            "text": item.name,
+            "department": item.department.name,
+            "factory": item.department.factory.name,
+            "holding": item.department.factory.holding.name if item.department.factory.holding else "",
+            "is_restaurant": item.is_restaurant,
+        })
+
+    return JsonResponse(results, safe=False)
+
+
+
+
+
+
+
 @login_required
 def manage_self_menu(request):
     role_name = request.session["current_role"]
@@ -4371,7 +4500,6 @@ def managements_reports_dashboard(request):
     if not factory_ids or factory_ids == []:
         factory_ids = list(Factory.objects.values_list("id", flat=True))
 
-    # print(f"fffffffffffffff{factory_ids}")
 
     if request.GET.get("export") == "full":
         start_date = request.GET.get("start_date")
@@ -4626,8 +4754,6 @@ def managements_reports_dashboard(request):
         start_date = request.GET.get("start_date")
         end_date = request.GET.get("end_date")
 
-        # print(f"{}")
-
         jalali_str = start_date.replace("-", "/").strip()
         y, m, d = map(int, jalali_str.split("/"))
         strt_gregorian_date = gregorian_date = jdatetime.date(y, m, d).togregorian()
@@ -4730,6 +4856,348 @@ def managements_reports_dashboard(request):
             columns=data_columns, filename=filename, report_title=report_title
         )
 
+    elif request.GET.get("export") == "detailed_restaurant_reporting":
+
+        try:
+            (
+                start_date,
+                end_date,
+                start_gregorian,
+                end_gregorian,
+                factory_ids,
+                restaurants,
+            ) = parse_report_filters(request)
+
+        except ValidationError as e:
+            messages.error(request, e.message)
+            return redirect("users:managements_reports_dashboard")
+
+        reservations = (
+            FoodReservation.objects.filter(
+                reservation_date__range=(start_gregorian, end_gregorian),
+                related_factory_id__in=factory_ids,
+                menu_item__weekly_menu__restaurant__in=restaurants,
+                is_canceled=False,
+            )
+            .select_related(
+                "menu_item__food",
+                "menu_item__weekly_menu__restaurant",
+                "employee",
+                "related_factory",
+            )
+            .order_by(
+                "menu_item__weekly_menu__restaurant__name",
+                "reservation_date",
+            )
+        )
+
+        col_restaurant = []
+        col_factory = []
+        col_date = []
+        col_day = []
+        col_food = []
+
+        # col_factory_qty = []
+        # col_factory_price = []
+
+        # col_free_qty = []
+        # col_free_price = []
+
+        # col_guest_qty = []
+        # col_guest_price = []
+
+        col_total_qty = []
+        col_food_price = []
+        col_total_price = []
+
+        for res in reservations:
+
+            jdate = jdatetime.date.fromgregorian(
+                date=res.reservation_date
+            )
+
+            total_qty = (
+                res.factory_quantity
+                + res.free_quantity
+                + res.guest_quantity
+            )
+
+            col_restaurant.append(
+                res.menu_item.weekly_menu.restaurant.name
+            )
+
+            col_factory.append(
+                res.related_factory.name
+                if res.related_factory
+                else "-"
+            )
+
+            col_date.append(
+                jdate.strftime("%Y/%m/%d")
+            )
+
+            col_day.append(
+                jdate.strftime("%A")
+            )
+
+            col_food.append(
+                res.menu_item.food.name
+            )
+
+            # col_factory_qty.append(
+            #     res.factory_quantity
+            # )
+
+            # col_factory_price.append(
+            #     res.factory_price
+            # )
+
+            # col_free_qty.append(
+            #     res.free_quantity
+            # )
+
+            # col_free_price.append(
+            #     res.free_price
+            # )
+
+            # col_guest_qty.append(
+            #     res.guest_quantity
+            # )
+
+            # col_guest_price.append(
+            #     res.guest_price
+            # )
+
+            total_qty = (
+                res.factory_quantity
+                + res.free_quantity
+                + res.guest_quantity
+            )
+
+            food_price = res.menu_item.food.free_price
+
+            # col_total_qty.append(
+            #     total_qty
+            # )
+
+            # col_total_price.append(
+            #     res.total_price
+            # )
+
+            col_total_qty.append(total_qty)
+            col_food_price.append(food_price)
+            col_total_price.append(total_qty * food_price)
+
+        data_columns = [
+            ("رستوران", col_restaurant),
+            ("کارخانه", col_factory),
+            ("تاریخ", col_date),
+            ("روز", col_day),
+            ("غذا", col_food),
+
+            # ("تعداد سهمیه", col_factory_qty),
+            # ("هزینه هر پرس سهمیه", col_factory_price),
+
+            # ("تعداد آزاد", col_free_qty),
+            # ("هزینه هر پرس آزاد", col_free_price),
+
+            # ("تعداد مهمان", col_guest_qty),
+            # ("هزینه هر پرس مهمان", col_guest_price),
+
+            # ("جمع کل پرس", col_total_qty),
+            # ("هزینه کل", col_total_price),
+
+
+            ("تعداد کل پرس", col_total_qty),
+            ("قیمت هر پرس", col_food_price),
+            ("هزینه کل", col_total_price),
+        ]
+
+        filename = (
+            f"Detailed_Restaurant_Report_"
+            f"{start_date.replace('/','-')}_"
+            f"to_"
+            f"{end_date.replace('/','-')}"
+        )
+
+        report_title = (
+            f"گزارش تفصیلی عملکرد رستوران‌ها"
+            f"\nاز {start_date}"
+            f" تا {end_date}"
+        )
+
+        return export_to_excel(
+            columns=data_columns,
+            filename=filename,
+            report_title=report_title,
+        )
+
+
+    elif request.GET.get("export") == "general_restaurant_reporting":
+
+        try:
+            (
+                start_date,
+                end_date,
+                start_gregorian,
+                end_gregorian,
+                factory_ids,
+                restaurants,
+            ) = parse_report_filters(request)
+
+        except ValidationError as e:
+            messages.error(request, e.message)
+            return redirect("users:managements_reports_dashboard")
+
+        rows_restaurant = []
+        rows_factory = []
+
+        rows_factory_qty = []
+        rows_free_qty = []
+        rows_guest_qty = []
+        rows_total_qty = []
+
+        rows_factory_income = []
+        rows_free_income = []
+        rows_guest_income = []
+        rows_total_income = []
+
+        for restaurant in restaurants:
+
+            reservations = FoodReservation.objects.filter(
+                reservation_date__range=(start_gregorian, end_gregorian),
+                related_factory_id__in=factory_ids,
+                menu_item__weekly_menu__restaurant=restaurant,
+                is_canceled=False,
+            )
+
+            if not reservations.exists():
+                continue
+
+            agg = reservations.aggregate(
+
+                total_qty=
+
+                    Sum("factory_quantity")
+                    + Sum("free_quantity")
+                    + Sum("guest_quantity"),
+
+                total_income=Sum(
+
+                    ExpressionWrapper(
+
+                        (
+                            F("factory_quantity")
+                            + F("free_quantity")
+                            + F("guest_quantity")
+                        )
+                        * F("free_price"),
+
+                        output_field=IntegerField(),
+
+                    )
+
+                ),
+
+            )
+
+            # factory_qty = agg["factory_qty"] or 0
+            # free_qty = agg["free_qty"] or 0
+            # guest_qty = agg["guest_qty"] or 0
+
+            # factory_income = agg["factory_income"] or 0
+            # free_income = agg["free_income"] or 0
+            # guest_income = agg["guest_income"] or 0
+
+            total_qty = agg["total_qty"] or 0
+            total_income = agg["total_income"] or 0
+
+            rows_restaurant.append(
+                restaurant.name
+            )
+
+            rows_factory.append(
+                restaurant.department.factory.name
+            )
+
+            # rows_factory_qty.append(
+            #     factory_qty
+            # )
+
+            # rows_free_qty.append(
+            #     free_qty
+            # )
+
+            # rows_guest_qty.append(
+            #     guest_qty
+            # )
+
+            # rows_total_qty.append(
+            #     total_qty
+            # )
+
+            # rows_factory_income.append(
+            #     factory_income
+            # )
+
+            # rows_free_income.append(
+            #     free_income
+            # )
+
+            # rows_guest_income.append(
+            #     guest_income
+            # )
+
+            # rows_total_income.append(
+            #     agg["total_income"] or 0
+            # )
+            rows_total_qty.append(total_qty)
+            rows_total_income.append(total_income)
+
+        data_columns = [
+            ("رستوران", rows_restaurant),
+            ("کارخانه", rows_factory),
+
+            # ("تعداد سهمیه", rows_factory_qty),
+            # ("تعداد آزاد", rows_free_qty),
+            # ("تعداد مهمان", rows_guest_qty),
+
+            ("جمع کل پرس", rows_total_qty),
+
+            # ("جمع مبلغ سهمیه", rows_factory_income),
+            # ("جمع مبلغ آزاد", rows_free_income),
+            # ("جمع مبلغ مهمان", rows_guest_income),
+
+            ("جمع کل هزینه", rows_total_income),
+        ]
+
+        filename = (
+            f"General_Restaurant_Report_"
+            f"{start_date.replace('/','-')}_"
+            f"to_"
+            f"{end_date.replace('/','-')}"
+        )
+
+        report_title = (
+            f"گزارش تجمیعی عملکرد رستوران‌ها"
+            f"\nاز {start_date}"
+            f" تا {end_date}"
+        )
+
+        return export_to_excel(
+            columns=data_columns,
+            filename=filename,
+            report_title=report_title,
+        )
+
+
+
+
+
+
+
+
+
     factories = Factory.objects.all()
 
     context = {
@@ -4739,6 +5207,62 @@ def managements_reports_dashboard(request):
         "factories": factories,
     }
     return render(request, "users/managements_reports_dashboard.html", context)
+
+
+
+
+def parse_report_filters(request):
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    if not start_date or not end_date:
+        raise ValidationError("لطفاً تاریخ شروع و پایان را انتخاب کنید.")
+
+    jalali_str = start_date.replace("-", "/").strip()
+    y, m, d = map(int, jalali_str.split("/"))
+    start_gregorian = jdatetime.date(y, m, d).togregorian()
+
+    jalali_str = end_date.replace("-", "/").strip()
+    y, m, d = map(int, jalali_str.split("/"))
+    end_gregorian = jdatetime.date(y, m, d).togregorian()
+
+    factory_ids_param = request.GET.get("factory_ids", "")
+    restaurant_ids_param = request.GET.get("restaurant_ids", "")
+
+    factory_ids = [
+        int(x)
+        for x in factory_ids_param.split(",")
+        if x.strip().isdigit()
+    ]
+
+    restaurant_ids = [
+        int(x)
+        for x in restaurant_ids_param.split(",")
+        if x.strip().isdigit()
+    ]
+
+    if not factory_ids:
+        factory_ids = list(
+            Factory.objects.values_list("id", flat=True)
+        )
+
+    restaurants = Subdepartment.objects.filter(
+        is_restaurant=True,
+        department__factory_id__in=factory_ids,
+    )
+
+    if restaurant_ids:
+        restaurants = restaurants.filter(id__in=restaurant_ids)
+
+    return (
+        start_date,
+        end_date,
+        start_gregorian,
+        end_gregorian,
+        factory_ids,
+        restaurants,
+    )
+
 
 
 # @login_required

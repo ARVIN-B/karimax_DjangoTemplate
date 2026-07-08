@@ -73,16 +73,20 @@ urlpatterns = [
         name="restaurant_management_dashboard",
     ),
     path("food-delivery/", views.food_delivery_page, name="food_delivery_page"),
-    path("search-employees/", views.search_employees, name="search_employees"),
     path(
         "referral/create/<int:participation_id>/",
         views.referral_create,
         name="referral_create",
     ),
+    path("search-employees/", views.search_employees, name="search_employees"),
     path("ajax/search-org-units/", views.search_org_units, name="search_org_units"),
+    path(
+        "search-subdepartments/",
+        views.search_subdepartments,
+        name="search_subdepartments",
+    ),
     path("referrals/inbox/", views.referrals_inbox, name="referrals_inbox"),
     path("referral/<int:referral_id>/", views.referral_detail, name="referral_detail"),
-    
     path("family/", views.family_management, name="family_management"),
     path("family/add/", views.add_dependent, name="add_dependent"),
     path("insurance_info/", views.insurance_info, name="insurance_info"),
@@ -127,8 +131,6 @@ urlpatterns = [
         name="contact_us",
     ),
     path("register/", views.register_view, name="register"),
-
-
     path(
         "notifications/create/", views.notification_create, name="notification_create"
     ),
@@ -138,40 +140,26 @@ urlpatterns = [
         views.notification_mark_read,
         name="notification_mark_read",
     ),
-
-
-
-
-
     # path(
     #     "biometric/register/options/",
     #     views.biometric_register_options,
     #     name="biometric_register_options"
     # ),
-
     # path(
     #     "biometric/register/verify/",
     #     views.biometric_register_verify,
     #     name="biometric_register_verify"
     # ),
-
     # path(
     #     "biometric/auth/options/",
     #     views.biometric_auth_options,
     #     name="biometric_auth_options",
     # ),
-
     # path(
     #     "biometric/auth/verify/",
     #     views.biometric_auth_verify,
     #     name="biometric_auth_verify",
     # ),
-
-
-
     # path('passkey/begin/', views.passkey_begin, name='passkey_begin'),
     # path('passkey/complete/', views.passkey_complete, name='passkey_complete'),
-
-
-
 ]

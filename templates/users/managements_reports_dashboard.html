@@ -1,14 +1,5 @@
-{% extends 'base.html' %}
-{% load static %}
-{% load humanize %}
-
-{% block title %}
-داشبورد گزارش‌گیری حرفه‌ای سلف
-{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% load static %} {% load humanize %} {% block title %} داشبورد گزارش‌گیری حرفه‌ای سلف {% endblock %} {% block content %}
 <div class="container-fluid py-4">
-
 	<!-- Header -->
 	<div class="row mb-4 animate__animated animate__fadeIn">
 		<div class="col-12">
@@ -19,25 +10,14 @@
 						داشبورد گزارش گیری
 					</h1>
 
-					<p class="dashboard-subtitle">
-						مدیریت و دانلود گزارش‌های پیشرفته
-					</p>
+					<p class="dashboard-subtitle">مدیریت و دانلود گزارش‌های پیشرفته</p>
 				</div>
-
-				<a
-					href="{% url 'users:dashboard' %}"
-					class="btn btn-back"
-				>
-					<i class="fas fa-arrow-right"></i>
-					بازگشت به داشبورد
-				</a>
 			</div>
 		</div>
 	</div>
 
 	<!-- Stats -->
 	<div class="row g-4 mb-4 animate__animated animate__fadeInUp">
-
 		<div class="col-12 col-sm-6 col-xl-4">
 			<div class="stat-card primary">
 				<div class="card-body">
@@ -106,7 +86,6 @@
 				</div>
 			</div>
 		</div>
-
 	</div>
 
 	<!-- Factory Filter -->
@@ -114,34 +93,27 @@
 		<div class="col-12">
 			<div class="glass-card">
 				<div class="card-body">
-
 					<div class="row align-items-end g-3">
-
 						<div class="col-12 col-lg-10">
 							<label class="form-label-custom">
 								<i class="fas fa-building"></i>
 								فیلتر بر اساس کارخانه
 							</label>
-
 							<select
 								id="factory-select"
 								class="form-control"
 								multiple="multiple"
-								style="width:100%;"
+								style="width: 100%"
 							>
 								{% for factory in factories %}
-								<option value="{{ factory.id }}">
-									{{ factory.name }}
-								</option>
+								<option value="{{ factory.id }}">{{ factory.name }}</option>
 								{% endfor %}
 							</select>
-
 							<small class="helper-text">
 								<i class="fas fa-info-circle"></i>
 								در صورت عدم انتخاب کارخانه، گزارش برای تمام کارخانه‌ها محاسبه می‌شود
 							</small>
 						</div>
-
 						<div class="col-12 col-lg-2">
 							<button
 								id="clear-factories-btn"
@@ -151,72 +123,100 @@
 								پاک کردن
 							</button>
 						</div>
-
 					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- Restaurant Filter -->
+	<div class="row mb-4 animate__animated animate__fadeInUp">
+		<div class="col-12">
+			<div class="glass-card">
+				<div class="card-body">
+					<div class="row align-items-end g-3">
+						<div class="col-12 col-lg-10">
+							<label class="form-label-custom">
+								<i class="fas fa-utensils"></i>
+								فیلتر بر اساس رستوران
+							</label>
 
+							<!-- <select
+								id="restaurant-search"
+								class="form-control"
+								multiple="multiple"
+								style="width:100%"
+							></select> -->
+							<select
+								id="restaurant-select"
+								class="form-control"
+								multiple
+								style="width:100%"
+							></select>
+
+							<small class="helper-text">
+								در صورت عدم انتخاب، تمام رستوران‌ها در نظر گرفته می‌شوند.
+							</small>
+						</div>
+
+						<div class="col-12 col-lg-2">
+							<button
+								id="clear-restaurants-btn"
+								class="btn btn-danger-soft w-100"
+							>
+								<i class="fas fa-trash-alt"></i>
+								پاک کردن
+							</button>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
 	</div>
 
+
+
+
+
 	<!-- Full Report -->
 	<div class="row mb-4 animate__animated animate__fadeInUp">
 		<div class="col-12">
-
 			<div class="report-card">
-
 				<div class="report-header primary-gradient">
 					<h4>
 						<i class="fas fa-file-invoice-dollar"></i>
 						گزارش جامع بدهی کارمندان
 					</h4>
 				</div>
-
 				<div class="card-body">
-
 					<div class="row g-3 align-items-end">
-
 						<div class="col-12 col-md-6 col-xl-3">
-							<label class="form-label-custom">
-								از تاریخ
-							</label>
-
+							<label class="form-label-custom"> از تاریخ </label>
 							<input
 								type="text"
 								id="full_from_date"
 								data-jdp
 								class="form-control-modern"
-							>
+							/>
 						</div>
-
 						<div class="col-12 col-md-6 col-xl-3">
-							<label class="form-label-custom">
-								تا تاریخ
-							</label>
-
+							<label class="form-label-custom"> تا تاریخ </label>
 							<input
 								type="text"
 								id="full_to_date"
 								data-jdp
 								class="form-control-modern"
-							>
+							/>
 						</div>
-
 						<div class="col-12 col-md-6 col-xl-3">
-							<label class="form-label-custom">
-								نوع گزارش
-							</label>
-
+							<label class="form-label-custom"> نوع گزارش </label>
 							<select
 								id="full_report_type"
 								class="form-control-modern"
 							>
-								<option value="detailed">
-									گزارش تفصیلی
-								</option>
+								<option value="detailed">گزارش تفصیلی</option>
 							</select>
 						</div>
-
 						<div class="col-12 col-md-6 col-xl-3">
 							<button
 								id="export-full-btn"
@@ -226,89 +226,90 @@
 								دانلود اکسل
 							</button>
 						</div>
-
 					</div>
-
 				</div>
-
 			</div>
-
 		</div>
 	</div>
 
 	<!-- Restaurant Report -->
 	<div class="row mb-4 animate__animated animate__fadeInUp">
 		<div class="col-12">
-
 			<div class="report-card">
-
 				<div class="report-header warning-gradient">
 					<h4>
 						<i class="fas fa-chart-bar"></i>
 						گزارش عملکرد روزانه رستوران‌ها
 					</h4>
 				</div>
-
 				<div class="card-body">
-
 					<div class="row g-3 align-items-end">
-
 						<div class="col-12 col-md-6 col-xl-4">
-							<label class="form-label-custom">
-								از تاریخ
-							</label>
-
+							<label class="form-label-custom"> از تاریخ </label>
 							<input
 								type="text"
 								id="restaurant_from_date"
 								data-jdp
 								class="form-control-modern"
-							>
+							/>
 						</div>
-
 						<div class="col-12 col-md-6 col-xl-4">
-							<label class="form-label-custom">
-								تا تاریخ
-							</label>
-
+							<label class="form-label-custom"> تا تاریخ </label>
 							<input
 								type="text"
 								id="restaurant_to_date"
 								data-jdp
 								class="form-control-modern"
-							>
+							/>
 						</div>
-
 						<div class="col-12 col-xl-4">
-							<button
+							<!-- <button
 								id="export-restaurant-btn"
 								class="btn btn-warning-custom w-100"
 							>
 								<i class="fas fa-chart-line"></i>
 								دانلود گزارش ماتریسی
-							</button>
+							</button> -->
+							
+
+							<div class="col-12 col-md-6">
+								<button
+									id="export-restaurant-detailed-btn"
+									class="btn btn-warning-custom w-100"
+								>
+									<i class="fas fa-list"></i>
+									گزارش تفکیکی
+								</button>
+							</div>
+
+							<div class="col-12 col-md-6">
+								<button
+									id="export-restaurant-general-btn"
+									class="btn btn-success-custom w-100"
+								>
+									<i class="fas fa-chart-bar"></i>
+									گزارش کلی
+								</button>
+							</div>
+
+
+
+
 						</div>
-
 					</div>
-
-					<div class="helper-box">
+					<!-- <div class="helper-box">
 						<i class="fas fa-info-circle"></i>
 						این گزارش تعداد سفارش هر رستوران را به تفکیک روز نشان می‌دهد
-					</div>
-
+					</div> -->
 				</div>
-
 			</div>
-
 		</div>
 	</div>
 
 	<!-- Employee Report -->
 	<div class="row mb-4 animate__animated animate__fadeInUp">
 		<div class="col-12">
-
 			<div class="report-card">
-
 				<div class="report-header info-gradient">
 					<h4>
 						<i class="fas fa-user-circle"></i>
@@ -317,67 +318,51 @@
 				</div>
 
 				<div class="card-body">
-
 					<div class="row g-3">
-
 						<div class="col-12 col-md-6 col-xl-3">
-							<label class="form-label-custom">
-								از تاریخ
-							</label>
-
+							<label class="form-label-custom"> از تاریخ </label>
 							<input
 								type="text"
 								id="single_from_date"
 								data-jdp
 								class="form-control-modern"
-							>
+							/>
 						</div>
-
 						<div class="col-12 col-md-6 col-xl-3">
-							<label class="form-label-custom">
-								تا تاریخ
-							</label>
-
+							<label class="form-label-custom"> تا تاریخ </label>
 							<input
 								type="text"
 								id="single_to_date"
 								data-jdp
 								class="form-control-modern"
-							>
+							/>
 						</div>
 
 						<div class="col-12 col-xl-4">
-							<label class="form-label-custom">
-								جستجوی کارمند
-							</label>
-
+							<label class="form-label-custom"> جستجوی کارمند </label>
 							<select
 								id="employee-search"
 								class="form-control-modern"
-								style="width:100%;"
+								style="width: 100%"
 							>
 								<option></option>
 							</select>
 						</div>
 
 						<div class="col-12 col-xl-2">
-
 							<div
 								id="selectedEmployeeInfo"
 								class="employee-info"
-								style="display:none;"
+								style="display: none"
 							>
 								<i class="fas fa-user-check"></i>
 
 								<span id="employeeInfoText"></span>
 							</div>
-
 						</div>
-
 					</div>
 
 					<div class="row g-3 mt-1">
-
 						<div class="col-12 col-lg-6">
 							<button
 								id="export-detailed-btn"
@@ -399,23 +384,15 @@
 								گزارش خلاصه
 							</button>
 						</div>
-
 					</div>
-
 				</div>
-
 			</div>
-
 		</div>
 	</div>
-
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script>
 	$(document).ready(function () {
-
 		const factorySelect = document.getElementById("factory-select");
 		let choicesInstance = null;
 
@@ -495,12 +472,10 @@
 		});
 
 		$("#employee-search").on("select2:select", function (e) {
-
 			selectedEmployeeId = e.params.data.id;
 			selectedEmployeeName = e.params.data.text;
 
-			$("#export-detailed-btn, #export-summary-btn")
-				.prop("disabled", false);
+			$("#export-detailed-btn, #export-summary-btn").prop("disabled", false);
 
 			$("#selectedEmployeeInfo").show();
 
@@ -511,18 +486,15 @@
 		});
 
 		$("#employee-search").on("select2:clear", function () {
-
 			selectedEmployeeId = null;
 			selectedEmployeeName = null;
 
-			$("#export-detailed-btn, #export-summary-btn")
-				.prop("disabled", true);
+			$("#export-detailed-btn, #export-summary-btn").prop("disabled", true);
 
 			$("#selectedEmployeeInfo").hide();
 		});
 
 		$("#export-full-btn").on("click", function () {
-
 			const startDate = $("#full_from_date").val();
 			const endDate = $("#full_to_date").val();
 			const reportType = $("#full_report_type").val();
@@ -545,38 +517,156 @@
 				params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
 			}
 
-			window.location.href =
-				"{% url 'users:managements_reports_dashboard' %}?" + params;
+			window.location.href = "{% url 'users:managements_reports_dashboard' %}?" + params;
 		});
 
-		$("#export-restaurant-btn").on("click", function () {
+		// $("#export-restaurant-btn").on("click", function () {
+		// 	const startDate = $("#restaurant_from_date").val();
+		// 	const endDate = $("#restaurant_to_date").val();
 
-			const startDate = $("#restaurant_from_date").val();
-			const endDate = $("#restaurant_to_date").val();
+		// 	if (!startDate || !endDate) {
+		// 		Swal.fire("خطا", "لطفاً بازه تاریخ را انتخاب کنید", "error");
+		// 		return;
+		// 	}
 
-			if (!startDate || !endDate) {
-				Swal.fire("خطا", "لطفاً بازه تاریخ را انتخاب کنید", "error");
+		// 	let params = `
+		// 		export=full-restaurant
+		// 		&start_date=${encodeURIComponent(startDate)}
+		// 		&end_date=${encodeURIComponent(endDate)}
+		// 	`;
+
+		// 	const selectedFactories = getSelectedFactories();
+
+		// 	if (selectedFactories) {
+		// 		params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
+		// 	}
+
+		// 	window.location.href = "{% url 'users:managements_reports_dashboard' %}?" + params;
+		// });
+	
+
+
+
+
+
+		const restaurantSelect = document.getElementById("restaurant-select");
+
+		const restaurantChoices = new Choices(restaurantSelect, {
+			removeItemButton: true,
+			placeholder: true,
+			placeholderValue: "انتخاب رستوران‌ها",
+			searchEnabled: true,
+			searchChoices: false,   // خودمون سرچ میکنیم
+			shouldSort: false,
+			itemSelectText: "",
+		});
+
+		restaurantSelect.addEventListener("search", function (event) {
+
+			const value = event.detail.value;
+
+			if (value.length < 2)
 				return;
-			}
+
+			$.get("{% url 'users:search_subdepartments' %}", {
+
+				q: value,
+				is_restaurant: true,
+				factory: getSelectedFactories(),
+
+			}, function (data) {
+
+				restaurantChoices.clearChoices();
+				// restaurantChoices.clearChoices(false, true);
+
+				restaurantChoices.setChoices(
+
+					data.map(item => ({
+						value: item.id,
+						label: item.text,
+						selected: false
+					})),
+
+					"value",
+					"label",
+					true
+
+				);
+
+			});
+
+		});
+
+		function getSelectedRestaurants() {
+			return restaurantChoices.getValue(true).join(",");
+		}
+
+		$("#clear-restaurants-btn").click(function () {
+			restaurantChoices.removeActiveItems();
+		});
+
+		// $("#factory-select").on("change", function () {
+		// 	restaurantChoices.clearStore();
+		// });
+		$("#factory-select").on("change", function () {
+			restaurantChoices.removeActiveItems();
+			restaurantChoices.clearChoices();
+		});
+
+
+		
+
+		$("#export-restaurant-detailed-btn").click(function () {
 
 			let params = `
-				export=full-restaurant
-				&start_date=${encodeURIComponent(startDate)}
-				&end_date=${encodeURIComponent(endDate)}
+				export=detailed_restaurant_reporting
+				&start_date=${encodeURIComponent($("#restaurant_from_date").val())}
+				&end_date=${encodeURIComponent($("#restaurant_to_date").val())}
 			`;
 
-			const selectedFactories = getSelectedFactories();
+			const factories = getSelectedFactories();
+			const restaurants = getSelectedRestaurants();
 
-			if (selectedFactories) {
-				params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
-			}
+			if (factories)
+				params += `&factory_ids=${encodeURIComponent(factories)}`;
+
+			if (restaurants)
+				params += `&restaurant_ids=${encodeURIComponent(restaurants)}`;
 
 			window.location.href =
 				"{% url 'users:managements_reports_dashboard' %}?" + params;
 		});
 
-		$("#export-detailed-btn").on("click", function () {
+		$("#export-restaurant-general-btn").click(function () {
 
+			let params = `
+				export=general_restaurant_reporting
+				&start_date=${encodeURIComponent($("#restaurant_from_date").val())}
+				&end_date=${encodeURIComponent($("#restaurant_to_date").val())}
+			`;
+
+			const factories = getSelectedFactories();
+			const restaurants = getSelectedRestaurants();
+
+			if (factories)
+				params += `&factory_ids=${encodeURIComponent(factories)}`;
+
+			if (restaurants)
+				params += `&restaurant_ids=${encodeURIComponent(restaurants)}`;
+
+			window.location.href =
+				"{% url 'users:managements_reports_dashboard' %}?" + params;
+		});
+
+
+
+
+
+
+
+
+
+		$("#export-detailed-btn").on("click", function () {
 			if (!selectedEmployeeId) {
 				Swal.fire("خطا", "لطفاً یک کارمند انتخاب کنید", "error");
 				return;
@@ -603,12 +693,10 @@
 				params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
 			}
 
-			window.location.href =
-				"{% url 'users:managements_reports_dashboard' %}?" + params;
+			window.location.href = "{% url 'users:managements_reports_dashboard' %}?" + params;
 		});
 
 		$("#export-summary-btn").on("click", function () {
-
 			if (!selectedEmployeeId) {
 				Swal.fire("خطا", "لطفاً یک کارمند انتخاب کنید", "error");
 				return;
@@ -636,14 +724,11 @@
 				params += `&factory_ids=${encodeURIComponent(selectedFactories)}`;
 			}
 
-			window.location.href =
-				"{% url 'users:managements_reports_dashboard' %}?" + params;
+			window.location.href = "{% url 'users:managements_reports_dashboard' %}?" + params;
 		});
 
 		$("#clear-factories-btn").on("click", function () {
-
 			if (choicesInstance) {
-
 				choicesInstance.removeActiveItems();
 
 				$(factorySelect).val([]);
@@ -657,574 +742,497 @@
 				});
 			}
 		});
-
 	});
 </script>
-{% endblock extra_js %}
-
-{% block extra_css %}
+{% endblock extra_js %} {% block extra_css %}
 <style>
+	:root {
+		--primary: #f97316;
+		--primary-dark: #ea580c;
+		--primary-light: #ffedd5;
+		--primary-glow: rgba(249, 115, 22, 0.3);
 
-:root {
-	--primary: #f97316;
-	--primary-dark: #ea580c;
-	--primary-light: #ffedd5;
-	--primary-glow: rgba(249, 115, 22, 0.3);
+		--secondary: #f59e0b;
+		--secondary-dark: #d97706;
+		--secondary-light: #fef3c7;
+		--secondary-glow: rgba(245, 158, 11, 0.3);
 
-	--secondary: #f59e0b;
-	--secondary-dark: #d97706;
-	--secondary-light: #fef3c7;
-	--secondary-glow: rgba(245, 158, 11, 0.3);
+		--bg-page: #f8fafc;
+		--bg-card: rgba(255, 255, 255, 0.75);
 
-	--bg-page: #f8fafc;
-	--bg-card: rgba(255, 255, 255, 0.75);
+		--glass-bg: rgba(255, 255, 255, 0.65);
+		--glass-border: rgba(0, 0, 0, 0.06);
 
-	--glass-bg: rgba(255, 255, 255, 0.65);
-	--glass-border: rgba(0, 0, 0, 0.06);
+		--text-primary: #0f172a;
+		--text-secondary: #334155;
+		--text-muted: #64748b;
 
-	--text-primary: #0f172a;
-	--text-secondary: #334155;
-	--text-muted: #64748b;
+		--shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
 
-	--shadow-sm:
-		0 4px 12px rgba(0, 0, 0, 0.04),
-		0 1px 2px rgba(0, 0, 0, 0.06);
+		--shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
 
-	--shadow-lg:
-		0 20px 40px -12px rgba(0, 0, 0, 0.08),
-		0 4px 12px rgba(0, 0, 0, 0.03);
+		--radius-sm: 0.75rem;
+		--radius: 1.25rem;
+		--radius-lg: 1.5rem;
 
-	--radius-sm: 0.75rem;
-	--radius: 1.25rem;
-	--radius-lg: 1.5rem;
+		--transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
-	--transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+		--font-size-sm: clamp(0.75rem, 2vw, 0.8125rem);
+		--font-size-base: clamp(0.875rem, 2.5vw, 1rem);
+		--font-size-lg: clamp(1rem, 3vw, 1.125rem);
 
-	--font-size-sm: clamp(0.75rem, 2vw, 0.8125rem);
-	--font-size-base: clamp(0.875rem, 2.5vw, 1rem);
-	--font-size-lg: clamp(1rem, 3vw, 1.125rem);
+		--navbar-height: 60px;
+	}
 
-	--navbar-height: 60px;
-}
+	html,
+	body {
+		overflow-x: hidden;
+		background: var(--bg-page);
+		color: var(--text-primary);
+	}
 
-html,
-body {
-	overflow-x: hidden;
-	background: var(--bg-page);
-	color: var(--text-primary);
-}
+	body {
+		direction: rtl;
+	}
 
-body {
-	direction: rtl;
-}
+	.container-fluid.py-4 {
+		padding-inline: clamp(0.75rem, 2vw, 1.5rem);
+	}
 
-.container-fluid.py-4 {
-	padding-inline: clamp(0.75rem, 2vw, 1.5rem);
-}
-
-/* Header */
-
-.dashboard-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-	flex-wrap: wrap;
-}
-
-.dashboard-title {
-	display: flex;
-	align-items: center;
-	gap: 0.7rem;
-
-	margin: 0;
-	font-weight: 800;
-
-	font-size: clamp(1.3rem, 4vw, 2.2rem);
-
-	background: linear-gradient(
-		135deg,
-		var(--primary),
-		var(--secondary)
-	);
-
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-}
-
-.dashboard-subtitle {
-	margin-top: 0.6rem;
-	color: var(--text-muted);
-	font-size: var(--font-size-base);
-}
-
-/* Cards */
-
-.glass-card,
-.stat-card,
-.report-card {
-	background: var(--bg-card);
-	border: 1px solid var(--glass-border);
-
-	backdrop-filter: blur(14px);
-	-webkit-backdrop-filter: blur(14px);
-
-	border-radius: var(--radius-lg);
-
-	box-shadow: var(--shadow-sm);
-
-	transition: var(--transition);
-}
-
-.stat-card:hover,
-.report-card:hover {
-	transform: translateY(-4px);
-	box-shadow: var(--shadow-lg);
-}
-
-.card-body {
-	padding: clamp(1rem, 2vw, 1.4rem);
-}
-
-/* Stat */
-
-.stat-card {
-	position: relative;
-	overflow: hidden;
-}
-
-.stat-card::before {
-	content: "";
-	position: absolute;
-	inset-inline: 0;
-	top: 0;
-	height: 4px;
-}
-
-.stat-card.primary::before {
-	background: linear-gradient(
-		90deg,
-		var(--primary),
-		var(--primary-dark)
-	);
-}
-
-.stat-card.success::before {
-	background: linear-gradient(
-		90deg,
-		var(--secondary),
-		var(--secondary-dark)
-	);
-}
-
-.stat-card.info::before {
-	background: linear-gradient(
-		90deg,
-		#38bdf8,
-		#0ea5e9
-	);
-}
-
-.stat-flex {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-}
-
-.stat-label {
-	margin-bottom: 0.35rem;
-	color: var(--text-muted);
-	font-size: var(--font-size-sm);
-}
-
-.stat-number {
-	margin: 0;
-	font-weight: 800;
-	font-size: clamp(1.4rem, 5vw, 2rem);
-}
-
-.stat-icon {
-	width: clamp(48px, 10vw, 62px);
-	height: clamp(48px, 10vw, 62px);
-
-	border-radius: 18px;
-
-	display: flex;
-	align-items: center;
-	justify-content: center;
-
-	font-size: clamp(1.1rem, 3vw, 1.7rem);
-
-	color: white;
-	flex-shrink: 0;
-}
-
-.stat-icon.primary {
-	background: linear-gradient(
-		135deg,
-		var(--primary),
-		var(--primary-dark)
-	);
-}
-
-.stat-icon.success {
-	background: linear-gradient(
-		135deg,
-		var(--secondary),
-		var(--secondary-dark)
-	);
-}
-
-.stat-icon.info {
-	background: linear-gradient(
-		135deg,
-		#38bdf8,
-		#0ea5e9
-	);
-}
-
-/* Report */
-
-.report-header {
-	padding: 1.1rem 1.3rem;
-}
-
-.report-header h4 {
-	display: flex;
-	align-items: center;
-	gap: 0.6rem;
-
-	margin: 0;
-
-	font-size: clamp(1rem, 3vw, 1.15rem);
-	font-weight: 700;
-
-	color: white;
-}
-
-.primary-gradient {
-	background: linear-gradient(
-		135deg,
-		var(--primary),
-		var(--primary-dark)
-	);
-}
-
-.warning-gradient {
-	background: linear-gradient(
-		135deg,
-		var(--secondary),
-		var(--secondary-dark)
-	);
-}
-
-.info-gradient {
-	background: linear-gradient(
-		135deg,
-		#38bdf8,
-		#0ea5e9
-	);
-}
-
-/* Form */
-
-.form-label-custom {
-	display: flex;
-	align-items: center;
-	gap: 0.45rem;
-
-	margin-bottom: 0.55rem;
-
-	font-size: var(--font-size-sm);
-	font-weight: 700;
-
-	color: var(--text-secondary);
-}
-
-.form-control-modern,
-.choices__inner,
-.select2-selection {
-	width: 100% !important;
-
-	min-height: 50px;
-
-	border-radius: var(--radius-sm) !important;
-
-	border: 1.5px solid rgba(15, 23, 42, 0.1) !important;
-
-	background: rgba(255,255,255,0.9) !important;
-
-	box-shadow: none !important;
-
-	transition: var(--transition);
-}
-
-.form-control-modern {
-	padding: 0.8rem 1rem;
-}
-
-.form-control-modern:focus,
-.choices__inner:focus-within,
-.select2-selection:focus-within {
-	border-color: var(--primary) !important;
-
-	box-shadow:
-		0 0 0 4px var(--primary-glow) !important;
-}
-
-/* Buttons */
-
-.btn {
-	border-radius: 999px;
-	font-weight: 700;
-	transition: var(--transition);
-}
-
-.btn:hover {
-	transform: translateY(-2px);
-}
-
-.btn-back {
-	border: 1px solid rgba(15, 23, 42, 0.1);
-	background: white;
-	padding: 0.75rem 1.2rem;
-}
-
-.btn-primary-custom {
-	background: linear-gradient(
-		135deg,
-		var(--primary),
-		var(--primary-dark)
-	);
-
-	color: white;
-	border: none;
-	padding: 0.9rem 1rem;
-}
-
-.btn-warning-custom {
-	background: linear-gradient(
-		135deg,
-		var(--secondary),
-		var(--secondary-dark)
-	);
-
-	color: #1f2937;
-	border: none;
-	padding: 0.9rem 1rem;
-}
-
-.btn-info-custom {
-	background: linear-gradient(
-		135deg,
-		#38bdf8,
-		#0ea5e9
-	);
-
-	color: white;
-	border: none;
-	padding: 0.9rem 1rem;
-}
-
-.btn-success-custom {
-	background: linear-gradient(
-		135deg,
-		#22c55e,
-		#16a34a
-	);
-
-	color: white;
-	border: none;
-	padding: 0.9rem 1rem;
-}
-
-.btn-danger-soft {
-	background: rgba(239, 68, 68, 0.1);
-	color: #dc2626;
-	border: none;
-	padding: 0.9rem 1rem;
-}
-
-/* Helpers */
-
-.helper-text {
-	display: block;
-	margin-top: 0.7rem;
-
-	color: var(--text-muted);
-	font-size: var(--font-size-sm);
-}
-
-.helper-box {
-	margin-top: 1rem;
-
-	padding: 0.85rem 1rem;
-
-	border-radius: var(--radius-sm);
-
-	background: rgba(245, 158, 11, 0.08);
-
-	font-size: var(--font-size-sm);
-	color: var(--text-secondary);
-}
-
-.employee-info {
-	height: 50px;
-
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-
-	padding: 0.75rem;
-
-	background: rgba(59, 130, 246, 0.08);
-
-	border-radius: var(--radius-sm);
-
-	font-size: var(--font-size-sm);
-}
-
-/* Choices */
-
-.choices {
-	margin-bottom: 0;
-}
-
-.choices__inner {
-	padding: 0.35rem 0.6rem !important;
-}
-
-.choices__list--multiple .choices__item {
-	background: linear-gradient(
-		135deg,
-		var(--primary),
-		var(--primary-dark)
-	) !important;
-
-	border: none !important;
-
-	border-radius: 999px !important;
-
-	font-size: 0.75rem !important;
-}
-
-.choices__button {
-	border-left: none !important;
-}
-
-.choices__list--dropdown .choices__item--selectable.is-highlighted {
-	background: rgba(249, 115, 22, 0.12) !important;
-	color: var(--text-primary) !important;
-}
-
-/* Select2 */
-
-.select2-container {
-	width: 100% !important;
-}
-
-.select2-dropdown {
-	border-radius: var(--radius-sm) !important;
-	border: 1px solid rgba(15, 23, 42, 0.08) !important;
-	overflow: hidden;
-}
-
-.select2-results__option {
-	font-size: var(--font-size-sm);
-	padding: 0.8rem 1rem;
-}
-
-/* Mobile */
-
-@media (max-width: 991px) {
+	/* Header */
 
 	.dashboard-header {
-		align-items: stretch;
-	}
-
-	.btn-back {
-		width: 100%;
-		justify-content: center;
-	}
-
-}
-
-@media (max-width: 767px) {
-
-	.container-fluid.py-4 {
-		padding-inline: 0.75rem;
-	}
-
-	.card-body {
-		padding: 1rem;
-	}
-
-	.report-header {
-		padding: 1rem;
-	}
-
-	.report-header h4 {
-		font-size: 0.95rem;
-	}
-
-	.btn-primary-custom,
-	.btn-warning-custom,
-	.btn-info-custom,
-	.btn-success-custom,
-	.btn-danger-soft {
-		width: 100%;
-	}
-
-}
-
-@media (max-width: 420px) {
-
-	.container-fluid.py-4 {
-		padding-inline: 0.55rem;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		flex-wrap: wrap;
 	}
 
 	.dashboard-title {
-		font-size: 1.15rem;
+		display: flex;
+		align-items: center;
+		gap: 0.7rem;
+
+		margin: 0;
+		font-weight: 800;
+
+		font-size: clamp(1.3rem, 4vw, 2.2rem);
+
+		background: linear-gradient(135deg, var(--primary), var(--secondary));
+
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
 	}
 
-	.dashboard-subtitle,
-	.helper-text,
-	.helper-box,
-	.form-label-custom {
-		font-size: 0.74rem;
+	.dashboard-subtitle {
+		margin-top: 0.6rem;
+		color: var(--text-muted);
+		font-size: var(--font-size-base);
+	}
+
+	/* Cards */
+
+	.glass-card,
+	.stat-card,
+	.report-card {
+		background: var(--bg-card);
+		border: 1px solid var(--glass-border);
+
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+
+		border-radius: var(--radius-lg);
+
+		box-shadow: var(--shadow-sm);
+
+		transition: var(--transition);
+	}
+
+	.stat-card:hover,
+	.report-card:hover {
+		transform: translateY(-4px);
+		box-shadow: var(--shadow-lg);
+	}
+
+	.card-body {
+		padding: clamp(1rem, 2vw, 1.4rem);
+	}
+
+	/* Stat */
+
+	.stat-card {
+		position: relative;
+		overflow: hidden;
+	}
+
+	.stat-card::before {
+		content: "";
+		position: absolute;
+		inset-inline: 0;
+		top: 0;
+		height: 4px;
+	}
+
+	.stat-card.primary::before {
+		background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+	}
+
+	.stat-card.success::before {
+		background: linear-gradient(90deg, var(--secondary), var(--secondary-dark));
+	}
+
+	.stat-card.info::before {
+		background: linear-gradient(90deg, #38bdf8, #0ea5e9);
+	}
+
+	.stat-flex {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.stat-label {
+		margin-bottom: 0.35rem;
+		color: var(--text-muted);
+		font-size: var(--font-size-sm);
 	}
 
 	.stat-number {
-		font-size: 1.2rem;
+		margin: 0;
+		font-weight: 800;
+		font-size: clamp(1.4rem, 5vw, 2rem);
 	}
 
 	.stat-icon {
-		width: 42px;
-		height: 42px;
-		font-size: 1rem;
+		width: clamp(48px, 10vw, 62px);
+		height: clamp(48px, 10vw, 62px);
+
+		border-radius: 18px;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		font-size: clamp(1.1rem, 3vw, 1.7rem);
+
+		color: white;
+		flex-shrink: 0;
+	}
+
+	.stat-icon.primary {
+		background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+	}
+
+	.stat-icon.success {
+		background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+	}
+
+	.stat-icon.info {
+		background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+	}
+
+	/* Report */
+
+	.report-header {
+		padding: 1.1rem 1.3rem;
+	}
+
+	.report-header h4 {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+
+		margin: 0;
+
+		font-size: clamp(1rem, 3vw, 1.15rem);
+		font-weight: 700;
+
+		color: white;
+	}
+
+	.primary-gradient {
+		background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+	}
+
+	.warning-gradient {
+		background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+	}
+
+	.info-gradient {
+		background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+	}
+
+	/* Form */
+
+	.form-label-custom {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+
+		margin-bottom: 0.55rem;
+
+		font-size: var(--font-size-sm);
+		font-weight: 700;
+
+		color: var(--text-secondary);
 	}
 
 	.form-control-modern,
 	.choices__inner,
 	.select2-selection {
-		min-height: 44px;
-		font-size: 0.88rem;
+		width: 100% !important;
+
+		min-height: 50px;
+
+		border-radius: var(--radius-sm) !important;
+
+		border: 1.5px solid rgba(15, 23, 42, 0.1) !important;
+
+		background: rgba(255, 255, 255, 0.9) !important;
+
+		box-shadow: none !important;
+
+		transition: var(--transition);
+	}
+
+	.form-control-modern {
+		padding: 0.8rem 1rem;
+	}
+
+	.form-control-modern:focus,
+	.choices__inner:focus-within,
+	.select2-selection:focus-within {
+		border-color: var(--primary) !important;
+
+		box-shadow: 0 0 0 4px var(--primary-glow) !important;
+	}
+
+	/* Buttons */
+
+	.btn {
+		border-radius: 999px;
+		font-weight: 700;
+		transition: var(--transition);
+	}
+
+	.btn:hover {
+		transform: translateY(-2px);
+	}
+
+	.btn-back {
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		background: white;
+		padding: 0.75rem 1.2rem;
+	}
+
+	.btn-primary-custom {
+		background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+
+		color: white;
+		border: none;
+		padding: 0.9rem 1rem;
+	}
+
+	.btn-warning-custom {
+		background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+
+		color: #1f2937;
+		border: none;
+		padding: 0.9rem 1rem;
+	}
+
+	.btn-info-custom {
+		background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+
+		color: white;
+		border: none;
+		padding: 0.9rem 1rem;
+	}
+
+	.btn-success-custom {
+		background: linear-gradient(135deg, #22c55e, #16a34a);
+
+		color: white;
+		border: none;
+		padding: 0.9rem 1rem;
+	}
+
+	.btn-danger-soft {
+		background: rgba(239, 68, 68, 0.1);
+		color: #dc2626;
+		border: none;
+		padding: 0.9rem 1rem;
+	}
+
+	/* Helpers */
+
+	.helper-text {
+		display: block;
+		margin-top: 0.7rem;
+
+		color: var(--text-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	.helper-box {
+		margin-top: 1rem;
+
+		padding: 0.85rem 1rem;
+
+		border-radius: var(--radius-sm);
+
+		background: rgba(245, 158, 11, 0.08);
+
+		font-size: var(--font-size-sm);
+		color: var(--text-secondary);
 	}
 
 	.employee-info {
-		height: auto;
-		min-height: 44px;
-		font-size: 0.7rem;
+		height: 50px;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+
+		padding: 0.75rem;
+
+		background: rgba(59, 130, 246, 0.08);
+
+		border-radius: var(--radius-sm);
+
+		font-size: var(--font-size-sm);
 	}
 
-	.btn {
-		font-size: 0.85rem;
+	/* Choices */
+
+	.choices {
+		margin-bottom: 0;
 	}
 
-}
+	.choices__inner {
+		padding: 0.35rem 0.6rem !important;
+	}
 
+	.choices__list--multiple .choices__item {
+		background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
+
+		border: none !important;
+
+		border-radius: 999px !important;
+
+		font-size: 0.75rem !important;
+	}
+
+	.choices__button {
+		border-left: none !important;
+	}
+
+	.choices__list--dropdown .choices__item--selectable.is-highlighted {
+		background: rgba(249, 115, 22, 0.12) !important;
+		color: var(--text-primary) !important;
+	}
+
+	/* Select2 */
+
+	.select2-container {
+		width: 100% !important;
+	}
+
+	.select2-dropdown {
+		border-radius: var(--radius-sm) !important;
+		border: 1px solid rgba(15, 23, 42, 0.08) !important;
+		overflow: hidden;
+	}
+
+	.select2-results__option {
+		font-size: var(--font-size-sm);
+		padding: 0.8rem 1rem;
+	}
+
+	/* Mobile */
+
+	@media (max-width: 991px) {
+		.dashboard-header {
+			align-items: stretch;
+		}
+
+		.btn-back {
+			width: 100%;
+			justify-content: center;
+		}
+	}
+
+	@media (max-width: 767px) {
+		.container-fluid.py-4 {
+			padding-inline: 0.75rem;
+		}
+
+		.card-body {
+			padding: 1rem;
+		}
+
+		.report-header {
+			padding: 1rem;
+		}
+
+		.report-header h4 {
+			font-size: 0.95rem;
+		}
+
+		.btn-primary-custom,
+		.btn-warning-custom,
+		.btn-info-custom,
+		.btn-success-custom,
+		.btn-danger-soft {
+			width: 100%;
+		}
+	}
+
+	@media (max-width: 420px) {
+		.container-fluid.py-4 {
+			padding-inline: 0.55rem;
+		}
+
+		.dashboard-title {
+			font-size: 1.15rem;
+		}
+
+		.dashboard-subtitle,
+		.helper-text,
+		.helper-box,
+		.form-label-custom {
+			font-size: 0.74rem;
+		}
+
+		.stat-number {
+			font-size: 1.2rem;
+		}
+
+		.stat-icon {
+			width: 42px;
+			height: 42px;
+			font-size: 1rem;
+		}
+
+		.form-control-modern,
+		.choices__inner,
+		.select2-selection {
+			min-height: 44px;
+			font-size: 0.88rem;
+		}
+
+		.employee-info {
+			height: auto;
+			min-height: 44px;
+			font-size: 0.7rem;
+		}
+
+		.btn {
+			font-size: 0.85rem;
+		}
+	}
 </style>
-{% endblock %}
-{% block page_refactor_class %}app-users-page app-users-managements-reports-dashboard{% endblock %}
+{% endblock %} {% block page_refactor_class %}app-users-page app-users-managements-reports-dashboard{% endblock %}
