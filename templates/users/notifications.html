@@ -77,11 +77,11 @@
 									data-bs-toggle="modal"
 									data-bs-target="#notificationModal"
 									data-notification-id="{{ notif.id }}"
-									data-notification-title="{{ notif.title|escapejs }}"
-									data-notification-description="{{ notif.description|escapejs }}"
-									data-notification-category="{{ notif.get_category_display|escapejs }}"
-									data-notification-priority="{{ notif.get_priority_display|escapejs }}"
-									data-notification-priority-code="{{ notif.priority|escapejs }}"
+									data-notification-title="{{ notif.title }}"
+									data-notification-description="{{ notif.description }}"
+									data-notification-category="{{ notif.get_category_display }}"
+									data-notification-priority="{{ notif.get_priority_display }}"
+									data-notification-priority-code="{{ notif.priority }}"
 									data-notification-created="{{ notif.created_at|date:'Y-m-d H:i' }}"
 									data-is-read="{% if notif.is_read %}1{% else %}0{% endif %}"
 									data-mark-read-url="{% url 'users:notification_mark_read' notif.id %}"
@@ -139,11 +139,11 @@
 									data-bs-toggle="modal"
 									data-bs-target="#notificationModal"
 									data-notification-id="{{ notif.id }}"
-									data-notification-title="{{ notif.title|escapejs }}"
-									data-notification-description="{{ notif.description|escapejs }}"
-									data-notification-category="{{ notif.get_category_display|escapejs }}"
-									data-notification-priority="{{ notif.get_priority_display|escapejs }}"
-									data-notification-priority-code="{{ notif.priority|escapejs }}"
+									data-notification-title="{{ notif.title }}"
+									data-notification-description="{{ notif.description }}"
+									data-notification-category="{{ notif.get_category_display }}"
+									data-notification-priority="{{ notif.get_priority_display }}"
+									data-notification-priority-code="{{ notif.priority }}"
 									data-notification-created="{{ notif.created_at|date:'Y-m-d H:i' }}"
 									data-is-read="{% if notif.is_read %}1{% else %}0{% endif %}"
 									data-mark-read-url="{% url 'users:notification_mark_read' notif.id %}"
@@ -218,13 +218,30 @@
 {% endblock %} {% block extra_js %}
 <script>
 	document.addEventListener("DOMContentLoaded", () => {
-
     const modal = document.getElementById("notificationModal");
-
     const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
+	function formatNotification(text) {
+
+		// Escape HTML
+		const escaped = text
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#39;");
+
+		// تبدیل لینک‌ها
+		const withLinks = escaped.replace(
+			/(https?:\/\/[^\s<]+)/g,
+			'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+		);
+
+		// تبدیل Enter به <br>
+		return withLinks.replace(/\r?\n/g, "<br>");
+	}
+
 
     modal.addEventListener("show.bs.modal", async function(event){
-
         const card = event.relatedTarget;
 
         document.getElementById("notificationModalTitle").innerText =
@@ -232,6 +249,9 @@
 
         document.getElementById("notificationModalDescription").innerText =
             card.dataset.notificationDescription;
+
+		document.getElementById("notificationModalDescription").innerHTML =
+    		formatNotification(card.dataset.notificationDescription);
 
         document.getElementById("notificationModalCategory").innerText =
             card.dataset.notificationCategory;
@@ -242,45 +262,30 @@
         document.getElementById("notificationModalCreated").innerText =
             card.dataset.notificationCreated;
 
-
         if(card.dataset.isRead==="0"){
-
             fetch(card.dataset.markReadUrl,{
-
                 method:"POST",
-
                 headers:{
-
                     "X-CSRFToken":document.querySelector("[name=csrfmiddlewaretoken]").value,
-
                 }
-
             });
-
             card.dataset.isRead="1";
-
             card.classList.remove("is-unread");
-
             card.classList.add("is-read");
-
             card.querySelector(".notification-dot")?.remove();
-
         }
-
     });
-
 });
 </script>
 
 <script>
 	window.addEventListener("pageshow",(e)=>{
-
     if(e.persisted){
-
         location.reload();
-
     }
-
 });
+</script>
+
+<script>
 </script>
 {% endblock %} {% block page_refactor_class %}app-users-page app-users-notifications{% endblock %}
