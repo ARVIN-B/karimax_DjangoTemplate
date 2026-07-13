@@ -32,8 +32,9 @@
 								role="tab"
 							>
 								<i class="fas fa-inbox me-1"></i>
-								اعلانات موجود {% if active_notifications|length > 0 %}
-								<span class="badge bg-light text-dark ms-1">{{ active_notifications|length }}</span>
+								{{ active_unseen_notifications_count }}
+								اعلانات موجود {% if active_unseen_notifications_count > 0 %}
+								<span class="badge bg-light text-dark ms-1">{{ active_unseen_notifications_count }}</span>
 								{% endif %}
 							</button>
 						</li>
@@ -51,8 +52,8 @@
 								role="tab"
 							>
 								<i class="fas fa-archive me-1"></i>
-								اعلانات منقضی شده {% if expired_notifications|length > 0 %}
-								<span class="badge bg-secondary ms-1">{{ expired_notifications|length }}</span>
+								اعلانات منقضی شده {% if expired_unseen_notifications_count > 0 %}
+								<span class="badge bg-secondary ms-1">{{ expired_unseen_notifications_count }}</span>
 								{% endif %}
 							</button>
 						</li>
@@ -188,8 +189,6 @@
 >
 	<div class="modal-dialog modal-dialog-centered modal-lg">
 		<div class="modal-content notification-modal-content glass-card">
-
-
 			<div class="modal-header">
 				<div class="notification-modal-header">
 					<h4 id="notificationModalTitle"></h4>
@@ -211,81 +210,71 @@
 					<div id="notificationModalDescription"></div>
 				</div>
 			</div>
-
 		</div>
 	</div>
 </div>
 {% endblock %} {% block extra_js %}
 <script>
 	document.addEventListener("DOMContentLoaded", () => {
-    const modal = document.getElementById("notificationModal");
-    const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
-	function formatNotification(text) {
+		const modal = document.getElementById("notificationModal");
+		const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
+		function formatNotification(text) {
+			// Escape فقط متن اصلی
+			let escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-		// Escape HTML
-		const escaped = text
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&#39;");
+			// تبدیل Enter
+			escaped = escaped.replace(/\r?\n/g, "<br>");
 
-		// تبدیل لینک‌ها
-		const withLinks = escaped.replace(
-			/(https?:\/\/[^\s<]+)/g,
-			'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
-		);
+			// جایگزینی URL با دکمه
+			return escaped.replace(/https?:\/\/[^\s<]+/g, function (url) {
+				return `<a
+						href="${url}"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="btn btn-primary w-100 d-flex justify-content-center align-items-center notification-link-btn"
+					>
+						<i class="fas fa-external-link-alt me-2"></i>
+						مشاهده بیشتر
+					</a>`;
+			});
+		}
 
-		// تبدیل Enter به <br>
-		return withLinks.replace(/\r?\n/g, "<br>");
-	}
+		modal.addEventListener("show.bs.modal", async function (event) {
+			const card = event.relatedTarget;
 
+			document.getElementById("notificationModalTitle").innerText = card.dataset.notificationTitle;
 
-    modal.addEventListener("show.bs.modal", async function(event){
-        const card = event.relatedTarget;
+			document.getElementById("notificationModalDescription").innerText = card.dataset.notificationDescription;
 
-        document.getElementById("notificationModalTitle").innerText =
-            card.dataset.notificationTitle;
+			document.getElementById("notificationModalDescription").innerHTML = formatNotification(card.dataset.notificationDescription);
 
-        document.getElementById("notificationModalDescription").innerText =
-            card.dataset.notificationDescription;
+			document.getElementById("notificationModalCategory").innerText = card.dataset.notificationCategory;
 
-		document.getElementById("notificationModalDescription").innerHTML =
-    		formatNotification(card.dataset.notificationDescription);
+			document.getElementById("notificationModalPriority").innerText = card.dataset.notificationPriority;
 
-        document.getElementById("notificationModalCategory").innerText =
-            card.dataset.notificationCategory;
+			document.getElementById("notificationModalCreated").innerText = card.dataset.notificationCreated;
 
-        document.getElementById("notificationModalPriority").innerText =
-            card.dataset.notificationPriority;
-
-        document.getElementById("notificationModalCreated").innerText =
-            card.dataset.notificationCreated;
-
-        if(card.dataset.isRead==="0"){
-            fetch(card.dataset.markReadUrl,{
-                method:"POST",
-                headers:{
-                    "X-CSRFToken":document.querySelector("[name=csrfmiddlewaretoken]").value,
-                }
-            });
-            card.dataset.isRead="1";
-            card.classList.remove("is-unread");
-            card.classList.add("is-read");
-            card.querySelector(".notification-dot")?.remove();
-        }
-    });
-});
+			if (card.dataset.isRead === "0") {
+				fetch(card.dataset.markReadUrl, {
+					method: "POST",
+					headers: {
+						"X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+					},
+				});
+				card.dataset.isRead = "1";
+				card.classList.remove("is-unread");
+				card.classList.add("is-read");
+				card.querySelector(".notification-dot")?.remove();
+			}
+		});
+	});
 </script>
 
 <script>
-	window.addEventListener("pageshow",(e)=>{
-    if(e.persisted){
-        location.reload();
-    }
-});
-</script>
-
-<script>
+	window.addEventListener("pageshow", (e) => {
+		if (e.persisted) {
+			location.reload();
+		}
+	});
 </script>
 {% endblock %} {% block page_refactor_class %}app-users-page app-users-notifications{% endblock %}
