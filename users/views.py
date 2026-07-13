@@ -31,7 +31,22 @@ from django.http import (
     Http404,
     HttpResponseBadRequest,
 )
-from django.db.models import Max, Q, Sum, Avg, Count, Exists, OuterRef, F, IntegerField, ExpressionWrapper
+from django.db.models import (
+    Max,
+    Q,
+    Sum,
+    Avg,
+    Count,
+    Exists,
+    OuterRef,
+    F,
+    IntegerField,
+    ExpressionWrapper,
+    Case,
+    Value,
+    When,
+)
+from django.db.models.functions import Concat
 from django.core.exceptions import (
     PermissionDenied,
     SuspiciousOperation,
@@ -956,7 +971,7 @@ def build_modules_for_user(request):
                     "icon_name": "add_participation/my_particip.svg",
                     "color": "#918e07",
                     "coming_soon": False,
-                    "have_permision": user.can_create_notification,
+                    "have_permision": True,
                     "is_mail_box": True,
                 },
                 "referrals_inbox": {
@@ -966,6 +981,7 @@ def build_modules_for_user(request):
                     "color": "#918e07",
                     "coming_soon": False,
                     "have_permision": True,
+                    "is_mail_box": False,
                 },
             },
         }
@@ -2907,132 +2923,8 @@ def notification_create(request):
         return render(request, "users/notification_create.html", context)
 
 
-
-#     role_name = request.session["current_role"]
-#     holding_id = request.session["current_holding_id"]
-#     factory_id = request.session["current_factory_id"]
-#     department_id = request.session["current_department_id"]
-#     subdepartment_id = request.session["current_subdepartment_id"]
-#     user = request.user
-
-#     if request.method == "POST" and request.POST.get("action") == "seen_notification":
-
-#         notification_id = request.POST.get("seen_notification_id")
-
-#         notification = get_object_or_404(Notification, id=notification_id)
-#         NotificationRead.objects.get_or_create(
-#             notification=notification,
-#             employee=request.user,
-#         )
-
-#     if role_name == "employee":
-#         notifications = Notification.objects.filter(Q(employee_subdepartments__id=subdepartment_id)).distinct()
-#     elif role_name == "supervisor":
-#         notifications = Notification.objects.filter(Q(target_subdepartments__id=subdepartment_id)).distinct()
-#     elif role_name == "department_manager":
-#         notifications = Notification.objects.filter(Q(target_departments__id=department_id)).distinct()
-#     elif role_name == "factory_manager":
-#         notifications = Notification.objects.filter(Q(target_factories__id=factory_id)).distinct()
-#     elif role_name == "holding_manager":
-#         notifications = Notification.objects.filter(Q(target_holdings__id=holding_id)).distinct()
-#     else:
-#         notifications = Notification.objects.all().distinct()
-
-#     now = timezone.now()
-
-
-#     read_check = NotificationRead.objects.filter(notification=OuterRef('pk'), employee=user)
-
-#     active_notifications = notifications.filter(is_active=True).filter(
-#         Q(expires_at__isnull=True) | Q(expires_at__gte=now)
-#     ).annotate(is_read=Exists(read_check)).order_by('is_read', '-created_at') # خوانده نشده‌ها بالاترند
-
-#     expired_notifications = notifications.filter(
-#         expires_at__isnull=False,
-#         expires_at__lt=now,
-#     ).annotate(is_read=Exists(read_check))
-
-#     active_unseen_notifications = active_notifications.filter(is_read=False)
-#     number_of_unseen_critical = active_unseen_notifications.filter(priority="critical").count()
-#     number_of_unseen_high = active_unseen_notifications.filter(priority="high").count()
-#     number_of_unseen_medium = active_unseen_notifications.filter(priority="medium").count()
-#     number_of_unseen_low = active_unseen_notifications.filter(priority="low").count()
-
-#     if number_of_unseen_critical:
-#         badge_count, badge_level = number_of_unseen_critical, "critical"
-#     elif number_of_unseen_high:
-#         badge_count, badge_level = number_of_unseen_high, "high"
-#     elif number_of_unseen_medium:
-#         badge_count, badge_level = number_of_unseen_medium, "medium"
-#     else:
-#         badge_count, badge_level = number_of_unseen_low, ("low" if number_of_unseen_low else None)
-
-
-#     context = {
-#         "active_notifications": active_notifications,
-#         "expired_notifications": expired_notifications,
-#         "notification_badge_count": badge_count,
-#         "notification_badge_level": badge_level,
-#     }
-#     return render(request, "users/notifications.html", context)
-
-
-#     # active_seen_notifications = active_notifications.filter(
-#     #     reads__employee=user
-#     # ).distinct()
-
-#     # active_unseen_notifications = active_notifications.exclude(
-#     #     reads__employee=user
-#     # ).distinct()
-
-
-#     # number_of_unseen_critical_priority_notifications = active_unseen_notifications.filter(
-#     #     Q(priority="critical")
-#     # ).count()
-
-#     # number_of_unseen_high_priority_notifications = active_unseen_notifications.filter(
-#     #     Q(priority="high")
-#     # ).count()
-
-#     # number_of_unseen_medium_priority_notifications = active_unseen_notifications.filter(
-#     #     Q(priority="medium")
-#     # ).count()
-
-#     # number_of_unseen_low_priority_notifications = active_unseen_notifications.filter(
-#     #     Q(priority="low")
-#     # ).count()
-
-
-#     # if number_of_unseen_critical_priority_notifications:
-#     #     badge_count = number_of_unseen_critical_priority_notifications
-#     #     badge_level = "critical"
-#     # elif number_of_unseen_high_priority_notifications:
-#     #     badge_count = number_of_unseen_high_priority_notifications
-#     #     badge_level = "high"
-#     # elif number_of_unseen_medium_priority_notifications:
-#     #     badge_count = number_of_unseen_medium_priority_notifications
-#     #     badge_level = "medium"
-#     # else:
-#     #     badge_count = number_of_unseen_low_priority_notifications
-#     #     badge_level = "low" if badge_count else None
-
-
-#     # context = {
-#     #     "notifications": notifications,
-#     #     "notification_badge_count": badge_count,
-#     #     "notification_badge_level": badge_level,
-
-#     #     "active_seen_notifications": active_seen_notifications,
-#     #     "active_unseen_notifications": active_unseen_notifications,
-#     #     "expired_notifications": expired_notifications,
-#     # }
-
-#     # return render(request, "users/notifications.html", context)
-
-
 # views.py
 from django.contrib.auth.decorators import login_required
-from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -3711,15 +3603,17 @@ def search_employees(request):
     if len(q) < 2:
         return JsonResponse([], safe=False)
 
-    employees = Employee.objects.filter(is_active=True).filter(
-        Q(first_name__icontains=q)
-        | Q(last_name__icontains=q)
-        # | Q(full_name__icontains=q)
-        | Q(national_id__icontains=q)
-        | Q(personnel_code__icontains=q)
-    )[
-        :20
-    ]  # حداکثر 20 نتیجه
+    employees = (
+        Employee.objects.filter(is_active=True)
+        .annotate(search_full_name=Concat("first_name", Value(" "), "last_name"))
+        .filter(
+            Q(first_name__icontains=q)
+            | Q(last_name__icontains=q)
+            | Q(search_full_name__icontains=q)
+            | Q(national_id__icontains=q)
+            | Q(personnel_code__icontains=q)
+        )[:20]
+    )
 
     results = []
     for emp in employees:
@@ -3735,21 +3629,14 @@ def search_employees(request):
     return JsonResponse(results, safe=False)
 
 
-
-
-
-
-
-
 def search_subdepartments(request):
     q = request.GET.get("q", "").strip()
 
     if len(q) < 2:
         return JsonResponse([], safe=False)
 
-    queryset = (
-        Subdepartment.objects
-        .select_related("department", "department__factory", "department__factory__holding")
+    queryset = Subdepartment.objects.select_related(
+        "department", "department__factory", "department__factory__holding"
     )
 
     # --------------------
@@ -3766,15 +3653,9 @@ def search_subdepartments(request):
 
     # print(f"holding_ids : {holding_ids}")
     if holding_ids:
-        holding_ids = [
-            int(x)
-            for x in holding_ids.split(",")
-            if x.strip()
-        ]
+        holding_ids = [int(x) for x in holding_ids.split(",") if x.strip()]
 
-        queryset = queryset.filter(
-            department__factory__holding_id__in=holding_ids
-        )
+        queryset = queryset.filter(department__factory__holding_id__in=holding_ids)
 
     # factory_id = request.GET.get("factory")
     # if factory_id:
@@ -3785,20 +3666,9 @@ def search_subdepartments(request):
 
     # print(f"factory_ids : {factory_ids}")
     if factory_ids:
-        factory_ids = [
-            int(x)
-            for x in factory_ids.split(",")
-            if x.strip()
-        ]
+        factory_ids = [int(x) for x in factory_ids.split(",") if x.strip()]
 
-        queryset = queryset.filter(
-            department__factory_id__in=factory_ids
-        )
-
-
-
-
-
+        queryset = queryset.filter(department__factory_id__in=factory_ids)
 
     # department_id = request.GET.get("department")
     # if department_id:
@@ -3809,29 +3679,17 @@ def search_subdepartments(request):
 
     # print(f"department_ids : {department_ids}")
     if department_ids:
-        department_ids = [
-            int(x)
-            for x in department_ids.split(",")
-            if x.strip()
-        ]
+        department_ids = [int(x) for x in department_ids.split(",") if x.strip()]
 
-        queryset = queryset.filter(
-            department_id__in=department_ids
-        )
-
-
+        queryset = queryset.filter(department_id__in=department_ids)
 
     is_restaurant = request.GET.get("is_restaurant")
     if is_restaurant is not None:
-        queryset = queryset.filter(
-            is_restaurant=is_restaurant.lower() == is_restaurant
-        )
+        queryset = queryset.filter(is_restaurant=is_restaurant.lower() == is_restaurant)
 
     is_committee = request.GET.get("is_committee")
     if is_committee is not None:
-        queryset = queryset.filter(
-            is_committee=is_committee.lower() == is_committee
-        )
+        queryset = queryset.filter(is_committee=is_committee.lower() == is_committee)
 
     # --------------------
     # Search
@@ -3847,21 +3705,22 @@ def search_subdepartments(request):
     results = []
 
     for item in queryset:
-        results.append({
-            "id": item.id,
-            "text": item.name,
-            "department": item.department.name,
-            "factory": item.department.factory.name,
-            "holding": item.department.factory.holding.name if item.department.factory.holding else "",
-            "is_restaurant": item.is_restaurant,
-        })
+        results.append(
+            {
+                "id": item.id,
+                "text": item.name,
+                "department": item.department.name,
+                "factory": item.department.factory.name,
+                "holding": (
+                    item.department.factory.holding.name
+                    if item.department.factory.holding
+                    else ""
+                ),
+                "is_restaurant": item.is_restaurant,
+            }
+        )
 
     return JsonResponse(results, safe=False)
-
-
-
-
-
 
 
 @login_required
@@ -4508,7 +4367,6 @@ def managements_reports_dashboard(request):
     if not factory_ids or factory_ids == []:
         factory_ids = list(Factory.objects.values_list("id", flat=True))
 
-
     if request.GET.get("export") == "full":
         start_date = request.GET.get("start_date")
         end_date = request.GET.get("end_date")
@@ -4920,37 +4778,19 @@ def managements_reports_dashboard(request):
 
         for res in reservations:
 
-            jdate = jdatetime.date.fromgregorian(
-                date=res.reservation_date
-            )
+            jdate = jdatetime.date.fromgregorian(date=res.reservation_date)
 
-            total_qty = (
-                res.factory_quantity
-                + res.free_quantity
-                + res.guest_quantity
-            )
+            total_qty = res.factory_quantity + res.free_quantity + res.guest_quantity
 
-            col_restaurant.append(
-                res.menu_item.weekly_menu.restaurant.name
-            )
+            col_restaurant.append(res.menu_item.weekly_menu.restaurant.name)
 
-            col_factory.append(
-                res.related_factory.name
-                if res.related_factory
-                else "-"
-            )
+            col_factory.append(res.related_factory.name if res.related_factory else "-")
 
-            col_date.append(
-                jdate.strftime("%Y/%m/%d")
-            )
+            col_date.append(jdate.strftime("%Y/%m/%d"))
 
-            col_day.append(
-                jdate.strftime("%A")
-            )
+            col_day.append(jdate.strftime("%A"))
 
-            col_food.append(
-                res.menu_item.food.name
-            )
+            col_food.append(res.menu_item.food.name)
 
             # col_factory_qty.append(
             #     res.factory_quantity
@@ -4976,11 +4816,7 @@ def managements_reports_dashboard(request):
             #     res.guest_price
             # )
 
-            total_qty = (
-                res.factory_quantity
-                + res.free_quantity
-                + res.guest_quantity
-            )
+            total_qty = res.factory_quantity + res.free_quantity + res.guest_quantity
 
             food_price = res.menu_item.food.free_price
 
@@ -5002,20 +4838,14 @@ def managements_reports_dashboard(request):
             ("تاریخ", col_date),
             ("روز", col_day),
             ("غذا", col_food),
-
             # ("تعداد سهمیه", col_factory_qty),
             # ("هزینه هر پرس سهمیه", col_factory_price),
-
             # ("تعداد آزاد", col_free_qty),
             # ("هزینه هر پرس آزاد", col_free_price),
-
             # ("تعداد مهمان", col_guest_qty),
             # ("هزینه هر پرس مهمان", col_guest_price),
-
             # ("جمع کل پرس", col_total_qty),
             # ("هزینه کل", col_total_price),
-
-
             ("تعداد کل پرس", col_total_qty),
             ("قیمت هر پرس", col_food_price),
             ("هزینه کل", col_total_price),
@@ -5029,9 +4859,7 @@ def managements_reports_dashboard(request):
         )
 
         report_title = (
-            f"گزارش تفصیلی عملکرد رستوران‌ها"
-            f"\nاز {start_date}"
-            f" تا {end_date}"
+            f"گزارش تفصیلی عملکرد رستوران‌ها" f"\nاز {start_date}" f" تا {end_date}"
         )
 
         return export_to_excel(
@@ -5039,7 +4867,6 @@ def managements_reports_dashboard(request):
             filename=filename,
             report_title=report_title,
         )
-
 
     elif request.GET.get("export") == "general_restaurant_reporting":
 
@@ -5083,30 +4910,20 @@ def managements_reports_dashboard(request):
                 continue
 
             agg = reservations.aggregate(
-
-                total_qty=
-
-                    Sum("factory_quantity")
-                    + Sum("free_quantity")
-                    + Sum("guest_quantity"),
-
+                total_qty=Sum("factory_quantity")
+                + Sum("free_quantity")
+                + Sum("guest_quantity"),
                 total_income=Sum(
-
                     ExpressionWrapper(
-
                         (
                             F("factory_quantity")
                             + F("free_quantity")
                             + F("guest_quantity")
                         )
                         * F("free_price"),
-
                         output_field=IntegerField(),
-
                     )
-
                 ),
-
             )
 
             # factory_qty = agg["factory_qty"] or 0
@@ -5120,13 +4937,9 @@ def managements_reports_dashboard(request):
             total_qty = agg["total_qty"] or 0
             total_income = agg["total_income"] or 0
 
-            rows_restaurant.append(
-                restaurant.name
-            )
+            rows_restaurant.append(restaurant.name)
 
-            rows_factory.append(
-                restaurant.department.factory.name
-            )
+            rows_factory.append(restaurant.department.factory.name)
 
             # rows_factory_qty.append(
             #     factory_qty
@@ -5165,17 +4978,13 @@ def managements_reports_dashboard(request):
         data_columns = [
             ("رستوران", rows_restaurant),
             ("کارخانه", rows_factory),
-
             # ("تعداد سهمیه", rows_factory_qty),
             # ("تعداد آزاد", rows_free_qty),
             # ("تعداد مهمان", rows_guest_qty),
-
             ("جمع کل پرس", rows_total_qty),
-
             # ("جمع مبلغ سهمیه", rows_factory_income),
             # ("جمع مبلغ آزاد", rows_free_income),
             # ("جمع مبلغ مهمان", rows_guest_income),
-
             ("جمع کل هزینه", rows_total_income),
         ]
 
@@ -5187,9 +4996,7 @@ def managements_reports_dashboard(request):
         )
 
         report_title = (
-            f"گزارش تجمیعی عملکرد رستوران‌ها"
-            f"\nاز {start_date}"
-            f" تا {end_date}"
+            f"گزارش تجمیعی عملکرد رستوران‌ها" f"\nاز {start_date}" f" تا {end_date}"
         )
 
         return export_to_excel(
@@ -5197,14 +5004,6 @@ def managements_reports_dashboard(request):
             filename=filename,
             report_title=report_title,
         )
-
-
-
-
-
-
-
-
 
     factories = Factory.objects.all()
 
@@ -5215,8 +5014,6 @@ def managements_reports_dashboard(request):
         "factories": factories,
     }
     return render(request, "users/managements_reports_dashboard.html", context)
-
-
 
 
 def parse_report_filters(request):
@@ -5237,22 +5034,14 @@ def parse_report_filters(request):
     factory_ids_param = request.GET.get("factory_ids", "")
     restaurant_ids_param = request.GET.get("restaurant_ids", "")
 
-    factory_ids = [
-        int(x)
-        for x in factory_ids_param.split(",")
-        if x.strip().isdigit()
-    ]
+    factory_ids = [int(x) for x in factory_ids_param.split(",") if x.strip().isdigit()]
 
     restaurant_ids = [
-        int(x)
-        for x in restaurant_ids_param.split(",")
-        if x.strip().isdigit()
+        int(x) for x in restaurant_ids_param.split(",") if x.strip().isdigit()
     ]
 
     if not factory_ids:
-        factory_ids = list(
-            Factory.objects.values_list("id", flat=True)
-        )
+        factory_ids = list(Factory.objects.values_list("id", flat=True))
 
     restaurants = Subdepartment.objects.filter(
         is_restaurant=True,
@@ -5270,7 +5059,6 @@ def parse_report_filters(request):
         factory_ids,
         restaurants,
     )
-
 
 
 # @login_required
@@ -9125,10 +8913,6 @@ def process_participation(request, participation_id):
                 participation.save()
                 return redirect("users:process_participation", participation.id)
 
-
-
-
-
             except STTConnectionError as e:
                 messages.error(request, str(e))
 
@@ -9140,7 +8924,6 @@ def process_participation(request, participation_id):
 
             except STTError as e:
                 messages.error(request, str(e))
-
 
             except Exception as e:
                 messages.error(request, f"خطا در پردازش")
@@ -9155,18 +8938,6 @@ def process_participation(request, participation_id):
             participation.status = "user_review"
             participation.save()
             return redirect("users:process_participation", participation.id)
-
-
-
-
-
-
-
-
-
-
-
-
 
         elif (
             action == "delete"
@@ -9511,53 +9282,36 @@ def search_org_units(request):
     if len(q) < 2:
         return JsonResponse([], safe=False)
 
-    results = []
+    search = q.casefold()
 
-    employees = (
-        Employee.objects.filter(assigned_subdepartments__isnull=False)
-        .filter(
-            Q(first_name__icontains=q)
-            | Q(last_name__icontains=q)
-            | Q(national_id__icontains=q)
+    matching_managers = Employee.objects.annotate(
+        search_full_name=Concat(
+            "first_name",
+            Value(" "),
+            "last_name",
         )
-        .distinct()[:10]
+    ).filter(
+        Q(first_name__icontains=q)
+        | Q(last_name__icontains=q)
+        | Q(search_full_name__icontains=q)
+        | Q(national_id__icontains=q)
     )
 
-    print(f"employee : {employees}")
-
-    for e in employees:
-        # گرفتن اولین زیربخش برای نمایش (اگر چند تا باشه)
-        subdept = e.assigned_subdepartments.first()
-        subdept_name = subdept.name if subdept else "نامشخص"
-        dept_name = subdept.department.name if subdept else "نامشخص"
-        factory_name = subdept.department.factory.name if subdept else "نامشخص"
-
-        manager_name = e.get_full_name()
-        results.append(
-            {
-                "id": e.id,
-                "text": subdept.name,
-                "factory": factory_name,
-                "department": dept_name,
-                "subdepartment": subdept_name,
-                "content_type": ContentType.objects.get_for_model(Employee).id,
-                "role": "employee",
-                "role_display": "پرسنل",
-                "manager_name": manager_name,
-                "manager_search": manager_name.lower(),
-            }
-        )
+    results = []
 
     super_admin_role = Role.objects.filter(name="super_admin").first()
     if super_admin_role:
-        admins = Employee.objects.filter(
-            Q(roles=super_admin_role)
-            & (
+        admins = (
+            Employee.objects.filter(roles=super_admin_role)
+            .annotate(search_full_name=Concat("first_name", Value(" "), "last_name"))
+            .filter(
                 Q(first_name__icontains=q)
                 | Q(last_name__icontains=q)
+                | Q(search_full_name__icontains=q)
                 | Q(national_id__icontains=q)
             )
-        ).distinct()
+            .distinct()
+        )
 
         for admin in admins:
             results.append(
@@ -9572,106 +9326,164 @@ def search_org_units(request):
                     "manager_name": admin.get_full_name(),
                     "manager_search": admin.get_full_name().lower(),
                     "is_system": True,  # برای تشخیص در فرانت‌اند
+                    "target_user_id": admin.id,
                 }
             )
 
-    # MARK: management todo
-    # also: manager --> managers
-
-    # هلدینگ‌ها
-    holdings = Holding.objects.filter(
-        Q(name__icontains=q)
-        | Q(manager__first_name__icontains=q)
-        | Q(manager__last_name__icontains=q)
-    ).distinct()[:10]
+    holdings = (
+        Holding.objects.filter(Q(name__icontains=q) | Q(managers__in=matching_managers))
+        .prefetch_related("managers")
+        .distinct()
+    )
 
     for h in holdings:
-        manager_name = h.manager.get_full_name() if h.manager else "تعیین نشده"
-        results.append(
-            {
-                "id": h.id,
-                "text": h.name,
-                "content_type": ContentType.objects.get_for_model(Holding).id,
-                "role": "holding_manager",
-                "role_display": "مدیر هلدینگ",
-                "manager_name": manager_name,
-                "manager_search": manager_name.lower(),  # برای جستجو
-            }
-        )
+        print(f"manager :  , {h.name}")
+        for manager in h.managers.all():
+            print(f"manager : {manager} , {h.name}")
+            if search in manager.get_full_name().lower() or search in h.name.lower():
+                print(f"manager 2 : {manager} , {h.name}")
+                results.append(
+                    {
+                        "id": h.id,
+                        "text": f"{h.name} → {manager.get_full_name()}",
+                        "content_type": ContentType.objects.get_for_model(Holding).id,
+                        "role": "holding_manager",
+                        "role_display": "مدیر هلدینگ",
+                        "manager_name": manager.get_full_name(),
+                        "target_user_id": manager.id,  # ← ID مدیر خاص
+                    }
+                )
 
     # کارخانه‌ها
-    factories = Factory.objects.filter(
-        Q(name__icontains=q)
-        | Q(manager__first_name__icontains=q)
-        | Q(manager__last_name__icontains=q)
-    ).distinct()[:10]
+    factories = (
+        Factory.objects.filter(Q(name__icontains=q) | Q(managers__in=matching_managers))
+        .prefetch_related("managers")
+        .distinct()[:15]
+    )
 
     for f in factories:
-        manager_name = f.manager.get_full_name() if f.manager else "تعیین نشده"
-        results.append(
-            {
-                "id": f.id,
-                "text": f.name,
-                "factory": f.name,
-                "content_type": ContentType.objects.get_for_model(Factory).id,
-                "role": "factory_manager",
-                "role_display": "مدیر کارخانه",
-                "manager_name": manager_name,
-                "manager_search": manager_name.lower(),
-            }
-        )
+        for manager in f.managers.all():
+            if search in manager.get_full_name().lower() or search in f.name.lower():
+                results.append(
+                    {
+                        "id": f.id,
+                        "text": f"{f.name} → {manager.get_full_name()}",
+                        "factory": f.name,
+                        "content_type": ContentType.objects.get_for_model(Factory).id,
+                        "role": "factory_manager",
+                        "role_display": "مدیر کارخانه",
+                        "manager_name": manager.get_full_name(),
+                        "manager_search": manager.get_full_name().lower(),
+                        "target_user_id": manager.id,
+                    }
+                )
 
     # بخش‌ها
-    departments = Department.objects.filter(
-        Q(name__icontains=q)
-        | Q(manager__first_name__icontains=q)
-        | Q(manager__last_name__icontains=q)
-    ).distinct()[:10]
+    departments = (
+        Department.objects.filter(
+            Q(name__icontains=q) | Q(managers__in=matching_managers)
+        )
+        .prefetch_related("managers")
+        .select_related("factory")
+        .distinct()[:15]
+    )
 
     for d in departments:
-        manager_name = d.manager.get_full_name() if d.manager else "تعیین نشده"
-
-        results.append(
-            {
-                "id": d.id,
-                "text": d.name,
-                "factory": d.factory.name,
-                "department": d.name,
-                "content_type": ContentType.objects.get_for_model(Department).id,
-                "role": "department_manager",
-                "role_display": "مدیر بخش",
-                "manager_name": manager_name,
-                "manager_search": manager_name.lower(),
-            }
-        )
+        for manager in d.managers.all():
+            if search in manager.get_full_name().lower() or search in d.name.lower():
+                results.append(
+                    {
+                        "id": d.id,
+                        "text": f"{d.name} → {manager.get_full_name()}",
+                        "factory": d.factory.name,
+                        "department": d.name,
+                        "content_type": ContentType.objects.get_for_model(
+                            Department
+                        ).id,
+                        "role": "department_manager",
+                        "role_display": "مدیر بخش",
+                        "manager_name": manager.get_full_name(),
+                        "manager_search": manager.get_full_name().lower(),
+                        "target_user_id": manager.id,
+                    }
+                )
 
     # زیربخش‌ها
-    subdepartments = Subdepartment.objects.filter(
-        Q(name__icontains=q)
-        | Q(supervisor__first_name__icontains=q)
-        | Q(supervisor__last_name__icontains=q)
-    ).distinct()[:10]
+    matching_supervisors = matching_managers
+
+    subdepartments = (
+        Subdepartment.objects.filter(
+            Q(name__icontains=q) | Q(supervisors__in=matching_supervisors)
+        )
+        .prefetch_related("supervisors")
+        .select_related("department__factory")
+        .distinct()[:15]
+    )
 
     for s in subdepartments:
-        manager_name = s.supervisor.get_full_name() if s.supervisor else "تعیین نشده"
-        results.append(
-            {
-                "id": s.id,
-                "text": s.name,
-                "factory": s.department.factory.name,
-                "department": s.department.name,
-                "subdepartment": s.name,
-                "content_type": ContentType.objects.get_for_model(Subdepartment).id,
-                "role": "supervisor",
-                "role_display": "سرپرست",
-                "manager_name": manager_name,
-                "manager_search": manager_name.lower(),
-            }
+        for supervisor in s.supervisors.all():
+            if search in supervisor.get_full_name().lower() or search in s.name.lower():
+                results.append(
+                    {
+                        "id": s.id,
+                        "text": f"{s.name} → {supervisor.get_full_name()}",
+                        "factory": s.department.factory.name,
+                        "department": s.department.name,
+                        "subdepartment": s.name,
+                        "content_type": ContentType.objects.get_for_model(
+                            Subdepartment
+                        ).id,
+                        "role": "supervisor",
+                        "role_display": "سرپرست",
+                        "manager_name": supervisor.get_full_name(),
+                        "manager_search": supervisor.get_full_name().lower(),
+                        "target_user_id": supervisor.id,
+                    }
+                )
+
+    employees = (
+        Employee.objects.filter(assigned_subdepartments__isnull=False)
+        .annotate(search_full_name=Concat("first_name", Value(" "), "last_name"))
+        .filter(
+            Q(first_name__icontains=q)
+            | Q(last_name__icontains=q)
+            | Q(search_full_name__icontains=q)
+            | Q(national_id__icontains=q)
         )
-    # MARK: management todo end
+        .distinct()
+    )
+
+    for e in employees:
+
+        subdepts = e.assigned_subdepartments.all()
+
+        if not subdepts:
+            continue
+
+        for subdept in subdepts:
+            results.append(
+                {
+                    "id": e.id,
+                    "text": subdept.name,
+                    "factory": (
+                        subdept.department.factory.name
+                        if subdept.department.factory
+                        else ""
+                    ),
+                    "department": subdept.department.name,
+                    "subdepartment": subdept.name,
+                    "content_type": ContentType.objects.get_for_model(Employee).id,
+                    "role": "employee",
+                    "role_display": "پرسنل",
+                    "manager_name": e.get_full_name(),
+                    "manager_search": e.get_full_name().lower(),
+                    "target_user_id": e.id,
+                }
+            )
 
     # محدود کردن نتایج کلی
-    return JsonResponse(results[:25], safe=False)
+    response = JsonResponse(results[:25], safe=False)
+    return response
 
 
 @login_required
@@ -9692,9 +9504,7 @@ def referral_create(request, participation_id):
         return redirect("users:participation_detail", participation_id)
 
     current_role_name = request.session.get("current_role", "employee")
-    # if current_role_name == 'employee':
-    #     messages.error(request, "شما اجازه ارجاع ندارید.")
-    #     return redirect('users:participation_detail', participation_id)
+
 
     current_user = request.user
     # current_role = role_name
@@ -9707,11 +9517,16 @@ def referral_create(request, participation_id):
         target_object_id = request.POST.get("target_object_id")
         target_content_type_id = request.POST.get("target_content_type")
 
-        if not all([title, comment, target_object_id, target_content_type_id]):
+        target_user_id = request.POST.get("target_user_id")
+        target_role = request.POST.get("target_role")
+
+        if not all([title, comment, target_object_id, target_content_type_id, target_user_id, target_role,]):
             messages.error(request, "همه فیلدها الزامی هستند.")
             return render(
                 request, "users/referral_create.html", {"participation": participation}
             )
+
+        print(f"request.POST.get() : {request.POST}")
 
         try:
             with transaction.atomic():
@@ -9720,31 +9535,81 @@ def referral_create(request, participation_id):
                     id=target_object_id
                 )
 
-                # پیدا کردن مسئول مقصد (Employee)
-                if content_type.model == "employee":
-                    to_user = target_object
 
-                # MARK: management todo
-                elif hasattr(target_object, "manager") and target_object.manager:
-                    to_user = target_object.manager
-                elif hasattr(target_object, "supervisor") and target_object.supervisor:
-                    to_user = target_object.supervisor
-                # MARK: management todo end
-                else:
-                    messages.error(request, "این واحد مسئول مشخصی ندارد.")
-                    return render(
-                        request,
-                        "users/referral_create.html",
-                        {"participation": participation},
+
+                if target_role == "super_admin":
+                    to_user = get_object_or_404(
+                        Employee.objects.filter(roles__name="super_admin").distinct(),
+                        pk=target_user_id,
                     )
+                    unit_kwargs = {
+                        "unit_type": "system",
+                    }
 
-                # ساخت یا گرفتن OrgUnit مقصد (بدون تکرار!)
-                unit_kwargs = {"unit_type": content_type.model}
+                elif target_role == "employee":
+                    to_user = get_object_or_404(Employee, pk=target_user_id)
 
-                if content_type.model != "employee":
-                    unit_kwargs[content_type.model] = target_object
+                    subdepartment = to_user.assigned_subdepartments.first()
+
+                    if not subdepartment:
+                        raise ValueError("این کارمند به هیچ زیربخشی اختصاص داده نشده است.")
+
+                    department = subdepartment.department
+                    factory = department.factory
+                    holding = factory.holding
+
+                    unit_kwargs = {
+                        "unit_type": "employee",
+                        "employee": to_user,
+                        "holding": holding,
+                        "factory": factory,
+                        "department": department,
+                        "subdepartment": subdepartment,
+                    }
+
+                elif target_role == "holding_manager":
+                    to_user = get_object_or_404(
+                        target_object.managers,
+                        pk=target_user_id,
+                    )
+                    unit_kwargs = {
+                        "unit_type": "holding",
+                        "holding": target_object,
+                    }
+
+                elif target_role == "factory_manager":
+                    to_user = get_object_or_404(
+                        target_object.managers,
+                        pk=target_user_id,
+                    )
+                    unit_kwargs = {
+                        "unit_type": "factory",
+                        "factory": target_object,
+                    }
+
+                elif target_role == "department_manager":
+                    to_user = get_object_or_404(
+                        target_object.managers,
+                        pk=target_user_id,
+                    )
+                    unit_kwargs = {
+                        "unit_type": "department",
+                        "department": target_object,
+                    }
+
+                elif target_role == "supervisor":
+                    to_user = get_object_or_404(
+                        target_object.supervisors,
+                        pk=target_user_id,
+                    )
+                    unit_kwargs = {
+                        "unit_type": "subdepartment",
+                        "subdepartment": target_object,
+                    }
+
                 else:
-                    unit_kwargs["unit_type"] = "system"
+                    raise Http404("مقصد نامعتبر است.")
+
 
                 final_unit, created = OrgUnit.objects.get_or_create(
                     **unit_kwargs, defaults=unit_kwargs
@@ -9818,16 +9683,17 @@ def referral_create(request, participation_id):
                     final_unit=final_unit,
                 )
 
-                # تعیین نقش مقصد
-                role_map = {
-                    "holding": "holding_manager",
-                    "factory": "factory_manager",
-                    "department": "department_manager",
-                    "subdepartment": "supervisor",
-                    "employee": "super_admin",
-                }
-                to_role_name = role_map.get(content_type.model, "employee")
-                to_role = Role.objects.get(name=to_role_name)
+                # # تعیین نقش مقصد
+                # role_map = {
+                #     "holding": "holding_manager",
+                #     "factory": "factory_manager",
+                #     "department": "department_manager",
+                #     "subdepartment": "supervisor",
+                #     "employee": "super_admin",
+                # }
+                # to_role_name = role_map.get(content_type.model, "employee")
+                # to_role = Role.objects.get(name=to_role_name)
+                to_role = Role.objects.get(name=target_role)
 
                 # ساخت اولین مرحله
                 ReferralStep.objects.create(

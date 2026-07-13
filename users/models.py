@@ -1565,11 +1565,14 @@ class FoodReservation(models.Model):
 
 class OrgUnit(models.Model):
     UNIT_TYPE_CHOICES = (
+        ("system", "مدیر کل"),
         ("holding", "هلدینگ"),
         ("factory", "کارخانه"),
         ("department", "بخش"),
         ("subdepartment", "زیربخش"),
+        ("employee", "کارمند"),
     )
+
 
     unit_type = models.CharField(max_length=20, choices=UNIT_TYPE_CHOICES)
 
@@ -1586,6 +1589,13 @@ class OrgUnit(models.Model):
         Subdepartment, null=True, blank=True, on_delete=models.CASCADE
     )
 
+    employee = models.ForeignKey(
+        Employee,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+    )
+
     # ✅ کلید یکتای امن برای MariaDB (بدون مشکل NULL)
     path_key = models.CharField(max_length=100, unique=True, db_index=True)
 
@@ -1595,7 +1605,8 @@ class OrgUnit(models.Model):
             f"{self.holding_id or 0}-"
             f"{self.factory_id or 0}-"
             f"{self.department_id or 0}-"
-            f"{self.subdepartment_id or 0}"
+            f"{self.subdepartment_id or 0}-"
+            f"{self.employee_id or 0}"
         )
         super().save(*args, **kwargs)
 
@@ -1612,8 +1623,11 @@ class OrgUnit(models.Model):
             return f"بخش: {self.department.name}"
         elif self.unit_type == "subdepartment" and self.subdepartment:
             return f"زیربخش: {self.subdepartment.name}"
+        elif self.unit_type == "employee" and self.employee:
+            return f"کارمند: {self.employee.get_full_name()}"
+
         elif self.unit_type == "system":
-            return "مدیر کل (سیستم)"
+            return "مدیر کل"
         return self.path_key  # fallback
 
     def get_unit_name(self):
@@ -1626,6 +1640,8 @@ class OrgUnit(models.Model):
             return self.department.name
         elif self.subdepartment:
             return self.subdepartment.name
+        elif self.employee:
+            return self.employee.get_full_name()
         return "نامشخص"
 
     def __str__(self):
@@ -1870,10 +1886,10 @@ class Notification(models.Model):
                         "زیربخش‌های پرسنل باید از زیربخش‌های هدف انتخاب شوند."
                     )
                 # همچنین: فقط اگر 'employee' در target_roles باشد
-                if not self.target_roles.filter(name="employee").exists():
-                    raise models.ValidationError(
-                        "برای انتخاب زیربخش‌های پرسنل، نقش 'employee' باید در نقش‌های هدف باشد."
-                    )
+                # if not self.target_roles.filter(name="employee").exists():
+                #     raise models.ValidationError(
+                #         "برای انتخاب زیربخش‌های پرسنل، نقش 'employee' باید در نقش‌های هدف باشد."
+                #     )
 
     def save(self, *args, **kwargs):
         self.full_clean()  # اجرای اعتبارسنجی قبل از ذخیره

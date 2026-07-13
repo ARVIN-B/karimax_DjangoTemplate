@@ -200,13 +200,21 @@ $(document).ready(function() {
         $('#selected-unit-info').removeClass('d-none');
 
         // ذخیره اطلاعات برای ارسال فرم
+        // $('form').append(`<input type="hidden" name="target_object_id" value="${data.id}">`);
+        // $('form').append(`<input type="hidden" name="target_content_type" value="${data.content_type}">`);
+
+        $('input[name="target_object_id"], input[name="target_content_type"], input[name="target_user_id"]', 'input[name="target_role"]').remove();
+
         $('form').append(`<input type="hidden" name="target_object_id" value="${data.id}">`);
         $('form').append(`<input type="hidden" name="target_content_type" value="${data.content_type}">`);
+        $('form').append(`<input type="hidden" name="target_user_id" value="${data.target_user_id}">`);
+        $('form').append(`<input type="hidden" name="target_role" value="${data.role}">`);
     });
 
     $('#target-unit-search').on('select2:clear', function() {
         $('#selected-unit-info').addClass('d-none');
-        $('input[name="target_object_id"], input[name="target_content_type"]').remove();
+        // $('input[name="target_object_id"], input[name="target_content_type"]').remove();
+        $('input[name="target_object_id"], input[name="target_content_type"], input[name="target_user_id"], input[name="target_role"]').remove();
     });
 });
 </script>

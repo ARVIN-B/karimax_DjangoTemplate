@@ -15,7 +15,7 @@ model_client = OpenAIChatCompletionClient(
         vision=True,
         function_calling=True,
         json_output=True,
-        family="tngtech/deepseek-r1t2-chimera:free",
+        family="openai/gpt-oss-120b:free",
         structured_output=True,
     ),
 )
