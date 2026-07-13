@@ -12,8 +12,8 @@ class FirstLoginMiddleware:
 
         # ✅ مسیرهای مجاز: کاربر مجبور است در این صفحات بماند.
         self.allowed_urls = [
-            reverse('users:change_password'),  # صفحه تغییر رمز عبور
-            reverse('users:logout'),  # صفحه خروج
+            reverse("users:change_password"),  # صفحه تغییر رمز عبور
+            reverse("users:logout"),  # صفحه خروج
         ]
 
     def __call__(self, request):
@@ -38,12 +38,13 @@ class FirstLoginMiddleware:
                 # اگر کاربر در صفحه مجاز نیست، به صفحه تغییر رمز هدایت می‌شود.
                 if not is_allowed_url:
                     # اطمینان حاصل کنید که آدرس 'users:change_password' در urls.py تعریف شده است.
-                    return redirect('users:change_password')
+                    return redirect("users:change_password")
 
         # اگر کاربر احراز هویت نشده، یا is_first_login = False باشد، درخواست ادامه می‌یابد
         response = self.get_response(request)
         return response
-    
+
+
 class ForceLogoutMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -51,22 +52,24 @@ class ForceLogoutMiddleware:
     def __call__(self, request):
         # درخواست‌های مربوط به لاگین و لاگاوت را نادیده می‌گیریم (برای جلوگیری از لوپ)
         if request.path in [
-            reverse('users:login'),
-            reverse('users:logout'),
+            reverse("users:login"),
+            reverse("users:logout"),
         ]:
             return self.get_response(request)
 
         user = request.user
-        if user.is_authenticated and getattr(user, 'login_required', False):
+        if user.is_authenticated and getattr(user, "login_required", False):
             # کاربر را خارج می‌کنیم
             logout(request)
             # می‌توانید یک پیام خطا در session ذخیره کنید تا در صفحه لاگین نمایش داده شود
-            request.session['force_logout_message'] = 'نشست شما به دلایل امنیتی پایان یافت. لطفاً دوباره وارد شوید.'
-            return redirect('users:login')
+            request.session["force_logout_message"] = (
+                "نشست شما به دلایل امنیتی پایان یافت. لطفاً دوباره وارد شوید."
+            )
+            return redirect("users:login")
 
         response = self.get_response(request)
         return response
-    
+
 
 class KarimaxPermissionMiddleware:
     """
@@ -77,19 +80,15 @@ class KarimaxPermissionMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
         # لیست view name هایی که کاربر محدود مجاز به دیدن آن‌هاست
-        self.allowed_views = getattr(
-            settings,
-            'KARIMAX_RESTRICTED_ALLOWED_VIEWS'
-        )
-        self.landing_url = reverse('users:landing')
+        self.allowed_views = getattr(settings, "KARIMAX_RESTRICTED_ALLOWED_VIEWS")
+        self.landing_url = reverse("users:landing")
 
     def __call__(self, request):
         # فقط کاربران لاگین‌شده و فاقد مجوز را بررسی می‌کنیم
         if request.user.is_authenticated and not request.user.karimax_permision:
             # مسیرهای static و media را نادیده بگیرید تا سایت ظاهر درستی داشته باشد
-            if (
-                request.path.startswith(settings.STATIC_URL)
-                or request.path.startswith(settings.MEDIA_URL)
+            if request.path.startswith(settings.STATIC_URL) or request.path.startswith(
+                settings.MEDIA_URL
             ):
                 return self.get_response(request)
 
@@ -97,7 +96,7 @@ class KarimaxPermissionMiddleware:
             try:
                 match = resolve(request.path)
                 view_name = match.view_name
-                namespace = match.namespace or ''
+                namespace = match.namespace or ""
             except Resolver404:
                 # اگر مسیر اصلاً تعریف نشده باشد هم ریدایرکت به لندینگ
                 return redirect(self.landing_url)
@@ -105,11 +104,40 @@ class KarimaxPermissionMiddleware:
             # اگر view_name در لیست مجاز نباشد، کاربر را به لندینگ بفرستید
             # if view_name not in self.allowed_views:
             #     return redirect(self.landing_url)
-            
-            if namespace == 'admin' or view_name.startswith('admin:') or request.path.startswith('/admin/') or view_name in self.allowed_views:
+
+            if (
+                namespace == "admin"
+                or view_name.startswith("admin:")
+                or request.path.startswith("/admin/")
+                or view_name in self.allowed_views
+            ):
                 return self.get_response(request)
-            
+
             return redirect(self.landing_url)
 
         # برای سایر کاربران (یا مسیرهای مجاز) درخواست به صورت عادی پردازش شود
+        return self.get_response(request)
+
+
+from django.shortcuts import render
+from django.conf import settings
+
+class MaintenanceMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        maintenance_mode = getattr(settings, 'MAINTENANCE_MODE', False)
+        maintenance_paths = getattr(settings, 'MAINTENANCE_PATHS', [])
+
+        # چک کردن اینکه آیا باید صفحه بروزرسانی نمایش داده بشه
+        if maintenance_mode and maintenance_paths:
+            for path in maintenance_paths:
+                if request.path.startswith(path) or request.path == path.rstrip('/'):
+                    context = {
+                        'site_name': getattr(settings, 'SITE_NAME', 'سایت من'),
+                    }
+                    # استفاده از render به جای TemplateResponse
+                    return render(request, 'maintenance.html', context, status=503)
+
         return self.get_response(request)

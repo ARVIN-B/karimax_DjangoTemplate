@@ -143,7 +143,26 @@ MIDDLEWARE = [
     # 'users.error_handler.GlobalErrorHandlerMiddleware',  # ← این رو اضافه کن
     "users.error_handler.GlobalErrorHandlerMiddleware",
     "users.middleware.ForceLogoutMiddleware",
+    "users.middleware.MaintenanceMiddleware",
 ]
+
+
+# تنظیمات صفحه بروزرسانی
+MAINTENANCE_MODE = True  # این را هر وقت خواستی فعال کن
+
+MAINTENANCE_PATHS = [
+    '/users/submit-participation/',
+
+]
+
+
+
+
+
+
+
+
+
 
 ROOT_URLCONF = "pmss.urls"
 

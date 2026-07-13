@@ -1,0 +1,320 @@
+{% extends 'base.html' %} {% load static %} {% block title %} در حال بروزرسانی {% endblock %} {% block extra_css %}
+<style>
+	.maintenance-page {
+		min-height: 100vh;
+		/* حذف بک‌گراند ثابت — از base استفاده می‌کنه */
+		position: relative;
+		overflow: hidden;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	/* Glass Card — سازگار با تم روشن و تاریک */
+	.glass-maintenance {
+		background: var(--glass-bg, rgba(255, 255, 255, 0.75));
+		backdrop-filter: blur(28px);
+		-webkit-backdrop-filter: blur(28px);
+		border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.1));
+		border-radius: 32px;
+		padding: 4.5rem 3.5rem;
+		max-width: 520px;
+		width: 92%;
+		box-shadow: var(--shadow-lg, 0 25px 50px -12px rgba(0, 0, 0, 0.25));
+		position: relative;
+		z-index: 10;
+		text-align: center;
+	}
+
+	/* حالت تاریک */
+	[data-bs-theme="dark"] .glass-maintenance {
+		background: rgba(15, 23, 42, 0.85);
+		border-color: rgba(148, 163, 184, 0.25);
+		box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.6);
+	}
+
+	/* بقیه استایل‌ها (تقریباً همان قبلی) */
+	.status-indicator {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		background: rgba(34, 211, 238, 0.15);
+		color: #22d3ee;
+		padding: 8px 20px;
+		border-radius: 9999px;
+		font-size: 0.95rem;
+		font-weight: 500;
+		margin-bottom: 2rem;
+		border: 1px solid rgba(103, 232, 249, 0.3);
+	}
+
+	[data-bs-theme="dark"] .status-indicator {
+		background: rgba(103, 232, 249, 0.15);
+		color: #67e8f9;
+	}
+
+	.pulse-dot {
+		width: 10px;
+		height: 10px;
+		background: #67e8f9;
+		border-radius: 50%;
+		box-shadow: 0 0 0 6px rgba(103, 232, 249, 0.4);
+		animation: pulse 2s infinite;
+	}
+
+	.main-icon {
+		margin-bottom: 2.5rem;
+	}
+
+	.gear-container {
+		position: relative;
+		width: 120px;
+		height: 120px;
+		margin: 0 auto;
+	}
+
+	.gear-large {
+		font-size: 6.5rem;
+		color: #60a5fa;
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+
+	[data-bs-theme="dark"] .gear-large {
+		color: #93c5fd;
+	}
+
+	.gear-small {
+		font-size: 3.2rem;
+		color: #93c5fd;
+		position: absolute;
+		top: 65%;
+		left: 68%;
+		transform: translate(-50%, -50%);
+	}
+
+	.maintenance-title {
+		font-size: 2.8rem;
+		font-weight: 700;
+		background: linear-gradient(90deg, var(--text-primary, #0f172a), #1e40af);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		margin-bottom: 1.2rem;
+		line-height: 1.1;
+	}
+
+	[data-bs-theme="dark"] .maintenance-title {
+		background: linear-gradient(90deg, #e0f2fe, #bae6fd, #67e8f9);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+	}
+
+	.maintenance-subtitle {
+		color: var(--text-muted, #64748b);
+		font-size: 1.15rem;
+		line-height: 1.75;
+		margin-bottom: 3rem;
+	}
+
+	.progress-wrapper {
+		margin: 2.5rem 0;
+	}
+
+	.progress-bar {
+		height: 7px;
+		background: rgba(148, 163, 184, 0.25);
+		border-radius: 9999px;
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		width: 65%;
+		background: linear-gradient(to right, var(--primary, #f97316), #22d3ee);
+		border-radius: 9999px;
+		position: relative;
+	}
+
+	.actions {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		margin: 3rem 0 2rem;
+	}
+
+	.btn-refresh {
+		padding: 16px 32px;
+		border-radius: 9999px;
+		font-weight: 600;
+		font-size: 1.05rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 12px;
+		background: linear-gradient(135deg, var(--primary, #f97316), #fb923c);
+		color: white;
+		border: none;
+		box-shadow: 0 10px 25px rgba(249, 115, 22, 0.35);
+	}
+
+	.btn-refresh:hover {
+		transform: translateY(-3px);
+	}
+
+	.btn-channel {
+		padding: 16px 32px;
+		border-radius: 9999px;
+		font-weight: 600;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 10px;
+		background: rgba(0, 0, 0, 0.06);
+		color: var(--text-primary);
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		text-decoration: none;
+	}
+
+	[data-bs-theme="dark"] .btn-channel {
+		background: rgba(255, 255, 255, 0.08);
+		color: #e0f2fe;
+		border-color: rgba(255, 255, 255, 0.15);
+	}
+
+	/* انیمیشن‌ها */
+	@keyframes pulse {
+		0%,
+		100% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.2);
+		}
+	}
+
+	@keyframes gearRotate {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
+	}
+</style>
+{% endblock %} {% block content %}
+<div class="maintenance-page">
+	<div class="ambient-bg"></div>
+	<div class="grid-bg"></div>
+
+	<div class="maintenance-content">
+		<div class="glass-maintenance">
+			<!-- Status Indicator -->
+			<div class="status-indicator">
+				<div class="pulse-dot"></div>
+				<span>در حال ارتقای سیستم</span>
+			</div>
+
+			<!-- Main Icon -->
+			<div class="main-icon">
+				<div class="gear-container">
+					<i class="fas fa-cog gear-large"></i>
+					<i class="fas fa-cog gear-small"></i>
+				</div>
+			</div>
+
+			<h1 class="maintenance-title">یه لحظه صبر کن...</h1>
+
+			<p class="maintenance-subtitle">
+				داریم سایت رو به نسخه‌ای بهتر و سریع‌تر ارتقا می‌دیم.<br />
+				تجربه‌ای مدرن‌تر در انتظارته.
+			</p>
+
+			<!-- Progress -->
+			<div class="progress-wrapper">
+				<div class="progress-bar">
+					<div class="progress-fill"></div>
+				</div>
+				<div class="progress-text">۷۸٪ تکمیل شده</div>
+			</div>
+
+			<!-- Actions -->
+			<div class="actions">
+				<button
+					onclick="window.location.reload()"
+					class="btn-refresh"
+				>
+					<i class="fas fa-redo"></i>
+					<span>تازه‌سازی صفحه</span>
+				</button>
+
+				<!-- <a
+					href="https://t.me/yourchannel"
+					target="_blank"
+					class="btn-channel"
+				>
+					<i class="fab fa-telegram-plane"></i>
+					دنبال کردن اخبار
+				</a> -->
+			</div>
+
+			<div class="footer-note">
+				<!-- <p>{{ site_name }} • ۱۴۰۵</p>
+				<p class="small">تیم فنی در حال کار • به زودی برمی‌گردیم</p> -->
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script>
+	// Random motivational messages
+	const messages = ["داریم موتور سایت رو تیونینگ می‌کنیم...", "چند لحظه دیگه با سرعت نور برمی‌گردیم ⚡", "آخرین پیچ‌ها دارن بسته می‌شن...", "یه ارتقای بزرگ در حال وقوعه ✨", "ممنون از صبوری‌تون ❤️"];
+
+	let currentMsg = 0;
+	const subtitleEl = document.querySelector(".maintenance-subtitle");
+
+	function changeMessage() {
+		currentMsg = (currentMsg + 1) % messages.length;
+		if (subtitleEl) {
+			subtitleEl.style.opacity = 0;
+			setTimeout(() => {
+				subtitleEl.textContent = messages[currentMsg];
+				subtitleEl.style.opacity = 1;
+			}, 400);
+		}
+	}
+
+	// Change message every 5 seconds
+	setInterval(changeMessage, 5000);
+
+	// Progress animation
+	function animateProgress() {
+		const progressFill = document.querySelector(".progress-fill");
+		if (progressFill) {
+			let width = 65;
+			const interval = setInterval(() => {
+				width += Math.random() * 1.2;
+				if (width >= 92) {
+					width = 92;
+					clearInterval(interval);
+				}
+				progressFill.style.width = width + "%";
+			}, 180);
+		}
+	}
+
+	// Initialize animations
+	document.addEventListener("DOMContentLoaded", function () {
+		animateProgress();
+
+		// Gear rotation
+		const gears = document.querySelectorAll(".gear-large, .gear-small");
+		gears.forEach((gear, index) => {
+			const duration = index === 0 ? 8 : 5;
+			gear.style.animation = `gearRotate ${duration}s linear infinite`;
+		});
+	});
+</script>
+{% endblock %} {% block page_refactor_class %}app-users-page app-users-landing{% endblock %}

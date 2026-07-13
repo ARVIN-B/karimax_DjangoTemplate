@@ -393,132 +393,6 @@ def authenticate_user(request):
     return user, None
 
 
-# import json
-# import base64
-# from django.http import JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# from webauthn import (
-#     generate_authentication_options,
-#     options_to_json,
-#     verify_authentication_response,   # ← این خط خیلی مهمه!
-# )
-# from webauthn.helpers import bytes_to_base64url
-# from webauthn.helpers.structs import UserVerificationRequirement
-
-
-# @csrf_exempt
-# def passkey_begin(request):
-#     """شروع احراز هویت Passkey"""
-
-#     # دریافت national_id
-#     if request.content_type == "application/json":
-#         try:
-#             data = json.loads(request.body)
-#             national_id = data.get("national_id")
-#         except:
-#             national_id = None
-#     else:
-#         national_id = request.POST.get("national_id")
-
-#     if not national_id or len(str(national_id)) != 10:
-#         return JsonResponse({"success": False, "error": "کد ملی نامعتبر است"}, status=400)
-
-#     try:
-#         user = Employee.objects.get(national_id=national_id)
-#     except User.DoesNotExist:
-#         return JsonResponse({"success": False, "error": "کاربر یافت نشد"})
-
-#     # تولید گزینه‌های WebAuthn
-#     options = generate_authentication_options(
-#         rp_id=request.get_host().split(':')[0],
-#         allow_credentials=[
-#             {"type": "public-key", "id": bytes_to_base64url(pk.credential_id)}
-#             for pk in user.passkeys.all()
-#         ],
-#         user_verification=UserVerificationRequirement.PREFERRED,
-#     )
-
-#     # ✅ تبدیل bytes به base64 قبل از ذخیره در session
-#     challenge_b64 = base64.b64encode(options.challenge).decode('ascii')
-
-#     request.session['webauthn_challenge'] = challenge_b64
-#     request.session['webauthn_user_id'] = user.id
-#     request.session.modified = True
-
-#     # تبدیل options به JSON قابل قبول
-#     options_dict = json.loads(options_to_json(options))
-
-#     return JsonResponse({
-#         "success": True,
-#         "publicKey": options_dict
-#     })
-
-
-# import base64
-
-# @csrf_exempt
-# def passkey_complete(request):
-#     """تکمیل لاگین با Passkey"""
-#     if request.content_type != "application/json":
-#         return JsonResponse({"success": False, "error": "JSON required"}, status=400)
-
-#     try:
-#         data = json.loads(request.body)
-#         national_id = data.get("national_id")
-#         credential = data.get("credential")
-#     except Exception:
-#         return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
-
-#     if not national_id or not credential:
-#         return JsonResponse({"success": False, "error": "اطلاعات ناقص"}, status=400)
-
-#     try:
-#         user = Employee.objects.get(national_id=national_id)
-
-#         # بازیابی challenge
-#         challenge_b64 = request.session.get('webauthn_challenge')
-#         if not challenge_b64:
-#             return JsonResponse({"success": False, "error": "Session expired"})
-
-#         challenge = base64.b64decode(challenge_b64)
-
-#         session_user_id = request.session.get('webauthn_user_id')
-#         if user.id != session_user_id:
-#             return JsonResponse({"success": False, "error": "Session invalid"})
-
-#         # پیدا کردن Passkey کاربر
-#         raw_credential_id = base64.b64decode(credential.get("rawId"))
-#         passkey = user.passkeys.get(credential_id=raw_credential_id)
-
-#         # بررسی پاسخ
-#         verification = verify_authentication_response(
-#             credential=credential,
-#             expected_challenge=challenge,
-#             expected_rp_id=request.get_host().split(':')[0],
-#             expected_origin=request.build_absolute_uri('/')[:-1],
-#             credential_public_key=passkey.public_key,
-#             credential_sign_count=passkey.sign_count,
-#             require_user_verification=True,
-#         )
-
-#         # به‌روزرسانی شمارنده
-#         passkey.sign_count = verification.new_sign_count
-#         passkey.last_used_at = timezone.now()  # اگر فیلد داری
-#         passkey.save()
-
-#         perform_login(request, user)
-
-#         # پاک کردن session
-#         request.session.pop('webauthn_challenge', None)
-#         request.session.pop('webauthn_user_id', None)
-
-#         return JsonResponse({"success": True})
-
-#     except User.DoesNotExist:
-#         return JsonResponse({"success": False, "error": "User not found"})
-#     except Exception as e:
-#         return JsonResponse({"success": False, "error": str(e)})
-
 
 def login_view(request):
     national_id = request.POST.get("national_id")
@@ -526,7 +400,6 @@ def login_view(request):
     otp_code = request.POST.get("otp_code")  # ممکن است خالی باشد
 
     if request.user.is_authenticated:
-        # return redirect("users:dashboard")
         return redirect("users:landing")
 
     if request.method == "POST":
@@ -539,18 +412,12 @@ def login_view(request):
 
             perform_login(request, user)
 
-            # has_passkey = user.passkeys.exists()
 
-            # return render(request, "users/login.html", {
-            #     "has_passkey": has_passkey,
-            #     "national_id": national_id,   # برای پیش‌فرض کردن فیلد
-            # })
 
             return redirect("users:landing")
 
         messages.error(request, error_msg or "خطا در ورود.")
 
-    # return render(request, "users/login.html")
     return render(
         request,
         "users/login.html",
@@ -625,113 +492,6 @@ def register_view(request):
 
     return redirect("users:landing")
 
-
-@require_POST
-def send_otp_login(request):
-    national_id = (request.POST.get("national_id") or "").strip()
-    if not re.fullmatch(r"\d{10}", national_id):
-        return JsonResponse(
-            {"ok": False, "message": "کد ملی باید ۱۰ رقم باشد."}, status=400
-        )
-
-    # کاربر فعال را پیدا کن
-    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
-    if not employee:
-        return JsonResponse(
-            {"ok": False, "message": "کاربری با این کد ملی یافت نشد."}, status=404
-        )
-
-    raw_phone = (employee.phone_number or "").strip()
-    if not raw_phone:
-        return JsonResponse(
-            {"ok": False, "message": "برای این کاربر شماره موبایل ثبت نشده است."},
-            status=400,
-        )
-
-    mobile = _normalize_mobile_number(raw_phone)
-    if not mobile:
-        return JsonResponse(
-            {"ok": False, "message": "شماره موبایل نامعتبر است."}, status=400
-        )
-
-    # تولید کد ۵ رقمی
-    otp_code = get_random_string(5, allowed_chars="0123456789")
-
-    # ارسال SMS با استفاده از همان تابع موجود
-    sent, provider_message, provider_data = _send_parsgreen_otp(
-        mobile, otp_code, request.get_host()
-    )
-
-    if not sent:
-        return JsonResponse({"ok": False, "message": provider_message}, status=503)
-
-    # ذخیره در سشن
-    request.session[LOGIN_OTP_SESSION_KEY] = {
-        "national_id": national_id,
-        "otp_code": otp_code,
-        "expires_at": (
-            timezone.now() + timedelta(seconds=LOGIN_OTP_EXPIRE_SECONDS)
-        ).isoformat(),
-        "attempts": 0,
-    }
-    request.session.modified = True
-
-    response_data = {"ok": True, "message": "کد تایید ارسال شد."}
-    if settings.DEBUG and request.POST.get("debug") == "1":
-        response_data["debug"] = {"mobile": mobile, "otp_code": otp_code}
-    return JsonResponse(response_data)
-
-
-def _verify_otp(request, national_id, otp_code):
-    """
-    بررسی کد تایید OTP برای ورود.
-    خروجی: (user_or_None, error_message_or_None)
-    """
-    if not re.fullmatch(r"\d{10}", national_id):
-        return None, "کد ملی باید ۱۰ رقم باشد."
-    if not re.fullmatch(r"\d{5}", otp_code):
-        return None, "کد تایید باید ۵ رقم باشد."
-
-    state = request.session.get(LOGIN_OTP_SESSION_KEY) or {}
-    if not state or state.get("national_id") != national_id:
-        return None, "درخواست ورود با کد یکبارمصرف نامعتبر است. لطفاً دوباره تلاش کنید."
-
-    # بررسی انقضا
-    expires_at_raw = state.get("expires_at")
-    try:
-        expires_at = datetime.fromisoformat(expires_at_raw)
-        if timezone.is_naive(expires_at):
-            expires_at = timezone.make_aware(
-                expires_at, timezone.get_current_timezone()
-            )
-    except (TypeError, ValueError):
-        request.session.pop(LOGIN_OTP_SESSION_KEY, None)
-        return None, "زمان اعتبار کد نامعتبر است."
-
-    if timezone.now() > expires_at:
-        request.session.pop(LOGIN_OTP_SESSION_KEY, None)
-        return None, "زمان اعتبار کد به پایان رسیده است. لطفاً دوباره درخواست کنید."
-
-    # بررسی تعداد تلاش
-    if otp_code != str(state.get("otp_code") or ""):
-        attempts = int(state.get("attempts", 0)) + 1
-        state["attempts"] = attempts
-        if attempts >= MAX_OTP_ATTEMPTS:
-            request.session.pop(LOGIN_OTP_SESSION_KEY, None)
-            return (
-                None,
-                "تعداد تلاش ناموفق بیش از حد مجاز شد. لطفاً دوباره درخواست دهید.",
-            )
-        request.session[LOGIN_OTP_SESSION_KEY] = state
-        request.session.modified = True
-        return None, "کد تایید اشتباه است."
-
-    # موفقیت‌آمیز
-    request.session.pop(LOGIN_OTP_SESSION_KEY, None)
-    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
-    if not employee:
-        return None, "کاربر یافت نشد."
-    return employee, None
 
 
 @login_required
@@ -1665,6 +1425,114 @@ def force_logout_all_users(request, only_current_user=False):
 
     return redirect("users:login")
 
+
+
+@require_POST
+def send_otp_login(request):
+    national_id = (request.POST.get("national_id") or "").strip()
+    if not re.fullmatch(r"\d{10}", national_id):
+        return JsonResponse(
+            {"ok": False, "message": "کد ملی باید ۱۰ رقم باشد."}, status=400
+        )
+
+    # کاربر فعال را پیدا کن
+    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
+    if not employee:
+        return JsonResponse(
+            {"ok": False, "message": "کاربری با این کد ملی یافت نشد."}, status=404
+        )
+
+    raw_phone = (employee.phone_number or "").strip()
+    if not raw_phone:
+        return JsonResponse(
+            {"ok": False, "message": "برای این کاربر شماره موبایل ثبت نشده است."},
+            status=400,
+        )
+
+    mobile = _normalize_mobile_number(raw_phone)
+    if not mobile:
+        return JsonResponse(
+            {"ok": False, "message": "شماره موبایل نامعتبر است."}, status=400
+        )
+
+    # تولید کد ۵ رقمی
+    otp_code = get_random_string(5, allowed_chars="0123456789")
+
+    # ارسال SMS با استفاده از همان تابع موجود
+    sent, provider_message, provider_data = _send_parsgreen_otp(
+        mobile, otp_code, request.get_host()
+    )
+
+    if not sent:
+        return JsonResponse({"ok": False, "message": provider_message}, status=503)
+
+    # ذخیره در سشن
+    request.session[LOGIN_OTP_SESSION_KEY] = {
+        "national_id": national_id,
+        "otp_code": otp_code,
+        "expires_at": (
+            timezone.now() + timedelta(seconds=LOGIN_OTP_EXPIRE_SECONDS)
+        ).isoformat(),
+        "attempts": 0,
+    }
+    request.session.modified = True
+
+    response_data = {"ok": True, "message": "کد تایید ارسال شد."}
+    if settings.DEBUG and request.POST.get("debug") == "1":
+        response_data["debug"] = {"mobile": mobile, "otp_code": otp_code}
+    return JsonResponse(response_data)
+
+
+def _verify_otp(request, national_id, otp_code):
+    """
+    بررسی کد تایید OTP برای ورود.
+    خروجی: (user_or_None, error_message_or_None)
+    """
+    if not re.fullmatch(r"\d{10}", national_id):
+        return None, "کد ملی باید ۱۰ رقم باشد."
+    if not re.fullmatch(r"\d{5}", otp_code):
+        return None, "کد تایید باید ۵ رقم باشد."
+
+    state = request.session.get(LOGIN_OTP_SESSION_KEY) or {}
+    if not state or state.get("national_id") != national_id:
+        return None, "درخواست ورود با کد یکبارمصرف نامعتبر است. لطفاً دوباره تلاش کنید."
+
+    # بررسی انقضا
+    expires_at_raw = state.get("expires_at")
+    try:
+        expires_at = datetime.fromisoformat(expires_at_raw)
+        if timezone.is_naive(expires_at):
+            expires_at = timezone.make_aware(
+                expires_at, timezone.get_current_timezone()
+            )
+    except (TypeError, ValueError):
+        request.session.pop(LOGIN_OTP_SESSION_KEY, None)
+        return None, "زمان اعتبار کد نامعتبر است."
+
+    if timezone.now() > expires_at:
+        request.session.pop(LOGIN_OTP_SESSION_KEY, None)
+        return None, "زمان اعتبار کد به پایان رسیده است. لطفاً دوباره درخواست کنید."
+
+    # بررسی تعداد تلاش
+    if otp_code != str(state.get("otp_code") or ""):
+        attempts = int(state.get("attempts", 0)) + 1
+        state["attempts"] = attempts
+        if attempts >= MAX_OTP_ATTEMPTS:
+            request.session.pop(LOGIN_OTP_SESSION_KEY, None)
+            return (
+                None,
+                "تعداد تلاش ناموفق بیش از حد مجاز شد. لطفاً دوباره درخواست دهید.",
+            )
+        request.session[LOGIN_OTP_SESSION_KEY] = state
+        request.session.modified = True
+        return None, "کد تایید اشتباه است."
+
+    # موفقیت‌آمیز
+    request.session.pop(LOGIN_OTP_SESSION_KEY, None)
+    employee = Employee.objects.filter(national_id=national_id, is_active=True).first()
+    if not employee:
+        return None, "کاربر یافت نشد."
+    return employee, None
 
 # 1. تابع جدید ارسال پیامک عمومی (هر متنی)
 def _send_sms(mobile, message, sms_number=None):
@@ -3001,6 +2869,9 @@ def notifications_view(request):
 
     active_unseen_notifications = active_notifications.filter(is_read=False)
 
+    expired_unseen_notifications_count = expired_notifications.filter(is_read=False).count()
+    active_unseen_notifications_count = active_notifications.filter(is_read=False).count()
+
     number_of_unseen_critical = active_unseen_notifications.filter(
         priority="critical"
     ).count()
@@ -3026,6 +2897,9 @@ def notifications_view(request):
         "expired_notifications": expired_notifications,
         "notification_badge_count": badge_count,
         "notification_badge_level": badge_level,
+        "active_unseen_notifications": active_unseen_notifications,
+        "expired_unseen_notifications": expired_unseen_notifications,
+
     }
     return render(request, "users/notifications.html", context)
 

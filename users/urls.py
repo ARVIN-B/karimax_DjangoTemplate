@@ -3,9 +3,6 @@ from . import views
 from django.contrib.auth.views import LogoutView
 from django.views.generic import TemplateView
 
-# import mfa
-# import mfa.TrustedDevice
-
 app_name = "users"
 
 urlpatterns = [
@@ -27,8 +24,6 @@ urlpatterns = [
     ),
     path("users/", views.dashboard, name="dashboard"),
     path("profile/<int:user_id>/", views.user_profile, name="user_profile"),
-    # path("register/", views.register_user, name="register_user"),
-    # path("logout/", LogoutView.as_view(next_page="users:login"), name="logout"),
     path("logout/", views.logout_view, name="logout"),
     path(
         "submit-participation/", views.submit_participation, name="submit_participation"
@@ -106,10 +101,6 @@ urlpatterns = [
         views.managements_reports_dashboard,
         name="managements_reports_dashboard",
     ),
-    # path("managements_reports_dashboard/export/full/", views.export_full_debt_report, name="export_full_debt"),
-    # path("managements_reports_dashboard/export/restaurant/", views.export_restaurant_report, name="export_restaurant"),
-    # path("managements_reports_dashboard/export/employee/detailed/", views.export_detailed_employee_report, name="export_employee_detailed"),
-    # path("managements_reports_dashboard/export/employee/summary/", views.export_employee_summary_report, name="export_employee_summary"),
     path("force-logout-all/", views.force_logout_all_users, name="force_logout_all"),
     path(
         "personal_reports_dashboard/",
@@ -117,8 +108,6 @@ urlpatterns = [
         name="personal_reports_dashboard",
     ),
     path("landing/", views.landing_page, name="landing"),
-    # path('mfa/', include('mfa.urls')),
-    # path('devices/add/', mfa.TrustedDevice.add, name="mfa_add_new_trusted_device"),
     path("send-otp-login/", views.send_otp_login, name="send_otp_login"),
     path(
         "management_food_reservation_view/",
@@ -140,26 +129,4 @@ urlpatterns = [
         views.notification_mark_read,
         name="notification_mark_read",
     ),
-    # path(
-    #     "biometric/register/options/",
-    #     views.biometric_register_options,
-    #     name="biometric_register_options"
-    # ),
-    # path(
-    #     "biometric/register/verify/",
-    #     views.biometric_register_verify,
-    #     name="biometric_register_verify"
-    # ),
-    # path(
-    #     "biometric/auth/options/",
-    #     views.biometric_auth_options,
-    #     name="biometric_auth_options",
-    # ),
-    # path(
-    #     "biometric/auth/verify/",
-    #     views.biometric_auth_verify,
-    #     name="biometric_auth_verify",
-    # ),
-    # path('passkey/begin/', views.passkey_begin, name='passkey_begin'),
-    # path('passkey/complete/', views.passkey_complete, name='passkey_complete'),
 ]
