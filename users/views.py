@@ -2872,6 +2872,9 @@ def notifications_view(request):
     expired_unseen_notifications_count = expired_notifications.filter(is_read=False).count()
     active_unseen_notifications_count = active_notifications.filter(is_read=False).count()
 
+    print(f"expired_unseen_notifications_count : {expired_unseen_notifications_count}")
+    print(f"active_unseen_notifications_count : {active_unseen_notifications_count}")
+
     number_of_unseen_critical = active_unseen_notifications.filter(
         priority="critical"
     ).count()
@@ -2897,8 +2900,8 @@ def notifications_view(request):
         "expired_notifications": expired_notifications,
         "notification_badge_count": badge_count,
         "notification_badge_level": badge_level,
-        "active_unseen_notifications": active_unseen_notifications,
-        "expired_unseen_notifications": expired_unseen_notifications,
+        "expired_unseen_notifications_count": expired_unseen_notifications_count,
+        "active_unseen_notifications_count": active_unseen_notifications_count,
 
     }
     return render(request, "users/notifications.html", context)

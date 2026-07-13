@@ -17,25 +17,25 @@ API_KEY = config("API_KEY")
 if config("DJANGO_ENV") == "production":
     # SESSION_COOKIE_DOMAIN = ".karimax2.ir"
     BASE_URL = f"{config("PRODUCT_BASE_URL")}"
-    SESSION_COOKIE_DOMAIN = F".{BASE_URL}"
+    SESSION_COOKIE_DOMAIN = f".{BASE_URL}"
     SESSION_COOKIE_NAME = "sessionid"
     DEBUG = False
 elif config("DJANGO_ENV") == "development":
     # SESSION_COOKIE_DOMAIN = ".karimax2.ir"
     BASE_URL = f"{config("DEVELOP_BASE_URL")}"
-    SESSION_COOKIE_DOMAIN = F".{BASE_URL}"
+    SESSION_COOKIE_DOMAIN = f".{BASE_URL}"
     SESSION_COOKIE_NAME = "sessionid"
     DEBUG = True
 elif config("DJANGO_ENV") == "localhost":
-    BASE_URL="127.0.0.1"
+    BASE_URL = "127.0.0.1"
     DEBUG = True
 
 WEEKS_COUNT = 2
 
 KARIMAX_RESTRICTED_ALLOWED_VIEWS = [
-    'users:landing',
-    'users:logout',
-    'users:contact_us',
+    "users:landing",
+    "users:logout",
+    "users:contact_us",
 ]
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -148,20 +148,11 @@ MIDDLEWARE = [
 
 
 # تنظیمات صفحه بروزرسانی
-MAINTENANCE_MODE = True  # این را هر وقت خواستی فعال کن
+MAINTENANCE_MODE = False  # این را هر وقت خواستی فعال کن
 
 MAINTENANCE_PATHS = [
-    '/users/submit-participation/',
-
+    # '/users/submit-participation/',
 ]
-
-
-
-
-
-
-
-
 
 
 ROOT_URLCONF = "pmss.urls"
@@ -398,4 +389,4 @@ else:
 # CORS_ALLOW_ALL_ORIGINS = True
 # CORS_ALLOW_CREDENTIALS = True
 
-CSRF_FAILURE_VIEW = 'users.views.csrf_failure'
+CSRF_FAILURE_VIEW = "users.views.csrf_failure"
