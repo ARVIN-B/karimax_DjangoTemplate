@@ -233,9 +233,13 @@
 		overflow: visible;
 		justify-content: center;
 		align-items: center;
-		border: 1px solid rgba(255, 255, 255, 0.32);
+		border: 1px solid color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 18%, rgba(255,255,255,.56));
 		backdrop-filter: blur(14px) saturate(140%);
 		-webkit-backdrop-filter: blur(14px) saturate(140%);
+		background:
+			linear-gradient(135deg,
+				color-mix(in srgb, var(--module-color, var(--primary)) 92%, white 8%),
+				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 80%, black 20%));
 		transition:
 			transform 0.3s cubic-bezier(.2,.8,.2,1),
 			box-shadow 0.3s ease,
@@ -247,8 +251,8 @@
 		position: absolute;
 		inset: 0;
 		background:
-			linear-gradient(135deg, rgba(255,255,255,.42), rgba(255,255,255,0) 42%),
-			linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.20));
+			linear-gradient(135deg, color-mix(in srgb, white 38%, var(--module-main, var(--module-color, var(--primary)))), rgba(255,255,255,0) 46%),
+			linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.20));
 		z-index: 0;
 		border-radius: inherit;
 	}
@@ -306,13 +310,13 @@
 		z-index: 2;
 		padding: 2px 8px;
 		border-radius: 999px;
-		background: rgba(35, 53, 156, 0.95);
+		background: color-mix(in srgb, var(--module-main, var(--module-color, #23359c)) 84%, #111827 16%);
 		color: #fff;
 		font-size: 10px;
 		font-weight: 700;
 		line-height: 1.4;
 		white-space: nowrap;
-		box-shadow: 0 4px 12px rgba(35, 53, 156, 0.22);
+		box-shadow: 0 4px 12px color-mix(in srgb, var(--module-main, var(--module-color, #23359c)) 34%, transparent);
 	}
 
 	.service-label {
@@ -346,7 +350,7 @@
 	bottom: 0;
 
 	background:
-		radial-gradient(circle at top left, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 28%),
+		radial-gradient(circle at top left, color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 18%, rgba(255,255,255,.95)) 0%, rgba(255,255,255,0) 28%),
 		linear-gradient(180deg, rgba(243, 246, 251, 0.98) 0%, rgba(236, 241, 248, 0.99) 100%);
 	z-index: 1075;
 
@@ -364,7 +368,7 @@
 
 	html[data-bs-theme="dark"] .submodule-page {
 		background:
-			radial-gradient(circle at top left, rgba(59, 130, 246, 0.16) 0%, rgba(59, 130, 246, 0) 30%),
+			radial-gradient(circle at top left, color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 22%, rgba(59, 130, 246, 0.16)) 0%, rgba(59, 130, 246, 0) 30%),
 			linear-gradient(180deg, #0b1220 0%, #111827 100%);
 	}
 
@@ -379,6 +383,10 @@
 		position: relative;
 		overflow: hidden;
 		color: white;
+		background:
+			linear-gradient(135deg,
+				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 62%, white 38%),
+				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 48%, black 52%));
 		box-shadow:
 			0 24px 60px rgba(15, 23, 42, 0.14),
 			inset 0 1px 0 rgba(255,255,255,.12);
@@ -394,7 +402,7 @@
 		width: 220px;
 		height: 220px;
 		border-radius: 999px;
-		background: radial-gradient(circle, rgba(255,255,255,.22), rgba(255,255,255,0) 68%);
+		background: radial-gradient(circle, color-mix(in srgb, white 58%, var(--module-soft, var(--module-color, var(--primary)))) 0%, rgba(255,255,255,0) 68%);
 		left: -36px;
 		bottom: -108px;
 		filter: blur(4px);
@@ -405,7 +413,7 @@
 		position: absolute;
 		inset: 0;
 		background:
-			linear-gradient(135deg, rgba(255,255,255,.24), rgba(255,255,255,0) 42%),
+			linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,0) 42%),
 			linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0));
 		pointer-events: none;
 	}
@@ -415,7 +423,7 @@
 		inset: 0;
 		pointer-events: none;
 		background:
-			radial-gradient(circle at 82% 18%, rgba(255,255,255,.26), rgba(255,255,255,0) 26%),
+			radial-gradient(circle at 82% 18%, color-mix(in srgb, white 52%, var(--module-soft, var(--module-color, var(--primary)))) 0%, rgba(255,255,255,0) 26%),
 			linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,0) 50%);
 	}
 
@@ -480,7 +488,11 @@
 		box-shadow:
 			0 18px 36px rgba(15, 23, 42, 0.16),
 			inset 0 1px 0 rgba(255, 255, 255, 0.28);
-		border: 1px solid rgba(255,255,255,.24);
+		border: 1px solid color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 22%, rgba(255,255,255,.24));
+		background:
+			linear-gradient(135deg,
+				color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 82%, white 18%),
+				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 62%, black 38%));
 		backdrop-filter: blur(16px);
 		-webkit-backdrop-filter: blur(16px);
 	}
@@ -652,8 +664,8 @@
 		height: 46px;
 		border-radius: 18px;
 		background:
-			linear-gradient(135deg, color-mix(in srgb, var(--module-color, var(--primary)) 84%, #fff), color-mix(in srgb, var(--module-color, var(--primary)) 50%, #000)),
-			var(--module-color, var(--primary));
+			linear-gradient(135deg, color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 82%, #fff 18%), color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 62%, #000 38%)),
+			var(--module-main, var(--module-color, var(--primary)));
 		display: grid;
 		place-items: center;
 		flex: 0 0 auto;
@@ -691,8 +703,8 @@
 
 	.submodule-icon.is-coming-soon {
 		background:
-			linear-gradient(135deg, color-mix(in srgb, var(--module-color, var(--primary)) 72%, #fff), color-mix(in srgb, var(--module-color, var(--primary)) 38%, #000)),
-			var(--module-color, var(--primary));
+			linear-gradient(135deg, color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 70%, #fff 30%), color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 44%, #000 56%)),
+			var(--module-main, var(--module-color, var(--primary)));
 	}
 
 	.submodule-icon.is-coming-soon img {
@@ -729,11 +741,11 @@
 	}
 
 	.submodule-status--soon {
-		background: linear-gradient(135deg, #0f172a, #2563eb);
+		background: linear-gradient(135deg, color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 34%, #0f172a), color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 74%, #2563eb));
 	}
 
 	.submodule-status--permission {
-		background: linear-gradient(135deg, #111827, #b45309);
+		background: linear-gradient(135deg, color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 34%, #111827), color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 74%, #b45309));
 	}
 
 	.submodule-item span {
@@ -1729,7 +1741,7 @@ right:50%; */
 				data-has-children="{% if module.micro_modules %}true{% else %}false{% endif %}"
 				data-coming-soon="{% if not module.have_permision %}true{% else %}false{% endif %}"
 			>
-				<div class="service-badge{% if module.coming_soon or not module.have_permision %} is-coming-soon{% endif %}" style="background: {{ module.color }}">
+				<div class="service-badge{% if module.coming_soon or not module.have_permision %} is-coming-soon{% endif %}" data-module-slot="{{ forloop.counter0 }}">
 					{% if module.coming_soon %}
 						<span class="coming-soon-pill">به زودی</span>
 					{% elif not module.have_permision %}
@@ -1761,7 +1773,7 @@ right:50%; */
 {% for key, module in modules.items %}
 	{% if module.micro_modules %}
 		<div class="submodule-page" id="module-{{ key }}">
-			<div class="submodule-header" style="background: color-mix(in srgb, {{ module.color }} 35%, white)">
+			<div class="submodule-header" data-module-slot="{{ forloop.counter0 }}">
 				<div class="submodule-topbar">
 					<div></div>
 
@@ -1771,7 +1783,7 @@ right:50%; */
 					<button type="button" class="submodule-close" data-close="{{ key }}" aria-label="بستن">
 						<img src="{% static 'icons/prev.svg' %}" alt="" width="16" height="16">
 					</button>
-					<div class="submodule-main-icon" style="background: {{ module.color }}">
+					<div class="submodule-main-icon" data-module-slot="{{ forloop.counter0 }}">
 						<img src="{% static 'icons/'|add:module.icon_name %}" alt="">
 					</div>
 
@@ -1804,7 +1816,7 @@ right:50%; */
 							{% if submodule.coming_soon or not submodule.have_permision %} is-coming-soon{% endif %}
 							{% if submodule.is_mail_box and notification_badge_level %} notification-icon-wrapper--{{ notification_badge_level }}{% endif %}
 							"
-							style="--module-color: {{ module.color }};">
+							data-module-slot="{{ forloop.parentloop.counter0 }}">
 								<img src="{% static 'icons/'|add:submodule.icon_name %}" alt="">
 								{% if submodule.is_mail_box and notification_badge_count %}
 									<span class="notification-badge notification-badge--{{ notification_badge_level }}">
@@ -1857,6 +1869,195 @@ right:50%; */
 			},
 		},
 	});
+
+	function parseColor(input) {
+		const value = String(input || "").trim();
+		if (!value) return null;
+
+		const hex = value.replace(/^#/, "");
+		if (/^[0-9a-fA-F]{3}$/.test(hex)) {
+			return {
+				r: Number.parseInt(hex[0] + hex[0], 16),
+				g: Number.parseInt(hex[1] + hex[1], 16),
+				b: Number.parseInt(hex[2] + hex[2], 16),
+			};
+		}
+
+		if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+			return {
+				r: Number.parseInt(hex.slice(0, 2), 16),
+				g: Number.parseInt(hex.slice(2, 4), 16),
+				b: Number.parseInt(hex.slice(4, 6), 16),
+			};
+		}
+
+		const rgbMatch = value.match(/^rgba?\((.+)\)$/i);
+		if (rgbMatch) {
+			const parts = rgbMatch[1]
+				.split(/[,/ ]+/)
+				.map((part) => part.trim())
+				.filter(Boolean);
+			if (parts.length >= 3) {
+				return {
+					r: Number.parseFloat(parts[0]),
+					g: Number.parseFloat(parts[1]),
+					b: Number.parseFloat(parts[2]),
+				};
+			}
+		}
+
+		return null;
+	}
+
+	function clampColor(value) {
+		return Math.max(0, Math.min(255, Math.round(value)));
+	}
+
+	function colorToHex(color) {
+		return `#${[color.r, color.g, color.b]
+			.map((value) => clampColor(value).toString(16).padStart(2, "0"))
+			.join("")}`;
+	}
+
+	function colorToRgba(color, alpha = 1) {
+		return `rgba(${clampColor(color.r)}, ${clampColor(color.g)}, ${clampColor(color.b)}, ${alpha})`;
+	}
+
+	function mixColors(a, b, amount = 0.5) {
+		if (!a || !b) return null;
+		return {
+			r: a.r * amount + b.r * (1 - amount),
+			g: a.g * amount + b.g * (1 - amount),
+			b: a.b * amount + b.b * (1 - amount),
+		};
+	}
+
+	function shiftColors(color, toward, amount) {
+		return mixColors(color, toward, amount);
+	}
+
+	function clampUnit(value) {
+		return Math.max(0, Math.min(1, value));
+	}
+
+	function getThemeAccent() {
+		const root = document.documentElement;
+		const styles = getComputedStyle(root);
+		const primary = parseColor(styles.getPropertyValue("--primary")) || parseColor("#f97316");
+		const primaryLight = parseColor(styles.getPropertyValue("--primary-light")) || shiftColors(primary, { r: 255, g: 255, b: 255 }, 0.82);
+		const primaryDark = parseColor(styles.getPropertyValue("--primary-dark")) || shiftColors(primary, { r: 17, g: 24, b: 39 }, 0.84);
+		const secondary = parseColor(styles.getPropertyValue("--secondary")) || shiftColors(primary, { r: 255, g: 255, b: 255 }, 0.72);
+		const secondaryLight = parseColor(styles.getPropertyValue("--secondary-light")) || shiftColors(secondary, { r: 255, g: 255, b: 255 }, 0.84);
+		const secondaryDark = parseColor(styles.getPropertyValue("--secondary-dark")) || shiftColors(secondary, { r: 17, g: 24, b: 39 }, 0.84);
+		const isDark = root.getAttribute("data-bs-theme") === "dark";
+		return { primary, primaryLight, primaryDark, secondary, secondaryLight, secondaryDark, isDark };
+	}
+
+	function buildModulePalette(theme, slot) {
+		const index = Number.isFinite(slot) ? slot : 0;
+		const band = index % 6;
+		const drift = (index % 3) * 0.025;
+		const mainWeight = clampUnit((theme.isDark ? 0.82 : 0.88) - band * 0.038 + drift);
+		const softWeight = clampUnit((theme.isDark ? 0.66 : 0.78) - band * 0.022 + drift * 0.5);
+		const deepWeight = clampUnit((theme.isDark ? 0.76 : 0.82) - band * 0.028 + drift * 0.4);
+
+		return {
+			main: mixColors(theme.primary, theme.secondary, mainWeight) || theme.primary,
+			soft: mixColors(theme.primaryLight, theme.secondaryLight, softWeight) || theme.primaryLight,
+			deep: mixColors(theme.primaryDark, theme.secondaryDark, deepWeight) || theme.primaryDark,
+		};
+	}
+
+	function applyLandingModulePalette() {
+		const theme = getThemeAccent();
+		const pageSurface = theme.isDark ? { r: 15, g: 23, b: 42 } : { r: 245, g: 247, b: 251 };
+		const pagePanel = theme.isDark ? { r: 17, g: 24, b: 39 } : { r: 255, g: 255, b: 255 };
+		const pageBorder = theme.isDark ? 0.18 : 0.14;
+
+		document.querySelectorAll("[data-module-slot]").forEach((node) => {
+			const slot = Number.parseInt(node.dataset.moduleSlot || "0", 10);
+			const palette = buildModulePalette(theme, Number.isNaN(slot) ? 0 : slot);
+			const main = palette.main;
+			const soft = palette.soft;
+			const deep = palette.deep;
+
+			node.style.setProperty("--module-color", colorToHex(main));
+			node.style.setProperty("--module-main", colorToHex(main));
+			node.style.setProperty("--module-soft", colorToHex(soft));
+
+			if (node.classList.contains("service-badge")) {
+				const top = shiftColors(main, { r: 255, g: 255, b: 255 }, theme.isDark ? 0.74 : 0.90) || main;
+				const bottom = shiftColors(main, theme.isDark ? { r: 17, g: 24, b: 39 } : { r: 15, g: 23, b: 42 }, theme.isDark ? 0.58 : 0.30) || deep;
+				node.style.background = `linear-gradient(145deg, ${colorToHex(top)}, ${colorToHex(bottom)})`;
+				node.style.borderColor = colorToRgba(soft, theme.isDark ? 0.30 : 0.22);
+				node.style.boxShadow = theme.isDark
+					? `0 18px 36px rgba(2, 6, 23, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.10)`
+					: `0 16px 30px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.34)`;
+			}
+
+			if (node.classList.contains("submodule-page")) {
+				const glow = colorToRgba(soft, theme.isDark ? 0.24 : 0.32);
+				const fade = colorToRgba(soft, 0);
+				node.style.background = theme.isDark
+					? `radial-gradient(circle at top left, ${glow} 0%, ${fade} 30%), linear-gradient(180deg, ${colorToHex(pageSurface)} 0%, ${colorToHex(pagePanel)} 100%)`
+					: `radial-gradient(circle at top left, ${glow} 0%, ${fade} 30%), linear-gradient(180deg, ${colorToHex(pagePanel)} 0%, ${colorToHex(pageSurface)} 100%)`;
+			}
+
+			if (node.classList.contains("submodule-header")) {
+				const top = shiftColors(main, { r: 255, g: 255, b: 255 }, theme.isDark ? 0.66 : 0.82) || main;
+				const bottom = shiftColors(main, theme.isDark ? { r: 15, g: 23, b: 42 } : { r: 17, g: 24, b: 39 }, theme.isDark ? 0.48 : 0.58) || deep;
+				node.style.background = `linear-gradient(135deg, ${colorToHex(top)}, ${colorToHex(bottom)})`;
+				node.style.boxShadow = theme.isDark
+					? `0 24px 60px rgba(2, 6, 23, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.10)`
+					: `0 24px 60px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.12)`;
+			}
+
+			if (node.classList.contains("submodule-main-icon")) {
+				const top = shiftColors(soft, { r: 255, g: 255, b: 255 }, theme.isDark ? 0.72 : 0.92) || soft;
+				const bottom = shiftColors(main, theme.isDark ? { r: 15, g: 23, b: 42 } : { r: 30, g: 41, b: 59 }, theme.isDark ? 0.52 : 0.76) || deep;
+				node.style.background = `linear-gradient(135deg, ${colorToHex(top)}, ${colorToHex(bottom)})`;
+				node.style.borderColor = colorToRgba(main, theme.isDark ? 0.24 : 0.18);
+				node.style.boxShadow = theme.isDark
+					? `0 18px 36px rgba(2, 6, 23, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.10)`
+					: `0 18px 36px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.28)`;
+			}
+
+			if (node.classList.contains("submodule-icon")) {
+				const top = shiftColors(soft, { r: 255, g: 255, b: 255 }, theme.isDark ? 0.76 : 0.92) || soft;
+				const bottom = shiftColors(main, theme.isDark ? { r: 15, g: 23, b: 42 } : { r: 30, g: 41, b: 59 }, theme.isDark ? 0.50 : 0.74) || deep;
+				node.style.background = `linear-gradient(135deg, ${colorToHex(top)}, ${colorToHex(bottom)})`;
+				node.style.borderColor = colorToRgba(soft, theme.isDark ? 0.20 : 0.16);
+				node.style.boxShadow = theme.isDark
+					? `0 14px 28px rgba(2, 6, 23, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.10)`
+					: `0 14px 28px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.20)`;
+			}
+
+			if (node.classList.contains("service-badge")) {
+				const pill = node.querySelector(".coming-soon-pill");
+				if (pill) {
+					pill.style.background = `linear-gradient(135deg, ${colorToHex(shiftColors(main, theme.primaryDark, 0.52) || main)}, ${colorToHex(shiftColors(main, theme.primaryDark, 0.76) || deep)})`;
+					pill.style.boxShadow = `0 4px 12px ${colorToRgba(main, 0.28)}`;
+				}
+			}
+
+			if (node.classList.contains("submodule-page")) {
+				node.querySelectorAll(".search-box, .submodule-list").forEach((panel) => {
+					panel.style.background = theme.isDark
+						? "rgba(15, 23, 42, 0.82)"
+						: "rgba(255, 255, 255, 0.90)";
+					panel.style.borderColor = colorToRgba(soft, pageBorder);
+				});
+
+				node.querySelectorAll(".submodule-status--soon").forEach((badge) => {
+					badge.style.background = `linear-gradient(135deg, ${colorToHex(shiftColors(main, theme.primaryDark, 0.46) || main)}, ${colorToHex(shiftColors(soft, theme.primaryLight, 0.70) || soft)})`;
+				});
+
+				node.querySelectorAll(".submodule-status--permission").forEach((badge) => {
+					badge.style.background = `linear-gradient(135deg, ${colorToHex(shiftColors(main, { r: 17, g: 24, b: 39 }, 0.46) || main)}, ${colorToHex(shiftColors(soft, theme.primaryDark, 0.74) || soft)})`;
+				});
+			}
+		});
+	}
 
 	document.querySelectorAll('a[data-coming-soon="true"]').forEach((item) => {
 		item.addEventListener("click", function (e) {
@@ -1931,6 +2132,35 @@ right:50%; */
 
 	window.addEventListener("popstate", function () {
 		closeActiveSubmoduleDrawer();
+	});
+
+	applyLandingModulePalette();
+
+	document.addEventListener(
+		"click",
+		function (event) {
+			if (event.target.closest(".theme-btn, [data-theme-mode-cycle]")) {
+				setTimeout(applyLandingModulePalette, 0);
+			}
+		},
+		true,
+	);
+
+	window.addEventListener("load", applyLandingModulePalette);
+
+	const themeObserver = new MutationObserver(() => {
+		applyLandingModulePalette();
+	});
+
+	themeObserver.observe(document.documentElement, {
+		attributes: true,
+		attributeFilter: ["data-bs-theme", "style"],
+	});
+
+	window.addEventListener("storage", (event) => {
+		if (event.key === "site-theme" || event.key === "site-theme-name" || event.key === "app-theme-mode") {
+			applyLandingModulePalette();
+		}
 	});
 </script>
 
