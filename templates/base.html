@@ -1605,16 +1605,16 @@
 											<button
 												type="button"
 												class="theme-btn"
-												data-theme="orange"
-												style="background-color: #f97316"
-												title="نارنجی"
+												data-theme="blue"
+												style="background-color: #3b82f6"
+												title="آبی"
 											></button>
 											<button
 												type="button"
 												class="theme-btn"
-												data-theme="blue"
-												style="background-color: #3b82f6"
-												title="آبی"
+												data-theme="orange"
+												style="background-color: #f97316"
+												title="نارنجی"
 											></button>
 											<button
 												type="button"
@@ -1989,16 +1989,16 @@
 								<button
 									type="button"
 									class="theme-btn"
-									data-theme="orange"
-									style="background-color: #f97316"
-									title="نارنجی"
+									data-theme="blue"
+									style="background-color: #3b82f6"
+									title="آبی"
 								></button>
 								<button
 									type="button"
 									class="theme-btn"
-									data-theme="blue"
-									style="background-color: #3b82f6"
-									title="آبی"
+									data-theme="orange"
+									style="background-color: #f97316"
+									title="نارنجی"
 								></button>
 								<button
 									type="button"
@@ -2278,16 +2278,6 @@
 				"use strict";
 
 				var themes = {
-					orange: {
-						"--primary": "#f97316",
-						"--primary-dark": "#ea580c",
-						"--primary-light": "#ffedd5",
-						"--primary-glow": "rgba(249, 115, 22, 0.3)",
-						"--secondary": "#f59e0b",
-						"--secondary-dark": "#d97706",
-						"--secondary-light": "#fef3c7",
-						"--secondary-glow": "rgba(245, 158, 11, 0.3)",
-					},
 					blue: {
 						"--primary": "#3b82f6",
 						"--primary-dark": "#2563eb",
@@ -2297,6 +2287,16 @@
 						"--secondary-dark": "#0d9488",
 						"--secondary-light": "#ccfbf1",
 						"--secondary-glow": "rgba(20, 184, 166, 0.3)",
+					},
+					orange: {
+						"--primary": "#f97316",
+						"--primary-dark": "#ea580c",
+						"--primary-light": "#ffedd5",
+						"--primary-glow": "rgba(249, 115, 22, 0.3)",
+						"--secondary": "#f59e0b",
+						"--secondary-dark": "#d97706",
+						"--secondary-light": "#fef3c7",
+						"--secondary-glow": "rgba(245, 158, 11, 0.3)",
 					},
 					green: {
 						"--primary": "#10b981",
@@ -2374,9 +2374,9 @@
 				function initThemeButtons() {
 					var currentTheme = null;
 					try {
-						currentTheme = localStorage.getItem("site-theme-name") || "orange";
+						currentTheme = localStorage.getItem("site-theme-name") || "blue";
 					} catch (e) {
-						currentTheme = "orange";
+						currentTheme = "blue";
 					}
 					applyTheme(currentTheme);
 

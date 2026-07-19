@@ -39,6 +39,7 @@ from django.db.models import (
     Count,
     Exists,
     OuterRef,
+    Subquery,
     F,
     IntegerField,
     ExpressionWrapper,
@@ -94,6 +95,7 @@ from .models import (
     PreviousInsurer,
     Employee_Bimeh,
     BaseInsurance,
+    BackgroundJob,
 )
 
 from .forms import (
@@ -105,13 +107,8 @@ from .forms import (
     EmployeeImportForm,
 )
 from datetime import datetime, timedelta, time, date
-import speech_recognition as sr
 import os
 import requests
-from STT_full_file.speech_recognition_full_file import STT_full_file_wave, STT_full_file
-from text_summarizer.text_summarizer import summarizer
-from save_to_word_pdf.save_w_p import save_as_word, save_as_pdf
-from chat_bot.chat_bot import chat_with_bot
 
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -123,6 +120,8 @@ from autogen_agentchat.messages import TextMessage
 from collections import defaultdict
 import re
 from users.exceptions import STTError, STTConnectionError
+from core.infrastructure.jobs.service import enqueue_transcription_job
+from users.services import send_sms_to_employees
 
 if sys.platform == "win32":
     os.system("chcp 65001 >nul")  # تغییر کدپیج کنسول به UTF-8
@@ -393,7 +392,6 @@ def authenticate_user(request):
     return user, None
 
 
-
 def login_view(request):
     national_id = request.POST.get("national_id")
     password = request.POST.get("password")  # ممکن است خالی باشد
@@ -411,8 +409,6 @@ def login_view(request):
         if user is not None:
 
             perform_login(request, user)
-
-
 
             return redirect("users:landing")
 
@@ -493,9 +489,10 @@ def register_view(request):
     return redirect("users:landing")
 
 
-
 @login_required
 def landing_page(request):
+
+    print("landing_page")
 
     user = request.user
 
@@ -503,6 +500,7 @@ def landing_page(request):
 
     context = {
         "modules": modules,
+        "user_name": user.full_name,
     }
 
     return render(request, "users/landing.html", context)
@@ -653,7 +651,7 @@ def build_modules_for_user(request):
             "name": "مدیریت دانش",
             "link": "/participation",
             "icon_name": "mosharekat.svg",
-            "color": "#9c3b23",
+            "color": "#e05a3c",
             "coming_soon": False,
             "have_permision": True,
             "micro_modules": {
@@ -661,7 +659,7 @@ def build_modules_for_user(request):
                     "name": "ثبت مشارکت",
                     "link": "users:submit_participation",
                     "icon_name": "add_participation/add.svg",
-                    "color": "#8b2650",
+                    "color": "#e05a3c",
                     "coming_soon": False,
                     "have_permision": True,
                 },
@@ -669,7 +667,7 @@ def build_modules_for_user(request):
                     "name": "مشارکت های من",
                     "link": "users:dashboard",
                     "icon_name": "add_participation/my_particip.svg",
-                    "color": "#8b2650",
+                    "color": "#e05a3c",
                     "coming_soon": False,
                     "have_permision": True,
                 },
@@ -677,7 +675,7 @@ def build_modules_for_user(request):
                     "name": "داشبورد مدیریتی",
                     "link": "users:management_dashboard",
                     "icon_name": "add_participation/Vector.svg",
-                    "color": "#8b2650",
+                    "color": "#e05a3c",
                     "coming_soon": False,
                     "have_permision": management_access,
                 },
@@ -685,7 +683,7 @@ def build_modules_for_user(request):
                     "name": "پنل گزارش گیری",
                     "link": "users:dashboard",
                     "icon_name": "add_participation/report.svg",
-                    "color": "#8b2650",
+                    "color": "#e05a3c",
                     "coming_soon": True,
                     "have_permision": True,
                 },
@@ -693,7 +691,7 @@ def build_modules_for_user(request):
                     "name": "ارجاع",
                     "link": "#",
                     "icon_name": "add_participation/refere.svg",
-                    "color": "#8b2650",
+                    "color": "#e05a3c",
                     "coming_soon": True,
                     "have_permision": True,
                 },
@@ -701,7 +699,7 @@ def build_modules_for_user(request):
                     "name": "ارجاعات دریافتی",
                     "link": "users:referrals_inbox",
                     "icon_name": "add_participation/refere.svg",
-                    "color": "#8b2650",
+                    "color": "#e05a3c",
                     "coming_soon": True,
                     "have_permision": True,
                 },
@@ -1426,7 +1424,6 @@ def force_logout_all_users(request, only_current_user=False):
     return redirect("users:login")
 
 
-
 @require_POST
 def send_otp_login(request):
     national_id = (request.POST.get("national_id") or "").strip()
@@ -1533,6 +1530,7 @@ def _verify_otp(request, national_id, otp_code):
     if not employee:
         return None, "کاربر یافت نشد."
     return employee, None
+
 
 # 1. تابع جدید ارسال پیامک عمومی (هر متنی)
 def _send_sms(mobile, message, sms_number=None):
@@ -1649,6 +1647,7 @@ def _send_parsgreen_otp(mobile, otp_code, origin_host="karimax.ir"):
 
     # sms_number = "7007022"
     sms_number = "10008615"
+    sms_number = "9998883511"
     # sms_number = "10004004040"
 
     print("USING CUSTOM SMS:", bool(sms_number))
@@ -2425,14 +2424,27 @@ def dashboard(request):
 
     # all_participations = Participation.objects.filter(user=user).order_by('-created_at')
     # all_participations = Participation.objects.filter(user=request.user).order_by('-created_at')
-    all_participations = Participation.objects.filter(
-        user=request.user,
-        role_name=role_name,
-        holding_id=holding_id,
-        factory_id=factory_id,
-        department_id=department_id,
-        subdepartment_id=subdepartment_id,
-    ).order_by("-created_at")
+    latest_job = BackgroundJob.objects.filter(participation_id=OuterRef("pk")).order_by(
+        "-created_at"
+    )
+    all_participations = (
+        Participation.objects.filter(
+            user=request.user,
+            role_name=role_name,
+            holding_id=holding_id,
+            factory_id=factory_id,
+            department_id=department_id,
+            subdepartment_id=subdepartment_id,
+        )
+        .annotate(
+            latest_background_job_status=Subquery(latest_job.values("status")[:1]),
+            latest_background_job_error=Subquery(
+                latest_job.values("error_message")[:1]
+            ),
+            latest_background_job_id=Subquery(latest_job.values("job_id")[:1]),
+        )
+        .order_by("-created_at")
+    )
 
     participations = all_participations
 
@@ -2717,6 +2729,21 @@ def notification_create(request):
 
         notification.save()
 
+        employees = Employee.objects.filter(is_active=True).filter(
+            Q(assigned_subdepartments__id__in=employee_subdepartments_ids)
+            | Q(supervised_subdepartments_m2m__id__in=target_subdepartments_ids)
+            | Q(managed_departments_m2m__id__in=target_departments_ids)
+            | Q(managed_factories_m2m__id__in=target_factories_ids)
+            | Q(managed_holdings_m2m__id__in=target_holdings_ids)
+        )
+
+        send_sms_to_employees(
+            employees=employees,
+            message=(f"""یک اعلان جدید در سایت مقدم من دارید
+لطفاً برای مشاهده جزئیات، به صندوق پستی خود در اپلیکیشن «مقدم من» مراجعه کنید.
+https://mymoghadam.ir/"""),
+        )
+
         messages.success(request, "اعلان با موفقیت ایجاد شد.")
         # return redirect("users:dashboard")
         return redirect("users:landing")
@@ -2791,16 +2818,6 @@ def notification_create(request):
         return render(request, "users/notification_create.html", context)
 
 
-# views.py
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
-from django.utils import timezone
-from django.views.decorators.http import require_POST
-
-from .models import Notification, NotificationRead
-
-
 def get_user_notifications_queryset(request):
     role_name = request.session["current_role"]
     holding_id = request.session["current_holding_id"]
@@ -2869,8 +2886,12 @@ def notifications_view(request):
 
     active_unseen_notifications = active_notifications.filter(is_read=False)
 
-    expired_unseen_notifications_count = expired_notifications.filter(is_read=False).count()
-    active_unseen_notifications_count = active_notifications.filter(is_read=False).count()
+    expired_unseen_notifications_count = expired_notifications.filter(
+        is_read=False
+    ).count()
+    active_unseen_notifications_count = active_notifications.filter(
+        is_read=False
+    ).count()
 
     print(f"expired_unseen_notifications_count : {expired_unseen_notifications_count}")
     print(f"active_unseen_notifications_count : {active_unseen_notifications_count}")
@@ -2902,7 +2923,6 @@ def notifications_view(request):
         "notification_badge_level": badge_level,
         "expired_unseen_notifications_count": expired_unseen_notifications_count,
         "active_unseen_notifications_count": active_unseen_notifications_count,
-
     }
     return render(request, "users/notifications.html", context)
 
@@ -4314,6 +4334,7 @@ def managements_reports_dashboard(request):
         rows_total_factory_qty = []
         rows_total_free_qty = []
         rows_total_guest_qty = []
+        rows_total_guest_dept_for_factory = []
 
         # ستون‌های جدید برای آمار رستوران‌ها
         restaurant_columns = {}
@@ -4328,12 +4349,18 @@ def managements_reports_dashboard(request):
                 reservation_date__lte=end_gregorian_date,
                 is_canceled=0,
             )
-
-            if emp.id == 1311:
-                for res in reservations:
-                    if res.reserved_by != 0:
-                        # print(f"ffffffffffff : {res.reserved_by}")
-                        pass
+            
+            guest_cost_for_factory = (
+                reservations.aggregate(
+                    total=Sum(
+                        ExpressionWrapper(
+                            F("guest_quantity") * F("free_price"),
+                            output_field=IntegerField(),
+                        )
+                    )
+                )["total"]
+                or 0
+            )
 
             total_debt = reservations.aggregate(total=Sum("total_price"))["total"] or 0
             factory_quantity = (
@@ -4380,6 +4407,11 @@ def managements_reports_dashboard(request):
             rows_total_factory_qty.append(factory_quantity)
             rows_total_free_qty.append(free_quantity)
             rows_total_guest_qty.append(guest_quantity)
+            rows_total_guest_dept_for_factory.append(
+                f"{guest_cost_for_factory:,} ریال"
+                if guest_cost_for_factory
+                else "0 ریال"
+            )
 
             rows_total_debt_formatted.append(
                 f"{total_debt:,} ریال" if total_debt > 0 else "بدون بدهی"
@@ -4414,6 +4446,7 @@ def managements_reports_dashboard(request):
                     rows_total_factory_qty,
                     rows_total_free_qty,
                     rows_total_guest_qty,
+                    rows_total_guest_dept_for_factory,
                     rows_total_debt_formatted,
                     rows_center_of_charge,
                     Position_Job_history,
@@ -4439,14 +4472,15 @@ def managements_reports_dashboard(request):
             rows_total_factory_qty = sorted_data[5]
             rows_total_free_qty = sorted_data[6]
             rows_total_guest_qty = sorted_data[7]
-            rows_total_debt_formatted = sorted_data[8]
-            rows_center_of_charge = sorted_data[9]
-            Position_Job_history = sorted_data[10]
-            Place_of_service_recruitment_order = sorted_data[11]
-            rows_factory_names = sorted_data[12]
+            rows_total_guest_dept_for_factory = sorted_data[8]
+            rows_total_debt_formatted = sorted_data[9]
+            rows_center_of_charge = sorted_data[10]
+            Position_Job_history = sorted_data[11]
+            Place_of_service_recruitment_order = sorted_data[12]
+            rows_factory_names = sorted_data[13]
 
             restaurant_sorted_columns = {}
-            for i, restaurant in enumerate(restaurants, start=13):
+            for i, restaurant in enumerate(restaurants, start=14):
                 restaurant_sorted_columns[restaurant.id] = sorted_data[i]
 
             # ستون‌های نهایی
@@ -4458,6 +4492,7 @@ def managements_reports_dashboard(request):
                 ("تعداد سفارشات سهمیه ای", rows_total_factory_qty),
                 ("تعداد سفارشات آزاد", rows_total_free_qty),
                 ("تعداد سفارشات مهمان", rows_total_guest_qty),
+                ("هزینه مهمان برای کارخانه", list(rows_total_guest_dept_for_factory)),
                 ("مبلغ بدهی", list(rows_total_debt_formatted)),
                 ("مرکز هزینه", list(rows_center_of_charge)),
                 ("سمت سوابق شغلی", list(Position_Job_history)),
@@ -4487,7 +4522,7 @@ def managements_reports_dashboard(request):
                 report_title=report_title,
                 restaurant_stats=restaurant_stats,
                 summary_row=summary_row,
-                summary_start_col=13,
+                summary_start_col=14,
             )
         except Exception as e:
             messages.error(request, f"در این بازه زمانی اطلاعاتی در دسترس نیست!!! {e}")
@@ -7837,6 +7872,15 @@ def load_more_participations(request):
             subdepartment_id=subdepartment_id,
         ).order_by("-created_at")
 
+    latest_job = BackgroundJob.objects.filter(participation_id=OuterRef("pk")).order_by(
+        "-created_at"
+    )
+    all_participations = all_participations.annotate(
+        latest_background_job_status=Subquery(latest_job.values("status")[:1]),
+        latest_background_job_error=Subquery(latest_job.values("error_message")[:1]),
+        latest_background_job_id=Subquery(latest_job.values("job_id")[:1]),
+    )
+
     # اعمال بارگذاری تنبل
     participations = all_participations[offset : offset + PARTICIPATIONS_PER_LOAD]
 
@@ -8749,61 +8793,44 @@ def process_participation(request, participation_id):
 
         if (
             action == "convert_to_text"
-            and participation.status == "pending"
+            and participation.status in ("pending", "failed")
             and participation.attachment
             and (
                 participation.attachment.name.lower().endswith(".mp3")
                 or participation.attachment.name.lower().endswith(".mp4")
             )
-            and not participation.text_content
+            and (not participation.text_content or participation.status == "failed")
         ):
             try:
-                file_path = participation.attachment.path
-
-                if os.path.exists(file_path):
-                    temp_wav_path = file_path.rsplit(".", 1)[0] + "_temp.wav"
-                    text = STT_full_file(file_path, temp_wav_path, 10)
-
-                    participation.text_content = text
-                    participation.orginal_content = text
-
-                    participation.status = "user_review"
-
-                    participation.save()
-                    messages.success(request, "متن با موفقیت استخراج شد.")
-                    if os.path.exists(temp_wav_path):
-                        os.remove(temp_wav_path)
-                    return redirect("users:process_participation", participation.id)
-                else:
-                    messages.error(request, f"فایل یافت نشد: {file_path}")
-            except sr.UnknownValueError:
-                messages.error(request, "نمی‌توانم صوت را بفهمم.")
-            except sr.RequestError as e:
-                messages.error(request, f"خطا در سرویس تشخیص: {str(e)}")
-            except (ConnectionError, TimeoutError) as e:
-                messages.error(
-                    request,
-                    "درحال حاظر به علت مشکلات اینترنت، قادر به انجام عملیات تبدیل ویس به متن نیستیم.",
+                print(
+                    f"[STT] convert_to_text enqueue start participation_id={participation.id}",
+                    flush=True,
                 )
-                participation.text_content = participation.description
-                participation.status = "user_review"
-                participation.save()
-                return redirect("users:process_participation", participation.id)
-
-            except STTConnectionError as e:
-                messages.error(request, str(e))
-
-                participation.text_content = participation.description
-                participation.status = "user_review"
-                participation.save()
-
-                return redirect("users:process_participation", participation.id)
-
-            except STTError as e:
-                messages.error(request, str(e))
-
+                if participation.status == "failed":
+                    participation.text_content = None
+                    participation.orginal_content = None
+                    participation.save(
+                        update_fields=["text_content", "orginal_content"]
+                    )
+                job_id = enqueue_transcription_job(participation_id=participation.id)
+                participation.status = "waiting"
+                participation.save(update_fields=["status"])
+                print(
+                    f"[STT] convert_to_text queued participation_id={participation.id} job_id={job_id} status=waiting",
+                    flush=True,
+                )
+                messages.success(
+                    request, "درخواست تبدیل به متن ثبت شد و در صف پردازش قرار گرفت."
+                )
+                return redirect("users:dashboard")
             except Exception as e:
-                messages.error(request, f"خطا در پردازش")
+                print(
+                    f"[STT] convert_to_text enqueue FAILED participation_id={participation.id} error={e}",
+                    flush=True,
+                )
+                participation.status = "failed"
+                participation.save(update_fields=["status"])
+                messages.error(request, f"خطا در صف‌بندی پردازش: {str(e)}")
 
         elif (
             action == "continue_without_converting"
@@ -8941,6 +8968,8 @@ def process_participation(request, participation_id):
         ):
 
             def summarizing(text):
+                from text_summarizer.text_summarizer import summarizer
+
                 summarized_text = summarizer(text)
                 return summarized_text
 
@@ -9012,6 +9041,8 @@ def process_participation(request, participation_id):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_filename = f"Participation_{participation.id}_{timestamp}.pdf"
 
+            from save_to_word_pdf.save_w_p import save_as_pdf
+
             pdf_buffer = save_as_pdf(text=participation.text_content)
 
             response = HttpResponse(
@@ -9037,6 +9068,8 @@ def process_participation(request, participation_id):
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_filename = f"Participation_{participation.id}_{timestamp}.docx"
+
+            from save_to_word_pdf.save_w_p import save_as_word
 
             word_buffer = save_as_word(
                 text=participation.text_content,
@@ -9083,13 +9116,13 @@ def process_participation(request, participation_id):
                 messages.error(request, "فایل مورد نظر در سرور موجود نیست.")
 
     can_convert = (
-        participation.status == "pending"
+        participation.status in ("pending", "failed")
         and participation.attachment
         and (
             participation.attachment.name.lower().endswith(".mp3")
             or participation.attachment.name.lower().endswith(".mp4")
         )
-        and not participation.text_content
+        and (not participation.text_content or participation.status == "failed")
         and participation.user == request.user
     )
 
@@ -9137,6 +9170,12 @@ def process_participation(request, participation_id):
 
     can_referral = participation.status == "approved"
 
+    latest_background_job = (
+        BackgroundJob.objects.filter(participation_id=participation.id)
+        .order_by("-created_at")
+        .first()
+    )
+
     return render(
         request,
         "users/participation_detail.html",
@@ -9149,6 +9188,15 @@ def process_participation(request, participation_id):
             "can_delete": can_delete,
             "can_download": can_download,
             "can_referral": can_referral,
+            "latest_background_job_status": (
+                latest_background_job.status if latest_background_job else None
+            ),
+            "latest_background_job_error": (
+                latest_background_job.error_message if latest_background_job else None
+            ),
+            "latest_background_job_id": (
+                latest_background_job.job_id if latest_background_job else None
+            ),
         },
     )
 
@@ -9382,7 +9430,6 @@ def referral_create(request, participation_id):
 
     current_role_name = request.session.get("current_role", "employee")
 
-
     current_user = request.user
     # current_role = role_name
     current_role = Role.objects.get(name=current_role_name)
@@ -9397,7 +9444,16 @@ def referral_create(request, participation_id):
         target_user_id = request.POST.get("target_user_id")
         target_role = request.POST.get("target_role")
 
-        if not all([title, comment, target_object_id, target_content_type_id, target_user_id, target_role,]):
+        if not all(
+            [
+                title,
+                comment,
+                target_object_id,
+                target_content_type_id,
+                target_user_id,
+                target_role,
+            ]
+        ):
             messages.error(request, "همه فیلدها الزامی هستند.")
             return render(
                 request, "users/referral_create.html", {"participation": participation}
@@ -9411,8 +9467,6 @@ def referral_create(request, participation_id):
                 target_object = content_type.get_object_for_this_type(
                     id=target_object_id
                 )
-
-
 
                 if target_role == "super_admin":
                     to_user = get_object_or_404(
@@ -9429,7 +9483,9 @@ def referral_create(request, participation_id):
                     subdepartment = to_user.assigned_subdepartments.first()
 
                     if not subdepartment:
-                        raise ValueError("این کارمند به هیچ زیربخشی اختصاص داده نشده است.")
+                        raise ValueError(
+                            "این کارمند به هیچ زیربخشی اختصاص داده نشده است."
+                        )
 
                     department = subdepartment.department
                     factory = department.factory
@@ -9486,7 +9542,6 @@ def referral_create(request, participation_id):
 
                 else:
                     raise Http404("مقصد نامعتبر است.")
-
 
                 final_unit, created = OrgUnit.objects.get_or_create(
                     **unit_kwargs, defaults=unit_kwargs
@@ -10158,6 +10213,8 @@ def send_message(request):
         # اجرای تابع چت‌بات و دریافت پاسخ
         # تابع chat_with_bot، history_objects را به صورت 'pass by reference' به روز می‌کند
         try:
+            from chat_bot.chat_bot import chat_with_bot
+
             agent_response = chat_with_bot(user_query, history_objects)
         except Exception as e:
             return JsonResponse({"error": f"خطا در اجرای چت‌بات: {e}"}, status=500)

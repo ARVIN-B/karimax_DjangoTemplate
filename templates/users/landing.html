@@ -227,23 +227,26 @@
 		display: grid;
 		place-items: center;
 		box-shadow:
-			0 16px 30px rgba(15, 23, 42, 0.12),
-			inset 0 1px 0 rgba(255, 255, 255, 0.35);
+			0 8px 20px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 28%, transparent),
+			0 2px 6px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 18%, transparent),
+			inset 0 1px 0 rgba(255, 255, 255, 0.42);
 		position: relative;
 		overflow: visible;
 		justify-content: center;
 		align-items: center;
-		border: 1px solid color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 18%, rgba(255,255,255,.56));
-		backdrop-filter: blur(14px) saturate(140%);
-		-webkit-backdrop-filter: blur(14px) saturate(140%);
+		border: 1px solid color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 34%, rgba(255,255,255,.45));
+		backdrop-filter: blur(14px) saturate(150%);
+		-webkit-backdrop-filter: blur(14px) saturate(150%);
 		background:
-			linear-gradient(135deg,
-				color-mix(in srgb, var(--module-color, var(--primary)) 92%, white 8%),
-				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 80%, black 20%));
+			linear-gradient(145deg,
+				color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 70%, var(--module-main, var(--module-color, var(--primary))) 30%) 0%,
+				var(--module-main, var(--module-color, var(--primary))) 52%,
+				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 78%, black 22%) 100%);
 		transition:
 			transform 0.3s cubic-bezier(.2,.8,.2,1),
 			box-shadow 0.3s ease,
 			filter 0.3s ease;
+		filter: saturate(1.12);
 	}
 
 	.service-badge::before {
@@ -251,10 +254,11 @@
 		position: absolute;
 		inset: 0;
 		background:
-			linear-gradient(135deg, color-mix(in srgb, white 38%, var(--module-main, var(--module-color, var(--primary)))), rgba(255,255,255,0) 46%),
-			linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.20));
+			linear-gradient(145deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,.06) 34%, transparent 58%),
+			linear-gradient(180deg, transparent 62%, rgba(0,0,0,.10) 100%);
 		z-index: 0;
 		border-radius: inherit;
+		pointer-events: none;
 	}
 
 	.service-badge::after,
@@ -263,16 +267,17 @@
 		position: absolute;
 		inset: 14% 18%;
 		border-radius: 20px;
-		background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.55), transparent 60%);
+		background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.42), transparent 60%);
 		filter: blur(6px);
-		opacity: 0;
+		opacity: 0.55;
 		transition: opacity 0.28s ease;
 		z-index: 0;
+		pointer-events: none;
 	}
 
 	.service-badge.is-coming-soon::after,
 	.submodule-icon.is-coming-soon::after {
-		opacity: 0.75;
+		opacity: 0.25;
 	}
 
 	.service-badge img {
@@ -281,15 +286,16 @@
 		position: relative;
 		z-index: 1;
 		transition: opacity 0.2s ease, filter 0.2s ease, transform 0.28s ease;
-		filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.12));
+		filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.18));
 	}
 
 	.service-item:hover .service-badge {
-		transform: translateY(-2px) scale(1.03);
+		transform: translateY(-3px) scale(1.03);
 		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.16),
-			0 0 0 1px rgba(255,255,255,.25) inset,
-			inset 0 1px 0 rgba(255, 255, 255, 0.42);
+			0 14px 28px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 34%, transparent),
+			0 4px 10px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 20%, transparent),
+			inset 0 1px 0 rgba(255, 255, 255, 0.5);
+		filter: saturate(1.18);
 	}
 
 	.service-item:hover .service-badge img {
@@ -486,15 +492,16 @@
 		place-items: center;
 		flex: 0 0 auto;
 		box-shadow:
-			0 18px 36px rgba(15, 23, 42, 0.16),
-			inset 0 1px 0 rgba(255, 255, 255, 0.28);
-		border: 1px solid color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 22%, rgba(255,255,255,.24));
+			0 10px 22px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 28%, transparent),
+			0 2px 6px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 16%, transparent),
+			inset 0 1px 0 rgba(255, 255, 255, 0.4);
+		border: 1px solid color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 32%, rgba(255,255,255,.3));
 		background:
-			linear-gradient(135deg,
-				color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 82%, white 18%),
-				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 62%, black 38%));
-		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
+			linear-gradient(145deg,
+				color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 65%, var(--module-main, var(--module-color, var(--primary))) 35%),
+				var(--module-main, var(--module-color, var(--primary))) 55%,
+				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 76%, black 24%));
+		filter: saturate(1.1);
 	}
 
 	.submodule-main-icon::before {
@@ -664,21 +671,32 @@
 		height: 46px;
 		border-radius: 18px;
 		background:
-			linear-gradient(135deg, color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 82%, #fff 18%), color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 62%, #000 38%)),
-			var(--module-main, var(--module-color, var(--primary)));
+			linear-gradient(145deg,
+				color-mix(in srgb, var(--module-soft, var(--module-color, var(--primary))) 65%, var(--module-main, var(--module-color, var(--primary))) 35%),
+				var(--module-main, var(--module-color, var(--primary))) 55%,
+				color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 76%, #000 24%));
 		display: grid;
 		place-items: center;
 		flex: 0 0 auto;
 		box-shadow:
-			0 14px 28px rgba(15, 23, 42, 0.16),
-			inset 0 1px 0 rgba(255, 255, 255, 0.2);
+			0 8px 18px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 26%, transparent),
+			0 2px 5px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 14%, transparent),
+			inset 0 1px 0 rgba(255, 255, 255, 0.38);
 		position: relative;
-		border: 1px solid rgba(255,255,255,.2);
+		border: 1px solid color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 30%, rgba(255,255,255,.35));
 		overflow: visible;
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
-		transition: transform 0.28s ease, box-shadow 0.28s ease;
+		transition: transform 0.28s ease, box-shadow 0.28s ease, filter 0.28s ease;
 		z-index: 2;
+		filter: saturate(1.1);
+	}
+
+	.submodule-item:hover .submodule-icon {
+		transform: translateY(-2px);
+		box-shadow:
+			0 12px 24px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 32%, transparent),
+			0 3px 8px color-mix(in srgb, var(--module-main, var(--module-color, var(--primary))) 18%, transparent),
+			inset 0 1px 0 rgba(255, 255, 255, 0.45);
+		filter: saturate(1.16);
 	}
 
 	.submodule-icon::before{
@@ -1953,18 +1971,44 @@ right:50%; */
 		return { primary, primaryLight, primaryDark, secondary, secondaryLight, secondaryDark, isDark };
 	}
 
+	function boostSaturation(color, amount = 0.18) {
+		if (!color) return null;
+		const avg = (color.r + color.g + color.b) / 3;
+		return {
+			r: color.r + (color.r - avg) * amount,
+			g: color.g + (color.g - avg) * amount,
+			b: color.b + (color.b - avg) * amount,
+		};
+	}
+
+	function warmColor(color, amount = 0.08) {
+		if (!color) return null;
+		// Cool blues get a soft violet/coral nudge so they feel happier, not icy
+		const coolness = Math.max(0, (color.b - color.r) / 255);
+		const warmth = amount * coolness;
+		return {
+			r: color.r + 40 * warmth,
+			g: color.g + 8 * warmth,
+			b: color.b - 18 * warmth,
+		};
+	}
+
+	function enlivenColor(color, amount = 0.16) {
+		return warmColor(boostSaturation(color, amount), amount * 0.55);
+	}
+
 	function buildModulePalette(theme, slot) {
 		const index = Number.isFinite(slot) ? slot : 0;
 		const band = index % 6;
-		const drift = (index % 3) * 0.025;
-		const mainWeight = clampUnit((theme.isDark ? 0.82 : 0.88) - band * 0.038 + drift);
-		const softWeight = clampUnit((theme.isDark ? 0.66 : 0.78) - band * 0.022 + drift * 0.5);
-		const deepWeight = clampUnit((theme.isDark ? 0.76 : 0.82) - band * 0.028 + drift * 0.4);
+		const drift = (index % 3) * 0.02;
+		const mainWeight = clampUnit((theme.isDark ? 0.88 : 0.92) - band * 0.03 + drift);
+		const softWeight = clampUnit((theme.isDark ? 0.74 : 0.84) - band * 0.02 + drift * 0.5);
+		const deepWeight = clampUnit((theme.isDark ? 0.84 : 0.88) - band * 0.024 + drift * 0.4);
 
 		return {
-			main: mixColors(theme.primary, theme.secondary, mainWeight) || theme.primary,
-			soft: mixColors(theme.primaryLight, theme.secondaryLight, softWeight) || theme.primaryLight,
-			deep: mixColors(theme.primaryDark, theme.secondaryDark, deepWeight) || theme.primaryDark,
+			main: enlivenColor(mixColors(theme.primary, theme.secondary, mainWeight) || theme.primary, theme.isDark ? 0.14 : 0.2),
+			soft: enlivenColor(mixColors(theme.primaryLight, theme.secondaryLight, softWeight) || theme.primaryLight, theme.isDark ? 0.1 : 0.14),
+			deep: enlivenColor(mixColors(theme.primaryDark, theme.secondaryDark, deepWeight) || theme.primaryDark, theme.isDark ? 0.12 : 0.16),
 		};
 	}
 
@@ -1985,14 +2029,16 @@ right:50%; */
 			node.style.setProperty("--module-main", colorToHex(main));
 			node.style.setProperty("--module-soft", colorToHex(soft));
 
-			if (node.classList.contains("service-badge")) {
-				const top = shiftColors(main, { r: 255, g: 255, b: 255 }, theme.isDark ? 0.74 : 0.90) || main;
-				const bottom = shiftColors(main, theme.isDark ? { r: 17, g: 24, b: 39 } : { r: 15, g: 23, b: 42 }, theme.isDark ? 0.58 : 0.30) || deep;
-				node.style.background = `linear-gradient(145deg, ${colorToHex(top)}, ${colorToHex(bottom)})`;
-				node.style.borderColor = colorToRgba(soft, theme.isDark ? 0.30 : 0.22);
-				node.style.boxShadow = theme.isDark
-					? `0 18px 36px rgba(2, 6, 23, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.10)`
-					: `0 16px 30px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.34)`;
+			if (
+				node.classList.contains("service-badge") ||
+				node.classList.contains("submodule-icon") ||
+				node.classList.contains("submodule-main-icon")
+			) {
+				// Let CSS handle elevation; only feed vivid theme colors
+				node.style.background = "";
+				node.style.borderColor = "";
+				node.style.boxShadow = "";
+				node.style.filter = "";
 			}
 
 			if (node.classList.contains("submodule-page")) {
@@ -2004,32 +2050,12 @@ right:50%; */
 			}
 
 			if (node.classList.contains("submodule-header")) {
-				const top = shiftColors(main, { r: 255, g: 255, b: 255 }, theme.isDark ? 0.66 : 0.82) || main;
-				const bottom = shiftColors(main, theme.isDark ? { r: 15, g: 23, b: 42 } : { r: 17, g: 24, b: 39 }, theme.isDark ? 0.48 : 0.58) || deep;
+				const top = shiftColors(main, soft, theme.isDark ? 0.72 : 0.78) || main;
+				const bottom = shiftColors(deep, main, theme.isDark ? 0.55 : 0.62) || deep;
 				node.style.background = `linear-gradient(135deg, ${colorToHex(top)}, ${colorToHex(bottom)})`;
 				node.style.boxShadow = theme.isDark
 					? `0 24px 60px rgba(2, 6, 23, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.10)`
-					: `0 24px 60px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.12)`;
-			}
-
-			if (node.classList.contains("submodule-main-icon")) {
-				const top = shiftColors(soft, { r: 255, g: 255, b: 255 }, theme.isDark ? 0.72 : 0.92) || soft;
-				const bottom = shiftColors(main, theme.isDark ? { r: 15, g: 23, b: 42 } : { r: 30, g: 41, b: 59 }, theme.isDark ? 0.52 : 0.76) || deep;
-				node.style.background = `linear-gradient(135deg, ${colorToHex(top)}, ${colorToHex(bottom)})`;
-				node.style.borderColor = colorToRgba(main, theme.isDark ? 0.24 : 0.18);
-				node.style.boxShadow = theme.isDark
-					? `0 18px 36px rgba(2, 6, 23, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.10)`
-					: `0 18px 36px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.28)`;
-			}
-
-			if (node.classList.contains("submodule-icon")) {
-				const top = shiftColors(soft, { r: 255, g: 255, b: 255 }, theme.isDark ? 0.76 : 0.92) || soft;
-				const bottom = shiftColors(main, theme.isDark ? { r: 15, g: 23, b: 42 } : { r: 30, g: 41, b: 59 }, theme.isDark ? 0.50 : 0.74) || deep;
-				node.style.background = `linear-gradient(135deg, ${colorToHex(top)}, ${colorToHex(bottom)})`;
-				node.style.borderColor = colorToRgba(soft, theme.isDark ? 0.20 : 0.16);
-				node.style.boxShadow = theme.isDark
-					? `0 14px 28px rgba(2, 6, 23, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.10)`
-					: `0 14px 28px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.20)`;
+					: `0 18px 40px ${colorToRgba(main, 0.22)}, inset 0 1px 0 rgba(255, 255, 255, 0.14)`;
 			}
 
 			if (node.classList.contains("service-badge")) {
@@ -2200,7 +2226,7 @@ const heroSwiper = new Swiper(".hero-swiper-v3",{
         forceToAxis:true
     },
     autoplay:{
-        delay:4500,
+        delay:9000,
         disableOnInteraction:false,
         pauseOnMouseEnter:true
     },

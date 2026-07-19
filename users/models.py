@@ -555,43 +555,6 @@ class Employee(AbstractUser):
         verbose_name="پرسنل قابل مدیریت",
     )
 
-    # manage_holdings_members = models.ManyToManyField(
-    #     Holding,
-    #     related_name="manage_holdings_members",
-    #     blank=True,
-    #     verbose_name="مدیریت افراد این هلدینگ ها",
-    # )
-
-    # manage_factories_members = models.ManyToManyField(
-    #     Holding,
-    #     related_name="manage_factories_members",
-    #     blank=True,
-    #     verbose_name="مدیریت افراد این کارخانه ها",
-    # )
-
-    # manage_departments_members = models.ManyToManyField(
-    #     Holding,
-    #     related_name="manage_departments_members",
-    #     blank=True,
-    #     verbose_name="مدیریت افراد این بخش ها",
-    # )
-
-    # manage_subdepartments_members = models.ManyToManyField(
-    #     Holding,
-    #     related_name="manage_subdepartments_members",
-    #     blank=True,
-    #     verbose_name="مدیریت افراد این زیر بخش ها",
-    # )
-
-    # manage_special_employees = models.ManyToManyField(Employee, related_name="", blank=True, verbose_name="")
-    # manage_special_employees = models.ManyToManyField(
-    #     "self",
-    #     symmetrical=True,
-    #     blank=True,
-    #     related_name="managed_special_employees",
-    #     verbose_name="مدیریت کارکنان ویژه",
-    # )
-
     center_of_charge = models.CharField(
         max_length=200, null=True, blank=True, verbose_name="مرکز هزینه"
     )
@@ -604,24 +567,12 @@ class Employee(AbstractUser):
         max_length=200, null=True, blank=True, verbose_name="محل خدمت حکم کارگزین"
     )
 
-    # reporting system
-    # can_reserve_for_others_choices = (
-    #     (0, "اجازه ندارد"),
-    #     (1, "مجاز (با محدودیت)"),
-    #     (2, "مجاز (بدن محدودیت پسنل مقصد)"),
-    # )
-    # can_reserve_for_others = models.PositiveSmallIntegerField(
-    #     default=0, choices=can_reserve_for_others_choices, verbose_name="مجوز رزرو برای دیگران"
-    # )
-
     USERNAME_FIELD = "national_id"
     REQUIRED_FIELDS = ["first_name", "last_name", "phone_number"]
 
     login_required = models.BooleanField(
         default=False, verbose_name="نیاز به لاگین مجدد"
     )
-
-    # history = HistoricalRecords()
 
     class Meta:
         verbose_name = "کارمند"
@@ -759,6 +710,44 @@ class UserPasskey(models.Model):
         verbose_name_plural = "Passkeys"
 
 
+class BackgroundJob(models.Model):
+    STATUS_CHOICES = (
+        ("PENDING", "Pending"),
+        ("WAITING", "Waiting"),
+        ("RUNNING", "Running"),
+        ("SUCCESS", "Success"),
+        ("FAILED", "Failed"),
+        ("RETRYING", "Retrying"),
+        ("CANCELLED", "Cancelled"),
+    )
+
+    job_id = models.CharField(max_length=64, unique=True, db_index=True)
+    participation = models.ForeignKey(
+        "Participation",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="background_jobs",
+    )
+    handler_name = models.CharField(max_length=120)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    retry_count = models.PositiveIntegerField(default=0)
+    error_message = models.TextField(blank=True, null=True)
+    message_id = models.CharField(max_length=128, blank=True, null=True, db_index=True)
+    queue = models.CharField(max_length=120, blank=True, null=True)
+    correlation_id = models.CharField(max_length=128, blank=True, null=True, db_index=True)
+    worker_hostname = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(blank=True, null=True)
+    finished_at = models.DateTimeField(blank=True, null=True)
+    celery_task_id = models.CharField(max_length=128, blank=True, null=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Background Job"
+        verbose_name_plural = "Background Jobs"
+        indexes = [models.Index(fields=["job_id", "status"])]
+
+
 class Participation(models.Model):
     ITEM_TYPES = (
         ("performance_file", "ارسال فایل عملکرد"),
@@ -770,6 +759,11 @@ class Participation(models.Model):
     )
     STATUS_CHOICES = (
         ("pending", "در انتظار"),
+        ("waiting", "در صف پردازش"),
+        ("running", "در حال پردازش"),
+        ("retrying", "در حال تلاش مجدد"),
+        ("success", "موفق"),
+        ("failed", "ناموفق"),
         ("user_review", "در انتظار بررسی کاربر"),
         ("supervisor_review", "در انتظار تأیید سرپرست"),
         ("manager_review", "در انتظار تأیید مدیر بخش"),
@@ -1155,9 +1149,9 @@ def handle_participation_update(sender, instance, created, **kwargs):
         evaluation.save()
 
 
-class UsersConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
-    name = "users"
+# class UsersConfig(AppConfig):
+#     default_auto_field = "django.db.models.BigAutoField"
+#     name = "users"
 
 
 class FoodItem(models.Model):

@@ -13,12 +13,20 @@
         <td data-label="تاریخ">{{ participation.created_at|date:"Y-m-d" }}</td>
         <td data-label="عملیات">
             {% if not is_management_view %}
-                {% if participation.status == 'pending' and participation.attachment %}
+                {% if participation.status == 'waiting' %}
+                    <span class="badge bg-warning text-dark">{{ participation.get_status_display }}</span>
+                {% elif participation.status == 'running' %}
+                    <span class="badge bg-primary">{{ participation.get_status_display }}</span>
+                {% elif participation.status == 'retrying' %}
+                    <span class="badge bg-info text-dark">{{ participation.get_status_display }}</span>
+                {% elif participation.status == 'failed' %}
+                    <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-danger mb-1">تلاش مجدد تبدیل</a>
+                {% elif participation.status == 'pending' and participation.attachment %}
                     <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-primary mb-1">عملیات</a>
                 {% endif %}
                 {% if participation.text_content and participation.status == 'user_review' %}
                     <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-warning mb-1">عملیات</a>
-                {% elif participation.status == 'supervisor_review' or participation.status == 'manager_review' %}
+                {% elif participation.status == 'supervisor_review' or participation.status == 'manager_review' or participation.status == 'factory_manager_review' %}
                     <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-info mb-1">مشاهده درخواست</a>
                 {% elif participation.status == 'rejected' %}
                     <a href="{% url 'users:process_participation' participation.id %}" class="btn btn-sm btn-danger mb-1">مشاهده درخواست</a>
@@ -34,6 +42,8 @@
                 {% endif %}
             {% endif %}
         </td>
-        <td data-label="وضعیت">{{ participation.get_status_display }}</td>
+        <td data-label="وضعیت">
+            {{ participation.get_status_display }}
+        </td>
     </tr>
 {% endfor %}

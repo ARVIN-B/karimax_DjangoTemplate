@@ -1,0 +1,2 @@
+"""Queue abstraction package."""
+

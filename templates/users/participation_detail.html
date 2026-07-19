@@ -54,7 +54,17 @@
 	<p class="text-secondary">فیدبک مدیر سوم کمیته: {{ participation.manager_3_feedback }}</p>
 	{% endif %} {% else %} {% if participation.feedback and participation.feedback != "بدون فیدبک" %}
 	<p class="text-secondary">فیدبک: {{ participation.feedback }}</p>
-	{% endif %} {% endif %} {% if can_convert %}
+	{% endif %} {% endif %}
+	{% if participation.status == 'failed' and can_convert %}
+	<div class="alert alert-danger" role="alert">
+		تبدیل به متن ناموفق بود.
+		{% if latest_background_job_error %}
+		<br />{{ latest_background_job_error }}
+		{% endif %}
+		می‌توانید دوباره تلاش کنید.
+	</div>
+	{% endif %}
+	{% if can_convert %}
 	<form method="POST">
 		{% csrf_token %}
 		<button
@@ -63,9 +73,10 @@
 			value="convert_to_text"
 			class="btn btn-primary"
 		>
-			تبدیل به متن
+			{% if participation.status == 'failed' %}تلاش مجدد تبدیل به متن{% else %}تبدیل به متن{% endif %}
 		</button>
 
+		{% if participation.status == 'pending' %}
 		<button
 			type="submit"
 			name="action"
@@ -74,6 +85,7 @@
 		>
 			ادامه بدون تبدیل ویس به متن
 		</button>
+		{% endif %}
 
 		{% if can_delete %} {% csrf_token %}
 		<button
@@ -86,6 +98,21 @@
 		</button>
 		{% endif %}
 	</form>
+
+	{% elif participation.status == 'waiting' or participation.status == 'running' or participation.status == 'retrying' %}
+	<div class="alert alert-info" role="alert">
+		{% if participation.status == 'running' %}
+		{{ participation.get_status_display }} — در حال تبدیل ویس به متن…
+		{% elif participation.status == 'retrying' %}
+		{{ participation.get_status_display }} — در حال تلاش مجدد برای تبدیل ویس به متن…
+		{% else %}
+		{{ participation.get_status_display }} — در صف تبدیل ویس به متن…
+		{% endif %}
+		برای دیدن نتیجه، صفحه را بعداً تازه‌سازی کنید.
+		{% if latest_background_job_id %}
+		<br /><small>شناسه کار: {{ latest_background_job_id }}</small>
+		{% endif %}
+	</div>
 
 	{% elif can_edit or can_finalize or can_summarize or can_delete %}
 

@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
 from decouple import config
-import os
 from django.contrib.messages import constants as messages
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 CONTACT_PHONE_NUMBER = "09924876377"
+PARSGREEN_SMS_NUMBER = "9998883511"
 
 USER_MANAGEMENT_INITIAL_LOAD_COUNT = 10
 USER_MANAGEMENT_LOAD_MORE_COUNT = 5
@@ -29,6 +29,9 @@ elif config("DJANGO_ENV") == "development":
 elif config("DJANGO_ENV") == "localhost":
     BASE_URL = "127.0.0.1"
     DEBUG = True
+else:
+    BASE_URL = "127.0.0.1"
+    DEBUG = True
 
 WEEKS_COUNT = 2
 
@@ -43,7 +46,7 @@ SECRET_KEY = config("SECRET_KEY", default="your-secret-key-here")
 # DEBUG = config("DEBUG", default=True, cast=bool)
 
 # DEBUG = False
-DEBUG = True
+# DEBUG = True
 
 AXES_ENABLED = False
 
@@ -76,17 +79,16 @@ INSTALLED_APPS = [
     "crispy_forms",
     "crispy_bootstrap4",
     # Local apps
-    "users",
+    "core.infrastructure.apps.InfrastructureConfig",
+    # "users",
     "evaluations",
     "axes",
     "django.contrib.humanize",
     "widget_tweaks",
+    "users.apps.UsersConfig",
     # "mfa",
 ]
 
-# WEBAUTHN_RP_ID = "karimax2.ir"
-# WEBAUTHN_RP_NAME = "Karimax"
-# WEBAUTHN_ORIGIN = "https://karimax2.ir"
 
 
 WEBAUTHN_RP_ID = "dev.karimax2.ir"
@@ -94,32 +96,6 @@ WEBAUTHN_RP_NAME = "dev.Karimax"
 WEBAUTHN_ORIGIN = "https://dev.karimax2.ir"
 
 
-# # MFA Settings
-# MFA_UNALLOWED_METHODS = ()  # متدهای مجاز ('TOTP','U2F')
-# MFA_LOGIN_CALLBACK = "users.views.mfa_login_callback"  # تابع ورود به سیستم
-# MFA_RECHECK = True
-# MFA_RECHECK_MIN = 10
-# MFA_RECHECK_MAX = 30
-# MFA_QUICKLOGIN = True
-# TOKEN_ISSUER_NAME = "YOUR_PROJECT_NAME"
-
-# # تنظیمات WebAuthn/FIDO2 برای لوکال هاست
-# U2F_APPID = "https://localhost"
-# FIDO_SERVER_ID = "localhost"  # دامنه پروژه
-# FIDO_SERVER_NAME = u"YOUR_PROJECT_NAME"
-
-# FIDO_SERVER_ID = "192.168.110.116"  # 👈 مهم: دقیقاً همان IP که سرور روی آن ران شده
-# FIDO_SERVER_NAME = "Your Project Name"
-
-# # warning
-# MFA_FIDO2_RESIDENT_KEY = 'discouraged'
-# MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = True
-
-
-# CSRF_TRUSTED_ORIGINS = [
-#     "https://karimax.ir",
-#     "https://www.karimax.ir",
-# ]
 
 # django-axes settings
 AXES_COOLOFF_TIME = 0.25  # 15 دقیقه قفل بعد از چند تلاش ناموفق
@@ -322,6 +298,8 @@ if DEBUG:
     CSRF_COOKIE_SAMESITE = "Lax"
 
     CSRF_TRUSTED_ORIGINS = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
@@ -390,3 +368,47 @@ else:
 # CORS_ALLOW_CREDENTIALS = True
 
 CSRF_FAILURE_VIEW = "users.views.csrf_failure"
+
+BACKGROUND_CACHE = config("BACKGROUND_CACHE", default="redis")
+BACKGROUND_QUEUE = config("BACKGROUND_QUEUE", default="celery")
+BACKGROUND_CACHE_ALIAS = config("BACKGROUND_CACHE_ALIAS", default="default")
+BACKGROUND_QUEUE_NAMESPACE = config("BACKGROUND_QUEUE_NAMESPACE", default="background")
+BACKGROUND_CACHE_TTL_SECONDS = config("BACKGROUND_CACHE_TTL_SECONDS", default=300, cast=int)
+BACKGROUND_QUEUE_POLL_INTERVAL_SECONDS = config(
+    "BACKGROUND_QUEUE_POLL_INTERVAL_SECONDS", default=0.2, cast=float
+)
+
+def _parse_csv_list(value: str) -> list[str]:
+    return [item.strip().strip('"').strip("'") for item in value.strip("[]").split(",") if item.strip()]
+
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default="redis://127.0.0.1:6379/1")
+CELERY_TASK_DEFAULT_QUEUE = config("CELERY_TASK_DEFAULT_QUEUE", default="background")
+BACKGROUND_QUEUE_TASK_NAME = config(
+    "BACKGROUND_QUEUE_TASK_NAME", default="core.infrastructure.tasks.dispatch_background_job"
+)
+CELERY_TASK_SERIALIZER = config("CELERY_TASK_SERIALIZER", default="json")
+CELERY_RESULT_SERIALIZER = config("CELERY_RESULT_SERIALIZER", default="json")
+CELERY_ACCEPT_CONTENT = config("CELERY_ACCEPT_CONTENT", default='["json"]', cast=_parse_csv_list)
+CELERY_TASK_DEFAULT_RETRY_DELAY_SECONDS = config("CELERY_TASK_DEFAULT_RETRY_DELAY_SECONDS", default=5, cast=int)
+CELERY_TASK_MAX_RETRIES = config("CELERY_TASK_MAX_RETRIES", default=5, cast=int)
+# STT on long audio can run for hours; keep limits aligned with gunicorn timeout.
+CELERY_TASK_SOFT_TIME_LIMIT_SECONDS = config(
+    "CELERY_TASK_SOFT_TIME_LIMIT_SECONDS", default=14000, cast=int
+)
+CELERY_TASK_TIME_LIMIT_SECONDS = config("CELERY_TASK_TIME_LIMIT_SECONDS", default=14400, cast=int)
+CELERY_WORKER_PREFETCH_MULTIPLIER = config("CELERY_WORKER_PREFETCH_MULTIPLIER", default=1, cast=int)
+CELERY_WORKER_CONCURRENCY = config("CELERY_WORKER_CONCURRENCY", default=1, cast=int)
+CELERY_WORKER_LOG_LEVEL = config("CELERY_WORKER_LOG_LEVEL", default="INFO")
+CELERY_BROKER_TRANSPORT_OPTIONS_VISIBILITY_TIMEOUT = config(
+    "CELERY_BROKER_TRANSPORT_OPTIONS_VISIBILITY_TIMEOUT", default=15000, cast=int
+)
+BACKGROUND_JOB_RETENTION_DAYS = config("BACKGROUND_JOB_RETENTION_DAYS", default=30, cast=int)
+REDIS_CACHE_URL = config("REDIS_CACHE_URL", default="redis://127.0.0.1:6379/2")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_CACHE_URL,
+    }
+}

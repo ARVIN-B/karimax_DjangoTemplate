@@ -376,39 +376,29 @@
 							<td>{{ participation.get_item_type_display }}</td>
 							<td>{{ participation.created_at|jalali_date:"%Y/%m/%d" }}</td>
 							<td>
-								{% if participation.status == 'pending' and participation.attachment %}
-								<a
-									href="{% url 'users:process_participation' participation.id %}"
-									class="btn-sm-glass"
-									>عملیات</a
-								>
-								{% endif %} {% if participation.text_content and participation.status == 'user_review' %}
-								<a
-									href="{% url 'users:process_participation' participation.id %}"
-									class="btn-sm-glass"
-									>عملیات</a
-								>
+								{% if participation.status == 'waiting' %}
+								<span class="badge bg-warning text-dark">{{ participation.get_status_display }}</span>
+								{% elif participation.status == 'running' %}
+								<span class="badge bg-primary">{{ participation.get_status_display }}</span>
+								{% elif participation.status == 'retrying' %}
+								<span class="badge bg-info text-dark">{{ participation.get_status_display }}</span>
+								{% elif participation.status == 'failed' %}
+								<a href="{% url 'users:process_participation' participation.id %}" class="btn-sm-glass">تلاش مجدد تبدیل</a>
+								{% elif participation.status == 'pending' and participation.attachment %}
+								<a href="{% url 'users:process_participation' participation.id %}" class="btn-sm-glass">عملیات</a>
+								{% elif participation.text_content and participation.status == 'user_review' %}
+								<a href="{% url 'users:process_participation' participation.id %}" class="btn-sm-glass">عملیات</a>
 								{% elif participation.status == 'supervisor_review' or participation.status == 'manager_review' or participation.status == 'factory_manager_review' %}
-								<a
-									href="{% url 'users:process_participation' participation.id %}"
-									class="btn-sm-glass"
-									>مشاهده درخواست</a
-								>
+								<a href="{% url 'users:process_participation' participation.id %}" class="btn-sm-glass">مشاهده درخواست</a>
 								{% elif participation.status == 'rejected' %}
-								<a
-									href="{% url 'users:process_participation' participation.id %}"
-									class="btn-sm-glass"
-									>مشاهده درخواست</a
-								>
+								<a href="{% url 'users:process_participation' participation.id %}" class="btn-sm-glass">مشاهده درخواست</a>
 								{% elif participation.status == 'approved' %}
-								<a
-									href="{% url 'users:process_participation' participation.id %}"
-									class="btn-sm-glass"
-									>مشاهده درخواست</a
-								>
+								<a href="{% url 'users:process_participation' participation.id %}" class="btn-sm-glass">مشاهده درخواست</a>
 								{% endif %}
 							</td>
-							<td>{{ participation.get_status_display }}</td>
+							<td>
+								{{ participation.get_status_display }}
+							</td>
 						</tr>
 						{% endfor %}
 					</tbody>
@@ -530,3 +520,5 @@
 </script>
 {% endblock %}
 {% block page_refactor_class %}app-users-page app-users-dashboard{% endblock %}
+
+

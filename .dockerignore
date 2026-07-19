@@ -1,0 +1,26 @@
+.git
+.gitignore
+__pycache__
+*/__pycache__/
+*.py[cod]
+*.egg-info
+.venv
+venv
+env
+.env
+.env.*
+!.env.docker.example
+media/**
+staticfiles/**
+*.log
+.idea
+.vscode
+agent tasks
+agent-transcripts
+**/tests/**/__pycache__
+node_modules
+Dockerfile
+docker-compose*.yml
+.dockerignore
+*.md
+!requirements-docker.txt

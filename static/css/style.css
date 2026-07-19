@@ -4,16 +4,18 @@
    ========================================================================== */
 
 /* === متغیرهای ریشه و تم روشن === */
+
 :root {
-	--primary: #f97316;
+	/* --primary: #f97316;
 	--primary-dark: #ea580c;
 	--primary-light: #ffedd5;
 	--primary-glow: rgba(249, 115, 22, 0.3);
 	--secondary: #f59e0b;
 	--secondary-dark: #d97706;
 	--secondary-light: #fef3c7;
-	--secondary-glow: rgba(245, 158, 11, 0.3);
-	--bg-page: #f8fafc;
+	--secondary-glow: rgba(245, 158, 11, 0.3); */
+
+	--primary: #3b82f6, --primary-dark: #2563eb, --primary-light: #dbeafe, --primary-glow: rgba(59, 130, 246, 0.3), --secondary: #14b8a6, --secondary-dark: #0d9488, --secondary-light: #ccfbf1, --secondary-glow: rgba(20, 184, 166, 0.3), --bg-page: #f8fafc;
 	--bg-card: rgba(255, 255, 255, 0.75);
 	--glass-bg: rgba(255, 255, 255, 0.65);
 	--glass-border: rgba(0, 0, 0, 0.06);

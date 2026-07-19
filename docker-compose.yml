@@ -1,0 +1,108 @@
+# PMSS stack: Django web + Celery worker + Redis
+#
+# Full stack:
+#   docker compose up --build -d
+#
+# Redis only (host Gunicorn + host Celery point at 127.0.0.1:6379):
+#   docker compose up -d redis
+#   Note: conflicts if system Redis already binds :6379 — stop one of them.
+#
+# Redis + Celery only (web stays on host: gunicorn -c gunicorn_config.py):
+#   docker compose up -d redis celery
+#
+# MySQL stays on the host. Containers reach it via host.docker.internal.
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: pmss-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pmss-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment: &app_env
+      DJANGO_ENV: ${DJANGO_ENV:-localhost}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      REDIS_CACHE_URL: redis://redis:6379/2
+      BACKGROUND_CACHE: redis
+      BACKGROUND_QUEUE: celery
+      CELERY_TASK_DEFAULT_QUEUE: background
+      CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: ${CELERY_TASK_SOFT_TIME_LIMIT_SECONDS:-14000}
+      CELERY_TASK_TIME_LIMIT_SECONDS: ${CELERY_TASK_TIME_LIMIT_SECONDS:-14400}
+      CELERY_BROKER_TRANSPORT_OPTIONS_VISIBILITY_TIMEOUT: ${CELERY_BROKER_TRANSPORT_OPTIONS_VISIBILITY_TIMEOUT:-15000}
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-3306}
+      RUN_MIGRATIONS: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pmss-celery
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      <<: *app_env
+      RUN_MIGRATIONS: "0"
+    command:
+      [
+        "celery",
+        "-A",
+        "pmss",
+        "worker",
+        "-l",
+        "INFO",
+        "-Q",
+        "background",
+        "-c",
+        "1",
+      ]
+    volumes:
+      - .:/app
+      - media_data:/app/media
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  redis_data:
+  media_data:
+  static_data:
