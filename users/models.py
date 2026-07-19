@@ -1148,12 +1148,6 @@ def handle_participation_update(sender, instance, created, **kwargs):
         evaluation.score = evaluation.calculate_score()
         evaluation.save()
 
-
-# class UsersConfig(AppConfig):
-#     default_auto_field = "django.db.models.BigAutoField"
-#     name = "users"
-
-
 class FoodItem(models.Model):
     name = models.CharField(max_length=150, verbose_name="نام غذا")
     factory_price = models.PositiveIntegerField(default=0, verbose_name="قیمت کارخانه")
@@ -1835,6 +1829,12 @@ class Notification(models.Model):
         related_name="employee_targeted_notifications",
         verbose_name="زیربخش‌های پرسنل (پرسنل کدام زیربخش‌ها ببینند - فقط نقش employee)",
     )
+
+    notify_holding_managers = models.BooleanField(default=False)
+    notify_factory_managers = models.BooleanField(default=False)
+    notify_department_managers = models.BooleanField(default=False)
+    notify_subdepartment_supervisors = models.BooleanField(default=False)
+    notify_employees = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "اعلان"

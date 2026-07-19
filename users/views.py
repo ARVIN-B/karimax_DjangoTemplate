@@ -2710,14 +2710,27 @@ def notification_create(request):
 
         if target_holdings_ids:
             notification.target_holdings.set(target_holdings_ids)
+            notification.notify_holding_managers = (
+                request.POST.get("notify_holding_managers") == "on"
+            )
         if target_factories_ids:
             notification.target_factories.set(target_factories_ids)
+            notification.notify_factory_managers = (
+                request.POST.get("notify_factory_managers") == "on"
+            )
         if target_departments_ids:
             notification.target_departments.set(target_departments_ids)
+            notification.notify_department_managers = (
+                request.POST.get("notify_department_managers") == "on"
+            )
         if target_subdepartments_ids:
             notification.target_subdepartments.set(target_subdepartments_ids)
+            notification.notify_subdepartment_supervisors = (
+                request.POST.get("notify_subdepartment_supervisors") == "on"
+            )
         if employee_subdepartments_ids:
             notification.employee_subdepartments.set(employee_subdepartments_ids)
+            notification.notify_employees = request.POST.get("notify_employees") == "on"
 
         try:
             notification.full_clean()  # این clean را با چک‌های ManyToMany اجرا می‌کنه
@@ -2729,13 +2742,26 @@ def notification_create(request):
 
         notification.save()
 
-        employees = Employee.objects.filter(is_active=True).filter(
-            Q(assigned_subdepartments__id__in=employee_subdepartments_ids)
-            | Q(supervised_subdepartments_m2m__id__in=target_subdepartments_ids)
-            | Q(managed_departments_m2m__id__in=target_departments_ids)
-            | Q(managed_factories_m2m__id__in=target_factories_ids)
-            | Q(managed_holdings_m2m__id__in=target_holdings_ids)
-        )
+        filters = Q()
+
+        if notification.notify_employees:
+            filters |= Q(assigned_subdepartments__id__in=employee_subdepartments_ids)
+
+        if notification.notify_subdepartment_supervisors:
+            filters |= Q(
+                supervised_subdepartments_m2m__id__in=target_subdepartments_ids
+            )
+
+        if notification.notify_department_managers:
+            filters |= Q(managed_departments_m2m__id__in=target_departments_ids)
+
+        if notification.notify_factory_managers:
+            filters |= Q(managed_factories_m2m__id__in=target_factories_ids)
+
+        if notification.notify_holding_managers:
+            filters |= Q(managed_holdings_m2m__id__in=target_holdings_ids)
+
+        employees = Employee.objects.filter(is_active=True).filter(filters).distinct()
 
         send_sms_to_employees(
             employees=employees,
@@ -2827,16 +2853,27 @@ def get_user_notifications_queryset(request):
 
     if role_name == "employee":
         qs = Notification.objects.filter(
-            Q(employee_subdepartments__id=subdepartment_id)
+            Q(notify_employees=True, employee_subdepartments__id=subdepartment_id)
         )
     elif role_name == "supervisor":
-        qs = Notification.objects.filter(Q(target_subdepartments__id=subdepartment_id))
+        qs = Notification.objects.filter(
+            Q(
+                notify_subdepartment_supervisors=True,
+                target_subdepartments__id=subdepartment_id,
+            )
+        )
     elif role_name == "department_manager":
-        qs = Notification.objects.filter(Q(target_departments__id=department_id))
+        qs = Notification.objects.filter(
+            Q(notify_department_managers=True, target_departments__id=department_id)
+        )
     elif role_name == "factory_manager":
-        qs = Notification.objects.filter(Q(target_factories__id=factory_id))
+        qs = Notification.objects.filter(
+            Q(notify_factory_managers=True, target_factories__id=factory_id)
+        )
     elif role_name == "holding_manager":
-        qs = Notification.objects.filter(Q(target_holdings__id=holding_id))
+        qs = Notification.objects.filter(
+            Q(notify_holding_managers=True, target_holdings__id=holding_id)
+        )
     else:
         qs = Notification.objects.all()
 
@@ -4349,7 +4386,7 @@ def managements_reports_dashboard(request):
                 reservation_date__lte=end_gregorian_date,
                 is_canceled=0,
             )
-            
+
             guest_cost_for_factory = (
                 reservations.aggregate(
                     total=Sum(
