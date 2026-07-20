@@ -43,6 +43,77 @@ def participation_upload_path(instance, filename):
     return f"participations/{date_str}/{filename}"
 
 
+class Role(models.Model):
+    name = models.CharField(max_length=50, unique=True, verbose_name="نام نقش")
+    description = models.TextField(blank=True, verbose_name="توضیحات")
+    permissions = models.JSONField(default=dict, blank=True, verbose_name="مجوزها")
+
+    class Meta:
+        verbose_name = "نقش"
+        verbose_name_plural = "نقش‌ها"
+
+    def get_name_display(self):
+        DISPLAY_CHOICES = {
+            "super_admin": ("#0000FF", "مدیر کل"),
+            "holding_manager": ("#0000FF", "مدیر هلدینگ"),
+            "factory_manager": ("#FF4500", "مدیر کارخانه"),
+            "department_manager": ("#006400", "مدیر بخش"),
+            "supervisor": ("#FFA500", "سرپرست"),
+            "employee": ("#808080", "پرسنل"),
+        }
+        return DISPLAY_CHOICES.get(self.name, ("#000000", self.name))
+
+    def __str__(self):
+        return self.name
+
+
+class PermissionLevel(models.Model):
+    role = models.OneToOneField(
+        Role,
+        on_delete=models.CASCADE,
+        related_name="permission_level",
+        verbose_name="نقش",
+    )
+    can_manage_users = models.BooleanField(default=False, verbose_name="مدیریت کاربران")
+    can_evaluate = models.BooleanField(default=False, verbose_name="ارزیابی پرسنل")
+    can_view_reports = models.BooleanField(default=True, verbose_name="مشاهده گزارش‌ها")
+    can_access_all_departments = models.BooleanField(
+        default=False, verbose_name="دسترسی به همه بخش‌ها"
+    )
+    can_access_all_factories = models.BooleanField(
+        default=False, verbose_name="دسترسی به همه کارخانه‌ها"
+    )  # اضافه کردن با پیش‌فرض False
+
+    class Meta:
+        verbose_name = "سطح دسترسی"
+        verbose_name_plural = "سطوح دسترسی"
+
+    def __str__(self):
+        return f"سطح دسترسی {self.role.name}"
+
+    @receiver(post_save, sender=Role)
+    def set_default_permissions(sender, instance, created, **kwargs):
+        if created:  # فقط وقتی نقش جدید ساخته می‌شه اجرا بشه
+            # چک کن که PermissionLevel برای این نقش وجود نداشته باشه
+            if not PermissionLevel.objects.filter(role=instance).exists():
+                defaults = {
+                    "can_manage_users": instance.name == "super_admin",
+                    "can_evaluate": instance.name
+                    in [
+                        "super_admin",
+                        "holding_manager",
+                        "factory_manager",
+                        "department_manager",
+                    ],
+                    "can_view_reports": True,
+                    "can_access_all_departments": instance.name
+                    in ["super_admin", "holding_manager", "factory_manager"],
+                    "can_access_all_factories": instance.name
+                    in ["super_admin", "holding_manager"],
+                }
+                PermissionLevel.objects.create(role=instance, **defaults)
+
+
 class Holding(models.Model):
     name = models.CharField(max_length=100, verbose_name="نام هلدینگ")
     location = models.CharField(max_length=200, verbose_name="مکان")
@@ -276,77 +347,6 @@ class Subdepartment(models.Model):
         return f"{self.name} - {self.department.name} ({self.department.factory.name})"
 
 
-class Role(models.Model):
-    name = models.CharField(max_length=50, unique=True, verbose_name="نام نقش")
-    description = models.TextField(blank=True, verbose_name="توضیحات")
-    permissions = models.JSONField(default=dict, blank=True, verbose_name="مجوزها")
-
-    class Meta:
-        verbose_name = "نقش"
-        verbose_name_plural = "نقش‌ها"
-
-    def get_name_display(self):
-        DISPLAY_CHOICES = {
-            "super_admin": ("#0000FF", "مدیر کل"),
-            "holding_manager": ("#0000FF", "مدیر هلدینگ"),
-            "factory_manager": ("#FF4500", "مدیر کارخانه"),
-            "department_manager": ("#006400", "مدیر بخش"),
-            "supervisor": ("#FFA500", "سرپرست"),
-            "employee": ("#808080", "پرسنل"),
-        }
-        return DISPLAY_CHOICES.get(self.name, ("#000000", self.name))
-
-    def __str__(self):
-        return self.name
-
-
-class PermissionLevel(models.Model):
-    role = models.OneToOneField(
-        Role,
-        on_delete=models.CASCADE,
-        related_name="permission_level",
-        verbose_name="نقش",
-    )
-    can_manage_users = models.BooleanField(default=False, verbose_name="مدیریت کاربران")
-    can_evaluate = models.BooleanField(default=False, verbose_name="ارزیابی پرسنل")
-    can_view_reports = models.BooleanField(default=True, verbose_name="مشاهده گزارش‌ها")
-    can_access_all_departments = models.BooleanField(
-        default=False, verbose_name="دسترسی به همه بخش‌ها"
-    )
-    can_access_all_factories = models.BooleanField(
-        default=False, verbose_name="دسترسی به همه کارخانه‌ها"
-    )  # اضافه کردن با پیش‌فرض False
-
-    class Meta:
-        verbose_name = "سطح دسترسی"
-        verbose_name_plural = "سطوح دسترسی"
-
-    def __str__(self):
-        return f"سطح دسترسی {self.role.name}"
-
-    @receiver(post_save, sender=Role)
-    def set_default_permissions(sender, instance, created, **kwargs):
-        if created:  # فقط وقتی نقش جدید ساخته می‌شه اجرا بشه
-            # چک کن که PermissionLevel برای این نقش وجود نداشته باشه
-            if not PermissionLevel.objects.filter(role=instance).exists():
-                defaults = {
-                    "can_manage_users": instance.name == "super_admin",
-                    "can_evaluate": instance.name
-                    in [
-                        "super_admin",
-                        "holding_manager",
-                        "factory_manager",
-                        "department_manager",
-                    ],
-                    "can_view_reports": True,
-                    "can_access_all_departments": instance.name
-                    in ["super_admin", "holding_manager", "factory_manager"],
-                    "can_access_all_factories": instance.name
-                    in ["super_admin", "holding_manager"],
-                }
-                PermissionLevel.objects.create(role=instance, **defaults)
-
-
 class Employee(AbstractUser):
 
     FOOD_RECEIVER_CHOICES = (
@@ -397,8 +397,6 @@ class Employee(AbstractUser):
         default=False, verbose_name="مجوز رزرو نامحدود"
     )
     is_contractor = models.BooleanField(default=False, verbose_name="آیا پیمانکار است؟")
-
-    can_create_notification = models.BooleanField(default=False, verbose_name="مجوز ساخت اعلان")
 
     reporting_permision = models.PositiveSmallIntegerField(
         default=0,
@@ -567,6 +565,39 @@ class Employee(AbstractUser):
         max_length=200, null=True, blank=True, verbose_name="محل خدمت حکم کارگزین"
     )
 
+    # Notifications
+    
+    can_create_notification = models.BooleanField(default=False, verbose_name="مجوز ساخت اعلان")
+
+    notification_accessible_holdings = models.ManyToManyField(
+        Holding,
+        blank=True,
+        related_name="notification_accessible_by",
+        verbose_name="هلدینگ‌های مجاز برای ایجاد اعلان",
+    )
+
+    notification_accessible_factories = models.ManyToManyField(
+        Factory,
+        blank=True,
+        related_name="notification_accessible_by",
+        verbose_name="کارخانه‌های مجاز برای ایجاد اعلان",
+    )
+
+    notification_accessible_departments = models.ManyToManyField(
+        Department,
+        blank=True,
+        related_name="notification_accessible_by",
+        verbose_name="بخش‌های مجاز برای ایجاد اعلان",
+    )
+
+    notification_accessible_subdepartments = models.ManyToManyField(
+        Subdepartment,
+        blank=True,
+        related_name="notification_accessible_by",
+        verbose_name="زیربخش‌های مجاز برای ایجاد اعلان",
+    )
+
+
     USERNAME_FIELD = "national_id"
     REQUIRED_FIELDS = ["first_name", "last_name", "phone_number"]
 
@@ -672,6 +703,79 @@ class Employee(AbstractUser):
 
         finally:
             self._syncing_hierarchy = False
+
+    def _sync_notification_access_from_hierarchy(self):
+        if not self.pk:
+            return  # هنوز ذخیره نشده
+
+        # جلوگیری از حلقه بی‌نهایت
+        if getattr(self, "_syncing_notification_hierarchy", False):
+            return
+
+        self._syncing_notification_hierarchy = True
+
+        try:
+            # انتخاب‌های مستقیم
+            selected_holdings = set(self.notification_accessible_holdings.all())
+            selected_factories = set(self.notification_accessible_factories.all())
+            selected_departments = set(self.notification_accessible_departments.all())
+            selected_subdepartments = set(
+                self.notification_accessible_subdepartments.all()
+            )
+
+            # -----------------------------
+            # Holding -> Factory
+            # -----------------------------
+            factories_from_holdings = set()
+            for holding in selected_holdings:
+                factories_from_holdings.update(holding.factories.all())
+
+            all_factories = selected_factories.union(factories_from_holdings)
+
+            # -----------------------------
+            # Factory -> Department
+            # -----------------------------
+            departments_from_factories = set()
+            for factory in all_factories:
+                departments_from_factories.update(factory.departments.all())
+
+            all_departments = selected_departments.union(departments_from_factories)
+
+            # -----------------------------
+            # Department -> Subdepartment
+            # -----------------------------
+            subdepartments_from_departments = set()
+            for department in all_departments:
+                subdepartments_from_departments.update(
+                    department.subdepartments.all()
+                )
+
+            all_subdepartments = selected_subdepartments.union(
+                subdepartments_from_departments
+            )
+
+            # -----------------------------
+            # Sync ManyToMany ها
+            # -----------------------------
+            if set(self.notification_accessible_factories.all()) != all_factories:
+                self.notification_accessible_factories.set(all_factories)
+
+            if (
+                set(self.notification_accessible_departments.all())
+                != all_departments
+            ):
+                self.notification_accessible_departments.set(all_departments)
+
+            if (
+                set(self.notification_accessible_subdepartments.all())
+                != all_subdepartments
+            ):
+                self.notification_accessible_subdepartments.set(
+                    all_subdepartments
+                )
+
+        finally:
+            self._syncing_notification_hierarchy = False
 
     @property
     def full_name(self):
@@ -1147,6 +1251,7 @@ def handle_participation_update(sender, instance, created, **kwargs):
         evaluation.audio_count = audio_count
         evaluation.score = evaluation.calculate_score()
         evaluation.save()
+
 
 class FoodItem(models.Model):
     name = models.CharField(max_length=150, verbose_name="نام غذا")

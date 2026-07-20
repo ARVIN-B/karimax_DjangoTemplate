@@ -5,6 +5,7 @@ from django.contrib.messages import constants as messages
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+DJANGO_ENV = config("DJANGO_ENV", default="localhost")
 
 CONTACT_PHONE_NUMBER = "09924876377"
 PARSGREEN_SMS_NUMBER = "9998883511"
@@ -14,19 +15,19 @@ USER_MANAGEMENT_LOAD_MORE_COUNT = 5
 
 API_KEY = config("API_KEY")
 
-if config("DJANGO_ENV") == "production":
+if DJANGO_ENV == "production":
     # SESSION_COOKIE_DOMAIN = ".karimax2.ir"
     BASE_URL = f"{config("PRODUCT_BASE_URL")}"
     SESSION_COOKIE_DOMAIN = f".{BASE_URL}"
     SESSION_COOKIE_NAME = "sessionid"
     DEBUG = False
-elif config("DJANGO_ENV") == "development":
+elif DJANGO_ENV == "development":
     # SESSION_COOKIE_DOMAIN = ".karimax2.ir"
     BASE_URL = f"{config("DEVELOP_BASE_URL")}"
     SESSION_COOKIE_DOMAIN = f".{BASE_URL}"
     SESSION_COOKIE_NAME = "sessionid"
     DEBUG = True
-elif config("DJANGO_ENV") == "localhost":
+elif DJANGO_ENV == "localhost":
     BASE_URL = "127.0.0.1"
     DEBUG = True
 else:

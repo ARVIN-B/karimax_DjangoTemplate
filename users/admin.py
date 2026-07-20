@@ -136,13 +136,11 @@ class FactoryAdmin(admin.ModelAdmin):
             _("زمان بسته شدن رزرو غذا"),
             {
                 "fields": ("close_food_res_time_H", "close_food_res_time_M"),
-                "description": _(
-                    """
+                "description": _("""
                         ساعت و دقیقه‌ای که رزرو غذا برای این کارخانه بسته می‌شود.
                         <br>• ساعت: ۰ تا ۲۳
                         <br>• دقیقه: ۰ تا ۵۹
-                    """
-                ),
+                    """),
                 "classes": ("collapse",),
             },
         ),
@@ -610,6 +608,19 @@ class EmployeeAdmin(UserAdmin):
             },
         ),
         (
+            "سامانه اعلان",
+            {
+                "fields": (
+                    "can_create_notification",
+                    "notification_accessible_holdings",
+                    "notification_accessible_factories",
+                    "notification_accessible_departments",
+                    "notification_accessible_subdepartments",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
             "تحویل‌گیرنده غذا",
             {
                 "fields": (
@@ -631,7 +642,6 @@ class EmployeeAdmin(UserAdmin):
                     "factory_bimeh",
                     "holding_bimeh",
                     "is_contractor",
-                    "can_create_notification",
                     "karimax_permision",
                 ),
                 "classes": ("collapse",),

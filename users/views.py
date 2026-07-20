@@ -2851,33 +2851,35 @@ def get_user_notifications_queryset(request):
     department_id = request.session["current_department_id"]
     subdepartment_id = request.session["current_subdepartment_id"]
 
-    if role_name == "employee":
-        qs = Notification.objects.filter(
-            Q(notify_employees=True, employee_subdepartments__id=subdepartment_id)
-        )
-    elif role_name == "supervisor":
-        qs = Notification.objects.filter(
-            Q(
-                notify_subdepartment_supervisors=True,
-                target_subdepartments__id=subdepartment_id,
-            )
-        )
-    elif role_name == "department_manager":
-        qs = Notification.objects.filter(
-            Q(notify_department_managers=True, target_departments__id=department_id)
-        )
-    elif role_name == "factory_manager":
-        qs = Notification.objects.filter(
-            Q(notify_factory_managers=True, target_factories__id=factory_id)
-        )
-    elif role_name == "holding_manager":
-        qs = Notification.objects.filter(
-            Q(notify_holding_managers=True, target_holdings__id=holding_id)
-        )
-    else:
-        qs = Notification.objects.all()
 
-    return qs.distinct()
+    filters = {
+        "employee": Q(
+            notify_employees=True,
+            employee_subdepartments__id=subdepartment_id,
+        ),
+        "supervisor": Q(
+            notify_subdepartment_supervisors=True,
+            target_subdepartments__id=subdepartment_id,
+        ),
+        "department_manager": Q(
+            notify_department_managers=True,
+            target_departments__id=department_id,
+        ),
+        "factory_manager": Q(
+            notify_factory_managers=True,
+            target_factories__id=factory_id,
+        ),
+        "holding_manager": Q(
+            notify_holding_managers=True,
+            target_holdings__id=holding_id,
+        ),
+    }
+
+    return Notification.objects.filter(
+        filters.get(role_name, Q())
+    ).distinct()
+
+
 
 
 def annotate_notifications_for_user(qs, user):

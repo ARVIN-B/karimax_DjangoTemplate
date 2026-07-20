@@ -3,6 +3,7 @@ import threading
 import time
 import logging
 
+from django.conf import settings
 from django.apps import AppConfig
 from django.db import connection
 
@@ -27,6 +28,9 @@ class UsersConfig(AppConfig):
     verbose_name = "مدیریت کاربران"
 
     def ready(self):
+
+        if getattr(settings, "DJANGO_ENV", "").lower() != "production":
+            return
 
         def notify():
             try:
